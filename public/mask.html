@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>pixel-edge title — experiment</title>
+		<style>
+			:root {
+				--paper: #fbfbf9;
+				--ink: #1a1a1a;
+				--muted: #6b6b6b;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				min-height: 100vh;
+				background: var(--paper);
+				color: var(--ink);
+				font-family: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+				display: flex;
+				justify-content: center;
+				padding: 3rem 1.5rem 4rem;
+			}
+			.home {
+				width: 100%;
+				max-width: 680px;
+			}
+			nav {
+				display: flex;
+				gap: 1.5rem;
+				font-size: 0.9rem;
+				margin-bottom: 3.5rem;
+			}
+			nav a {
+				color: var(--muted);
+				text-decoration: none;
+			}
+			nav a:hover {
+				color: var(--ink);
+			}
+			nav a.active {
+				color: var(--ink);
+				font-weight: 600;
+			}
+			#stage {
+				width: 100%;
+			}
+			#stage canvas {
+				display: block;
+				cursor: pointer;
+			}
+			.name {
+				font-weight: 400;
+				font-size: 2rem;
+				line-height: 1.25;
+				letter-spacing: -0.03em;
+				color: var(--muted);
+				margin: -0.3rem 0 0;
+			}
+			.bio {
+				color: var(--muted);
+				font-size: 1.05rem;
+				margin: 1.25rem 0 1.25rem;
+				max-width: 55ch;
+			}
+			.links {
+				font-size: 0.9rem;
+				margin: 0;
+			}
+			.links a {
+				color: var(--muted);
+				text-decoration: none;
+				margin-right: 1.5rem;
+			}
+			.links a::before {
+				content: "↗";
+				margin-right: 0.3rem;
+				font-size: 1.15em;
+				font-weight: 400;
+				vertical-align: -0.11em;
+			}
+			.links a:hover {
+				color: var(--ink);
+			}
+			.note {
+				font-family: ui-monospace, Menlo, monospace;
+				font-size: 0.72rem;
+				color: #999;
+				margin-top: 1rem;
+				max-width: 60ch;
+			}
+			.controls {
+				margin-top: 3rem;
+				padding-top: 1.5rem;
+				border-top: 1px solid #e5e5e0;
+				display: flex;
+				gap: 1.25rem 1.5rem;
+				flex-wrap: wrap;
+				align-items: center;
+				font-size: 0.8rem;
+				color: #555;
+			}
+			.controls label {
+				display: flex;
+				gap: 0.45rem;
+				align-items: center;
+			}
+			.controls input[type="range"] {
+				width: 120px;
+			}
+			.controls .val {
+				font-family: ui-monospace, Menlo, monospace;
+				font-size: 0.72rem;
+				color: #999;
+				min-width: 2.6ch;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="home">
+			<nav>
+				<a href="#" class="active">home</a>
+				<a href="#">blog</a>
+			</nav>
+
+			<div id="stage"></div>
+
+			<h1 class="name">Slobodchikov</h1>
+
+			<p class="bio">One line about you — what you build and what you're into.</p>
+			<p class="links">
+				<a href="#">linkedin</a>
+				<a href="#">github</a>
+				<a href="#">strava</a>
+			</p>
+
+			<div class="controls">
+				<label>pixel <input id="px" type="range" min="3" max="8" step="0.25" value="5.5" /><span class="val" id="pxv"></span></label>
+				<label>edge <input id="edge" type="range" min="0" max="0.6" step="0.01" value="0.02" /><span class="val" id="edgev"></span></label>
+				<label>scale <input id="scale" type="range" min="0.02" max="0.4" step="0.02" value="0.16" /><span class="val" id="scalev"></span></label>
+				<label>speed <input id="speed" type="range" min="0" max="1" step="0.05" value="0.25" /><span class="val" id="speedv"></span></label>
+				<label>fill <input id="fill" type="range" min="-0.3" max="0.3" step="0.02" value="0.04" /><span class="val" id="fillv"></span></label>
+				<label>tracking <input id="track" type="range" min="-0.12" max="0.02" step="0.005" value="-0.055" /><span class="val" id="trackv"></span></label>
+				<label>invert <input id="invert" type="checkbox" /></label>
+			</div>
+
+			<p class="note">
+				"Maxim" rasterized to a coverage field; animated noise + Bayer dither
+				build the pixels. Click the title to send a ripple through it.
+			</p>
+		</div>
+
+		<script type="module">
+			const MAXIM = "Maxim";
+			// Verdana: designed for low-res screen legibility — pixelates very cleanly
+			const MAXIM_FONT = 'Verdana, Tahoma, "DejaVu Sans", sans-serif';
+			const FONT_STYLE = "700"; // upright bold
+			const TARGET = 68; // px size for the title
+			const MAXR = 6; // ripple pool size
+
+			const stage = document.getElementById("stage");
+			stage.style.position = "relative";
+			const canvas = document.createElement("canvas");
+			stage.appendChild(canvas);
+			const gl = canvas.getContext("webgl2", { premultipliedAlpha: false, alpha: true });
+
+			// 2D overlay (same grid) for the click->glyph transform
+			const overlay = document.createElement("canvas");
+			overlay.style.cssText = "position:absolute; left:0; top:0; pointer-events:none;";
+			stage.appendChild(overlay);
+			const octx = overlay.getContext("2d");
+			let covData = null, covW = 0, covH = 0; // Maxim coverage (alpha) sampled per cell
+
+			// offscreen 2D canvas -> text coverage texture
+			const tcanvas = document.createElement("canvas");
+			const tctx = tcanvas.getContext("2d");
+			const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+			// ---- controls ----
+			const el = (id) => document.getElementById(id);
+			const ctrl = {
+				px: el("px"), edge: el("edge"), scale: el("scale"),
+				speed: el("speed"), fill: el("fill"), track: el("track"), invert: el("invert"),
+			};
+			function syncLabels() {
+				el("pxv").textContent = ctrl.px.value;
+				el("edgev").textContent = (+ctrl.edge.value).toFixed(2);
+				el("scalev").textContent = (+ctrl.scale.value).toFixed(2);
+				el("speedv").textContent = (+ctrl.speed.value).toFixed(2);
+				el("fillv").textContent = (+ctrl.fill.value).toFixed(2);
+				el("trackv").textContent = (+ctrl.track.value).toFixed(3);
+			}
+
+			// ---- shaders ----
+			const VERT = `#version 300 es
+			in vec2 a_pos; void main(){ gl_Position = vec4(a_pos,0.,1.); }`;
+			const FRAG = `#version 300 es
+			precision mediump float;
+			#define MAXR ${MAXR}
+			uniform sampler2D u_text;
+			uniform float u_time, u_pxSize, u_pixelRatio, u_scale, u_edge, u_fill;
+			uniform vec2 u_resolution;
+			uniform vec3 u_front;
+			uniform float u_clock;
+			uniform vec2 u_ripplePos[MAXR];
+			uniform float u_rippleStart[MAXR];
+			uniform vec2 u_hoverPos;
+			uniform float u_hover;
+			out vec4 fragColor;
+			vec3 permute(vec3 x){ return mod(((x*34.0)+1.0)*x,289.0); }
+			float snoise(vec2 v){
+				const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
+				vec2 i=floor(v+dot(v,C.yy)); vec2 x0=v-i+dot(i,C.xx);
+				vec2 i1=(x0.x>x0.y)?vec2(1.,0.):vec2(0.,1.);
+				vec4 x12=x0.xyxy+C.xxzz; x12.xy-=i1; i=mod(i,289.);
+				vec3 p=permute(permute(i.y+vec3(0.,i1.y,1.))+i.x+vec3(0.,i1.x,1.));
+				vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.); m=m*m; m=m*m;
+				vec3 x=2.*fract(p*C.www)-1.; vec3 h=abs(x)-0.5; vec3 ox=floor(x+0.5); vec3 a0=x-ox;
+				m*=1.79284291400159-0.85373472095314*(a0*a0+h*h);
+				vec3 g; g.x=a0.x*x0.x+h.x*x0.y; g.yz=a0.yz*x12.xz+h.yz*x12.yw; return 130.*dot(m,g);
+			}
+			float noise2(vec2 uv,float t){ float n=.6*snoise(uv-vec2(0.,.3*t)); n+=.4*snoise(2.*uv+vec2(0.,.4*t)); return n; }
+			const int bayer4x4[16]=int[16](0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5);
+			float getBayer(vec2 uv){ ivec2 p=ivec2(fract(uv/4.)*4.); int idx=p.y*4+p.x; return float(bayer4x4[idx])/16.; }
+			void main(){
+				float pxBase=u_pxSize*u_pixelRatio;
+				vec2 frag=gl_FragCoord.xy;
+				// cursor hotspot -> locally bigger pixel blocks (centralized, no extra noise)
+				vec2 baseCP=(floor(frag/pxBase)+.5)*pxBase;
+				float hd=distance(baseCP, u_hoverPos);
+				float hot=u_hover*exp(-pow(hd/(18.0*u_pixelRatio),2.0));
+				float pxSize=pxBase*(1.0+floor(hot*2.5));   // 1x..3x blocks under cursor
+				vec2 cp=(floor(frag/pxSize)+.5)*pxSize;
+				vec2 uv=cp/u_resolution; uv.y=1.0-uv.y;
+				float cov=texture(u_text,uv).a;
+
+				// expanding ripples from clicks -> churning, blooming ring
+				float rip=0.0;
+				for(int i=0;i<MAXR;i++){
+					float st=u_rippleStart[i];
+					if(st<0.0) continue;
+					float age=u_clock-st;
+					if(age<0.0 || age>1.8) continue;
+					float radius=age*320.0*u_pixelRatio;
+					float d=distance(cp, u_ripplePos[i]);
+					float band=exp(-pow((d-radius)/(26.0*u_pixelRatio),2.0));
+					rip+=band*(1.0-age/1.8);
+				}
+				rip=clamp(rip,0.0,1.5);
+
+				float n=noise2(cp*u_scale*0.1, .5*u_time);  // animated, -1..1
+				float edgeAmt=u_edge + rip*0.55;            // ripple churn
+				float value=(cov-0.5) + n*edgeAmt + u_fill + rip*0.08;
+				float d=getBayer(frag/pxSize)-0.5;          // ordered dither
+				float res=step(0.0, value + d);
+				fragColor=vec4(u_front, res);               // off pixels -> transparent
+			}`;
+
+			function compile(type, src) {
+				const s = gl.createShader(type);
+				gl.shaderSource(s, src.replace(/\t/g, ""));
+				gl.compileShader(s);
+				if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+				return s;
+			}
+			const prog = gl.createProgram();
+			gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+			gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
+			gl.linkProgram(prog);
+			gl.useProgram(prog);
+			const buf = gl.createBuffer();
+			gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+			const loc = gl.getAttribLocation(prog, "a_pos");
+			gl.enableVertexAttribArray(loc);
+			gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+			const U = (n) => gl.getUniformLocation(prog, n);
+			const u = {
+				text: U("u_text"), time: U("u_time"), res: U("u_resolution"), pr: U("u_pixelRatio"),
+				px: U("u_pxSize"), scale: U("u_scale"), edge: U("u_edge"), fill: U("u_fill"), front: U("u_front"),
+				clock: U("u_clock"), ripplePos: U("u_ripplePos"), rippleStart: U("u_rippleStart"),
+				hoverPos: U("u_hoverPos"), hover: U("u_hover"),
+			};
+
+			// text coverage texture
+			const tex = gl.createTexture();
+			gl.bindTexture(gl.TEXTURE_2D, tex);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+			let W = 0, H = 0;
+			function layout() {
+				const colW = Math.min(stage.clientWidth, 1000);
+				const TRACK = +ctrl.track.value;
+
+				tctx.font = `${FONT_STYLE} 100px ${MAXIM_FONT}`;
+				if ("letterSpacing" in tctx) tctx.letterSpacing = `${TRACK * 100}px`;
+				const ratio = tctx.measureText(MAXIM).width / 100;
+				const fontSize = Math.min(TARGET, colW / ratio);
+				W = Math.ceil(fontSize * ratio) + 6;
+				H = Math.ceil(fontSize * 1.02);
+
+				canvas.style.width = W + "px";
+				canvas.style.height = H + "px";
+				canvas.width = Math.round(W * dpr);
+				canvas.height = Math.round(H * dpr);
+
+				tcanvas.width = canvas.width;
+				tcanvas.height = canvas.height;
+				tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+				tctx.clearRect(0, 0, W, H);
+				tctx.fillStyle = "#fff";
+				tctx.font = `${FONT_STYLE} ${fontSize}px ${MAXIM_FONT}`;
+				if ("letterSpacing" in tctx) tctx.letterSpacing = `${TRACK * fontSize}px`;
+				tctx.textBaseline = "alphabetic";
+				tctx.fillText(MAXIM, 2, fontSize * 0.8);
+
+				gl.bindTexture(gl.TEXTURE_2D, tex);
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tcanvas);
+
+				// overlay grid + coverage sampling
+				overlay.style.width = W + "px";
+				overlay.style.height = H + "px";
+				overlay.width = canvas.width;
+				overlay.height = canvas.height;
+				octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+				const img = tctx.getImageData(0, 0, tcanvas.width, tcanvas.height);
+				covData = img.data; covW = tcanvas.width; covH = tcanvas.height;
+			}
+
+			syncLabels();
+			layout();
+			ctrl.track.addEventListener("input", () => { syncLabels(); layout(); });
+			[ctrl.px, ctrl.edge, ctrl.scale, ctrl.speed, ctrl.fill].forEach((c) =>
+				c.addEventListener("input", syncLabels),
+			);
+			window.addEventListener("resize", layout);
+
+			gl.enable(gl.BLEND);
+			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+			// ---- ripples on click ----
+			const rPos = new Float32Array(MAXR * 2);
+			const rStart = new Float32Array(MAXR).fill(-1);
+			let rIdx = 0;
+			const start = performance.now();
+			// ---- click: transform letter cells into glyphs along an expanding ring ----
+			const GLYPHS = "&#@~%*+}:;?=$".split("");
+			const GLYPH_COLORS = ["#ec9c8b", "#f0b98a", "#e58fa6", "#e9c46a", "#c9a6e0", "#f2a9a0"];
+			const PAPER = "#fbfbf9";
+			const ripples = [];
+			function hash(c, r) {
+				let h = (c * 374761393 + r * 668265263) >>> 0;
+				h = Math.imul(h ^ (h >>> 13), 1274126177);
+				return (h ^ (h >>> 16)) >>> 0;
+			}
+			function covered(cx, cy) {
+				if (!covData) return false;
+				const ix = Math.min(covW - 1, Math.max(0, Math.round(cx * dpr)));
+				const iy = Math.min(covH - 1, Math.max(0, Math.round(cy * dpr)));
+				return covData[(iy * covW + ix) * 4 + 3] > 120;
+			}
+			canvas.addEventListener("pointerdown", (e) => {
+				const rect = canvas.getBoundingClientRect();
+				ripples.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, start: (performance.now() - start) / 1000 });
+			});
+			function drawOverlay(now) {
+				octx.clearRect(0, 0, W, H);
+				const cell = +ctrl.px.value;
+				const SPEED = 175, BAND = cell * 2.6, LIFE = 1.15; // px/s, ring thickness, seconds
+				octx.textAlign = "center";
+				octx.textBaseline = "middle";
+				octx.font = `700 ${(cell * 1.7).toFixed(1)}px ui-monospace, Menlo, monospace`;
+				for (let k = ripples.length - 1; k >= 0; k--) {
+					const rp = ripples[k];
+					const age = now - rp.start;
+					if (age > LIFE) { ripples.splice(k, 1); continue; }
+					if (age < 0) continue;
+					const radius = age * SPEED;
+					const fade = 1 - age / LIFE;
+					const seed = (rp.start * 100) | 0;
+					for (let cy = cell / 2; cy < H; cy += cell) {
+						for (let cx = cell / 2; cx < W; cx += cell) {
+							const db = Math.abs(Math.hypot(cx - rp.x, cy - rp.y) - radius);
+							if (db > BAND) continue;
+							const a = fade * (1 - db / BAND);
+							if (a <= 0.03) continue;
+							const h = hash(Math.floor(cx / cell) + seed, Math.floor(cy / cell));
+							const isOn = covered(cx, cy);
+							if (!isOn && (h % 100) >= 34) continue; // sparse noisy scatter outside the letters
+							octx.globalAlpha = isOn ? a : a * 0.7;
+							if (isOn) { // erase the ink block first...
+								octx.fillStyle = PAPER;
+								octx.fillRect(cx - cell / 2, cy - cell / 2, cell + 0.6, cell + 0.6);
+							}
+							octx.fillStyle = GLYPH_COLORS[(h >>> 3) % GLYPH_COLORS.length];
+							octx.fillText(GLYPHS[h % GLYPHS.length], cx, cy); // ...stamp a glyph
+						}
+					}
+				}
+				octx.globalAlpha = 1;
+			}
+
+			// ---- cursor-follow churn on hover ----
+			let hovering = false, hoverAmt = 0;
+			let hx = 0, hy = 0, htx = 0, hty = 0; // smoothed pos + target
+			canvas.addEventListener("pointermove", (e) => {
+				const rect = canvas.getBoundingClientRect();
+				htx = (e.clientX - rect.left) * dpr;
+				hty = canvas.height - (e.clientY - rect.top) * dpr; // gl coords
+				hovering = true;
+			});
+			canvas.addEventListener("pointerleave", () => { hovering = false; });
+
+			const INK = [0.102, 0.102, 0.102];
+			const LIGHT = [0.984, 0.984, 0.976];
+			function loop(now) {
+				const realT = (now - start) / 1000;
+				const time = realT * (+ctrl.speed.value) * 6;
+				gl.viewport(0, 0, canvas.width, canvas.height);
+				gl.clearColor(0, 0, 0, 0);
+				gl.clear(gl.COLOR_BUFFER_BIT);
+				gl.useProgram(prog);
+				gl.activeTexture(gl.TEXTURE0);
+				gl.bindTexture(gl.TEXTURE_2D, tex);
+				gl.uniform1i(u.text, 0);
+				gl.uniform1f(u.time, time);
+				gl.uniform1f(u.clock, realT);
+				gl.uniform2f(u.res, canvas.width, canvas.height);
+				gl.uniform1f(u.pr, dpr);
+				gl.uniform1f(u.px, +ctrl.px.value);
+				gl.uniform1f(u.scale, +ctrl.scale.value);
+				gl.uniform1f(u.edge, +ctrl.edge.value);
+				gl.uniform1f(u.fill, +ctrl.fill.value);
+				gl.uniform3fv(u.front, ctrl.invert.checked ? LIGHT : INK);
+				gl.uniform2fv(u.ripplePos, rPos);
+				gl.uniform1fv(u.rippleStart, rStart);
+				hoverAmt += ((hovering ? 1 : 0) - hoverAmt) * 0.45; // fade in/out
+				hx += (htx - hx) * 0.8; // tight follow
+				hy += (hty - hy) * 0.8;
+				gl.uniform2f(u.hoverPos, hx, hy);
+				gl.uniform1f(u.hover, hoverAmt);
+				gl.drawArrays(gl.TRIANGLES, 0, 3);
+				drawOverlay(realT);
+				requestAnimationFrame(loop);
+			}
+			requestAnimationFrame(loop);
+		</script>
+	</body>
+</html>
