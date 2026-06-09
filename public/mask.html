@@ -57,7 +57,7 @@
 				line-height: 1.25;
 				letter-spacing: -0.03em;
 				color: var(--muted);
-				margin: -0.3rem 0 0;
+				margin: -0.45rem 0 0;
 			}
 			.bio {
 				color: var(--muted);
@@ -137,12 +137,12 @@
 			</p>
 
 			<div class="controls">
-				<label>pixel <input id="px" type="range" min="3" max="8" step="0.25" value="5.5" /><span class="val" id="pxv"></span></label>
+				<label>pixel <input id="px" type="range" min="1.5" max="8" step="0.1" value="6.3" /><span class="val" id="pxv"></span></label>
 				<label>edge <input id="edge" type="range" min="0" max="0.6" step="0.01" value="0.02" /><span class="val" id="edgev"></span></label>
-				<label>scale <input id="scale" type="range" min="0.02" max="0.4" step="0.02" value="0.16" /><span class="val" id="scalev"></span></label>
-				<label>speed <input id="speed" type="range" min="0" max="1" step="0.05" value="0.25" /><span class="val" id="speedv"></span></label>
-				<label>fill <input id="fill" type="range" min="-0.3" max="0.3" step="0.02" value="0.04" /><span class="val" id="fillv"></span></label>
-				<label>tracking <input id="track" type="range" min="-0.12" max="0.02" step="0.005" value="-0.055" /><span class="val" id="trackv"></span></label>
+				<label>scale <input id="scale" type="range" min="0.02" max="0.4" step="0.02" value="0.18" /><span class="val" id="scalev"></span></label>
+				<label>speed <input id="speed" type="range" min="0" max="1" step="0.05" value="0.2" /><span class="val" id="speedv"></span></label>
+				<label>fill <input id="fill" type="range" min="-0.3" max="0.3" step="0.02" value="0" /><span class="val" id="fillv"></span></label>
+				<label>tracking <input id="track" type="range" min="-0.12" max="0.02" step="0.005" value="-0.075" /><span class="val" id="trackv"></span></label>
 				<label>invert <input id="invert" type="checkbox" /></label>
 			</div>
 
@@ -154,10 +154,17 @@
 
 		<script type="module">
 			const MAXIM = "Maxim";
-			// Verdana: designed for low-res screen legibility — pixelates very cleanly
-			const MAXIM_FONT = 'Verdana, Tahoma, "DejaVu Sans", sans-serif';
+			// mixed wordmark: M + final m in Courier; a,x,i in Verdana (the prior font)
+			const COURIER = '"Courier New", Courier, monospace';
+			const VERDANA = 'Verdana, Tahoma, "DejaVu Sans", sans-serif';
+			const LETTER_FONTS = [COURIER, VERDANA, VERDANA, VERDANA, VERDANA]; // M a x i m
+			const KERN = [0.06, 0, 0, 0, 0]; // extra space (em) after each letter; M->a gap
+			const MATCH_HEIGHT = [false, false, false, false, true]; // scale last m toward others' x-height
+			const HMATCH = 0.95; // how close the scaled letter gets to the reference x-height
+			const LETTER_WEIGHTS = [700, 700, 700, 700, 700]; // last letter
+			const SQUISH = [1, 1, 1, 1, 0.88]; // horizontal scale per letter
 			const FONT_STYLE = "700"; // upright bold
-			const TARGET = 68; // px size for the title
+			const TARGET = 64; // px size for the title (bigger = more blocks per letter)
 			const MAXR = 6; // ripple pool size
 
 			const stage = document.getElementById("stage");
@@ -253,6 +260,7 @@
 				float n=noise2(cp*u_scale*0.1, .5*u_time);  // animated, -1..1
 				float edgeAmt=u_edge + rip*0.55;            // ripple churn
 				float value=(cov-0.5) + n*edgeAmt + u_fill + rip*0.08;
+				if (cov < 0.2) value = -1.0;                // suppress stray pixels in empty space
 				float d=getBayer(frag/pxSize)-0.5;          // ordered dither
 				float res=step(0.0, value + d);
 				fragColor=vec4(u_front, res);               // off pixels -> transparent
@@ -297,11 +305,28 @@
 				const colW = Math.min(stage.clientWidth, 1000);
 				const TRACK = +ctrl.track.value;
 
-				tctx.font = `${FONT_STYLE} 100px ${MAXIM_FONT}`;
-				if ("letterSpacing" in tctx) tctx.letterSpacing = `${TRACK * 100}px`;
-				const ratio = tctx.measureText(MAXIM).width / 100;
+				// word width with per-letter fonts (glyph advances + inter-letter tracking)
+				const wordWidth = (size) => {
+					if ("letterSpacing" in tctx) tctx.letterSpacing = "0px";
+					tctx.font = `${FONT_STYLE} ${size}px ${VERDANA}`;
+					const refXH = tctx.measureText("x").actualBoundingBoxAscent;
+					let w = 0;
+					for (let i = 0; i < MAXIM.length; i++) {
+						tctx.font = `${LETTER_WEIGHTS[i]} ${size}px ${LETTER_FONTS[i]}`;
+						let lw = tctx.measureText(MAXIM[i]).width;
+						if (MATCH_HEIGHT[i]) {
+							const ownXH = tctx.measureText("x").actualBoundingBoxAscent;
+							lw *= (refXH / ownXH) * HMATCH; // grows with the height scale
+						}
+						lw *= SQUISH[i];
+						w += lw;
+						if (i < MAXIM.length - 1) w += (TRACK + KERN[i]) * size;
+					}
+					return w;
+				};
+				const ratio = wordWidth(100) / 100;
 				const fontSize = Math.min(TARGET, colW / ratio);
-				W = Math.ceil(fontSize * ratio) + 6;
+				W = Math.ceil(wordWidth(fontSize)) + 6;
 				H = Math.ceil(fontSize * 1.02);
 
 				canvas.style.width = W + "px";
@@ -314,10 +339,45 @@
 				tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 				tctx.clearRect(0, 0, W, H);
 				tctx.fillStyle = "#fff";
-				tctx.font = `${FONT_STYLE} ${fontSize}px ${MAXIM_FONT}`;
-				if ("letterSpacing" in tctx) tctx.letterSpacing = `${TRACK * fontSize}px`;
 				tctx.textBaseline = "alphabetic";
-				tctx.fillText(MAXIM, 2, fontSize * 0.8);
+				if ("letterSpacing" in tctx) tctx.letterSpacing = "0px";
+
+				// render each letter in its own font, advancing the pen with tracking
+				const baselineY = fontSize * 0.8;
+				tctx.font = `${FONT_STYLE} ${fontSize}px ${VERDANA}`;
+				const refXH = tctx.measureText("x").actualBoundingBoxAscent; // height to match
+				let penX = 2, iX = 0, iW = 0, mX = 0, mW = 0;
+				for (let i = 0; i < MAXIM.length; i++) {
+					tctx.font = `${LETTER_WEIGHTS[i]} ${fontSize}px ${LETTER_FONTS[i]}`;
+					const ch = MAXIM[i];
+					let w = tctx.measureText(ch).width;
+					let hs = 1;
+					if (MATCH_HEIGHT[i]) {
+						const ownXH = tctx.measureText("x").actualBoundingBoxAscent;
+						hs = (refXH / ownXH) * HMATCH; // scale up toward the others' height
+					}
+					const sx = SQUISH[i];
+					if (hs !== 1 || sx !== 1) {
+						tctx.save();
+						tctx.translate(penX, baselineY);
+						tctx.scale(sx, 1);
+						tctx.font = `${LETTER_WEIGHTS[i]} ${(fontSize * hs).toFixed(2)}px ${LETTER_FONTS[i]}`;
+						tctx.fillText(ch, 0, 0);
+						tctx.restore();
+						w *= hs * sx;
+						mX = penX; mW = w;
+					} else {
+						if (ch === "i") { iX = penX; iW = w; }
+						tctx.fillText(ch, penX, baselineY);
+					}
+					penX += w + (i < MAXIM.length - 1 ? (TRACK + KERN[i]) * fontSize : 0);
+				}
+
+				// carve a gap under the "i" dot so it stays separated when pixelated
+				tctx.font = `${FONT_STYLE} ${fontSize}px ${VERDANA}`;
+				const xH = tctx.measureText("x").actualBoundingBoxAscent; // x-height (stem top)
+				const gapH = (+ctrl.px.value) * 1.5; // gap under the i dot
+				tctx.clearRect(iX - 1, baselineY - xH - gapH, iW + 2, gapH);
 
 				gl.bindTexture(gl.TEXTURE_2D, tex);
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tcanvas);
@@ -335,6 +395,7 @@
 			syncLabels();
 			layout();
 			ctrl.track.addEventListener("input", () => { syncLabels(); layout(); });
+			ctrl.px.addEventListener("input", layout); // re-rasterize so the i-gap scales
 			[ctrl.px, ctrl.edge, ctrl.scale, ctrl.speed, ctrl.fill].forEach((c) =>
 				c.addEventListener("input", syncLabels),
 			);
