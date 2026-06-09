@@ -57,7 +57,7 @@
 				line-height: 1.25;
 				letter-spacing: -0.03em;
 				color: var(--muted);
-				margin: -0.45rem 0 0;
+				margin: -0.55rem 0 0;
 			}
 			.bio {
 				color: var(--muted);
@@ -139,8 +139,8 @@
 			<div class="controls">
 				<label>pixel <input id="px" type="range" min="1.5" max="8" step="0.1" value="6.3" /><span class="val" id="pxv"></span></label>
 				<label>edge <input id="edge" type="range" min="0" max="0.6" step="0.01" value="0.02" /><span class="val" id="edgev"></span></label>
-				<label>scale <input id="scale" type="range" min="0.02" max="0.4" step="0.02" value="0.18" /><span class="val" id="scalev"></span></label>
-				<label>speed <input id="speed" type="range" min="0" max="1" step="0.05" value="0.2" /><span class="val" id="speedv"></span></label>
+				<label>scale <input id="scale" type="range" min="0" max="0.4" step="0.02" value="0" /><span class="val" id="scalev"></span></label>
+				<label>speed <input id="speed" type="range" min="0" max="1" step="0.05" value="0" /><span class="val" id="speedv"></span></label>
 				<label>fill <input id="fill" type="range" min="-0.3" max="0.3" step="0.02" value="0" /><span class="val" id="fillv"></span></label>
 				<label>tracking <input id="track" type="range" min="-0.12" max="0.02" step="0.005" value="-0.075" /><span class="val" id="trackv"></span></label>
 				<label>invert <input id="invert" type="checkbox" /></label>
@@ -165,6 +165,7 @@
 			const SQUISH = [1, 1, 1, 1, 0.88]; // horizontal scale per letter
 			const FONT_STYLE = "700"; // upright bold
 			const TARGET = 64; // px size for the title (bigger = more blocks per letter)
+			const DISPLAY_SCALE = 0.7; // shrink displayed size without changing the pixelization
 			const MAXR = 6; // ripple pool size
 
 			const stage = document.getElementById("stage");
@@ -329,8 +330,8 @@
 				W = Math.ceil(wordWidth(fontSize)) + 6;
 				H = Math.ceil(fontSize * 1.02);
 
-				canvas.style.width = W + "px";
-				canvas.style.height = H + "px";
+				canvas.style.width = W * DISPLAY_SCALE + "px";
+				canvas.style.height = H * DISPLAY_SCALE + "px";
 				canvas.width = Math.round(W * dpr);
 				canvas.height = Math.round(H * dpr);
 
@@ -383,8 +384,8 @@
 				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tcanvas);
 
 				// overlay grid + coverage sampling
-				overlay.style.width = W + "px";
-				overlay.style.height = H + "px";
+				overlay.style.width = W * DISPLAY_SCALE + "px";
+				overlay.style.height = H * DISPLAY_SCALE + "px";
 				overlay.width = canvas.width;
 				overlay.height = canvas.height;
 				octx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -427,7 +428,11 @@
 			}
 			canvas.addEventListener("pointerdown", (e) => {
 				const rect = canvas.getBoundingClientRect();
-				ripples.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, start: (performance.now() - start) / 1000 });
+				ripples.push({
+					x: (e.clientX - rect.left) * (W / rect.width), // map to canvas logical coords
+					y: (e.clientY - rect.top) * (H / rect.height),
+					start: (performance.now() - start) / 1000,
+				});
 			});
 			function drawOverlay(now) {
 				octx.clearRect(0, 0, W, H);
@@ -471,13 +476,13 @@
 			let hx = 0, hy = 0, htx = 0, hty = 0; // smoothed pos + target
 			canvas.addEventListener("pointermove", (e) => {
 				const rect = canvas.getBoundingClientRect();
-				htx = (e.clientX - rect.left) * dpr;
-				hty = canvas.height - (e.clientY - rect.top) * dpr; // gl coords
+				htx = (e.clientX - rect.left) * (canvas.width / rect.width); // device coords
+				hty = canvas.height - (e.clientY - rect.top) * (canvas.height / rect.height);
 				hovering = true;
 			});
 			canvas.addEventListener("pointerleave", () => { hovering = false; });
 
-			const INK = [0.102, 0.102, 0.102];
+			const INK = [0.42, 0.42, 0.42]; // == --muted #6b6b6b (matches Slobodchikov)
 			const LIGHT = [0.984, 0.984, 0.976];
 			function loop(now) {
 				const realT = (now - start) / 1000;
