@@ -1,0 +1,46 @@
+---
+const links = [
+	{ href: "/", label: "home" },
+	{ href: "/blog", label: "blog" },
+];
+
+const { pathname } = Astro.url;
+const isActive = (href: string) =>
+	href === "/" ? pathname === "/" : pathname.startsWith(href);
+---
+
+<nav>
+	{
+		links.map((link) => (
+			<a href={link.href} class:list={{ active: isActive(link.href) }}>
+				{link.label}
+			</a>
+		))
+	}
+</nav>
+
+<style>
+	nav {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 1.25rem;
+		margin-bottom: 2.5rem;
+		font-size: 0.9rem;
+	}
+
+	nav a {
+		color: var(--muted);
+		text-decoration: none;
+	}
+
+	nav a:hover {
+		color: var(--fg);
+		text-decoration: none;
+	}
+
+	nav a.active {
+		color: var(--fg);
+		font-weight: 600;
+	}
+</style>

@@ -1,0 +1,35 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const projects = [
+	{
+		name: "Example project",
+		href: "https://github.com/yourname/example",
+		blurb: "Short description of what it does.",
+	},
+];
+---
+
+<BaseLayout title="projects" description="Things I've built.">
+	<h1>projects</h1>
+	<ul class="project-list">
+		{
+			projects.map((p) => (
+				<li>
+					<a href={p.href}>{p.name}</a>
+					<span class="muted"> — {p.blurb}</span>
+				</li>
+			))
+		}
+	</ul>
+
+	<style>
+		.project-list {
+			list-style: none;
+			padding: 0;
+		}
+		.project-list li {
+			padding: 0.4rem 0;
+		}
+	</style>
+</BaseLayout>
