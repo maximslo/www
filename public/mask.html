@@ -9,6 +9,7 @@
 				--paper: #fbfbf9;
 				--ink: #1a1a1a;
 				--muted: #6b6b6b;
+				--accent: #e07a5f;
 			}
 			* {
 				box-sizing: border-box;
@@ -55,7 +56,7 @@
 				font-size: 2rem;
 				line-height: 1.25;
 				letter-spacing: -0.03em;
-				color: var(--muted);
+				color: var(--ink);
 				margin: -0.1rem 0 0;
 			}
 			.bio {
@@ -95,6 +96,53 @@
 				white-space: nowrap;
 				border: 0;
 			}
+			.work {
+				margin-top: 4rem;
+			}
+			.work-kicker {
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+				font-size: 0.78rem;
+				font-weight: 600;
+				color: var(--muted);
+				margin: 0;
+			}
+			.work-sub {
+				font-size: 0.9rem;
+				color: var(--muted);
+				margin: 0.35rem 0 1.5rem;
+			}
+			.work-grid {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 1.5rem 1.1rem;
+			}
+			@media (max-width: 560px) {
+				.work-grid { grid-template-columns: repeat(2, 1fr); }
+			}
+			.card {
+				display: block;
+				text-decoration: none;
+			}
+			.card .thumb {
+				display: block;
+				aspect-ratio: 4 / 3;
+				border-radius: 8px;
+				border: 1px solid #e6e3dd;
+				background: transparent;
+			}
+			.card-title {
+				font-size: 0.9rem;
+				font-weight: 500;
+				color: var(--ink);
+				margin: 0.6rem 0 0.2rem;
+			}
+			.card-desc {
+				color: var(--muted);
+				font-size: 0.9rem;
+				line-height: 1.4;
+				margin: 0;
+			}
 		</style>
 	</head>
 	<body>
@@ -115,6 +163,22 @@
 				<a href="#">github</a>
 				<a href="#">strava</a>
 			</p>
+
+			<section class="work" aria-label="Selected work">
+				<h2 class="work-kicker">selected work</h2>
+				<p class="work-sub">things i've built</p>
+				<div class="work-grid">
+					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project one</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project two</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project three</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project four</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project five</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project six</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project seven</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project eight</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project nine</h3><p class="card-desc">what it is, in a line.</p></a>
+				</div>
+			</section>
 		</div>
 
 		<script type="module">
@@ -135,7 +199,7 @@
 				row >= 0 && row < covH && col >= 0 && col < covW && ART[row][col] === "#";
 
 			const PIXEL = 4.5; // css px per block
-			const INK = "#6b6b6b"; // title color (matches --muted / Slobodchikov)
+			const INK = "#1a1a1a"; // title color (black)
 			const PAPER = "#fbfbf9"; // page background
 			const GLYPHS = "&#@~%*+}:;?=$".split("");
 			const GLYPH_COLORS = ["#ec9c8b", "#f0b98a", "#e58fa6", "#e9c46a", "#c9a6e0", "#f2a9a0"];
