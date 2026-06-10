@@ -57,7 +57,7 @@
 				line-height: 1.25;
 				letter-spacing: -0.03em;
 				color: var(--muted);
-				margin: -0.55rem 0 0;
+				margin: -0.1rem 0 0;
 			}
 			.bio {
 				color: var(--muted);
@@ -144,11 +144,12 @@
 				<label>fill <input id="fill" type="range" min="-0.3" max="0.3" step="0.02" value="0" /><span class="val" id="fillv"></span></label>
 				<label>tracking <input id="track" type="range" min="-0.12" max="0.02" step="0.005" value="-0.075" /><span class="val" id="trackv"></span></label>
 				<label>invert <input id="invert" type="checkbox" /></label>
+				<button id="export" type="button" style="font:inherit;font-size:0.8rem;padding:0.25rem 0.7rem;border:1px solid #ccc4b4;border-radius:6px;background:transparent;cursor:pointer;">export png</button>
 			</div>
 
 			<p class="note">
-				"Maxim" rasterized to a coverage field; animated noise + Bayer dither
-				build the pixels. Click the title to send a ripple through it.
+				Source: /maxim.png (31×10, hand-editable). Each pixel = one block.
+				Hover to churn it; click to scatter glyphs through it.
 			</p>
 		</div>
 
@@ -263,7 +264,7 @@
 				float value=(cov-0.5) + n*edgeAmt + u_fill + rip*0.08;
 				if (cov < 0.2) value = -1.0;                // suppress stray pixels in empty space
 				float d=getBayer(frag/pxSize)-0.5;          // ordered dither
-				float res=step(0.0, value + d);
+				float res=step(0.0, value); // binary PNG source: no dither (exact blocks)
 				fragColor=vec4(u_front, res);               // off pixels -> transparent
 			}`;
 
@@ -296,102 +297,65 @@
 			// text coverage texture
 			const tex = gl.createTexture();
 			gl.bindTexture(gl.TEXTURE_2D, tex);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
 			let W = 0, H = 0;
+			const SRC = new Image(); // hand-edited pixel art; alpha channel = "on"
+			SRC.src = "/maxim.png";
+
 			function layout() {
-				const colW = Math.min(stage.clientWidth, 1000);
-				const TRACK = +ctrl.track.value;
+				if (!SRC.complete || !SRC.naturalWidth) return;
+				const pixel = +ctrl.px.value; // css px per block
 
-				// word width with per-letter fonts (glyph advances + inter-letter tracking)
-				const wordWidth = (size) => {
-					if ("letterSpacing" in tctx) tctx.letterSpacing = "0px";
-					tctx.font = `${FONT_STYLE} ${size}px ${VERDANA}`;
-					const refXH = tctx.measureText("x").actualBoundingBoxAscent;
-					let w = 0;
-					for (let i = 0; i < MAXIM.length; i++) {
-						tctx.font = `${LETTER_WEIGHTS[i]} ${size}px ${LETTER_FONTS[i]}`;
-						let lw = tctx.measureText(MAXIM[i]).width;
-						if (MATCH_HEIGHT[i]) {
-							const ownXH = tctx.measureText("x").actualBoundingBoxAscent;
-							lw *= (refXH / ownXH) * HMATCH; // grows with the height scale
+				// read the PNG and auto-crop to the bounding box of opaque pixels
+				const sw = SRC.naturalWidth, sh = SRC.naturalHeight;
+				tcanvas.width = sw; tcanvas.height = sh;
+				tctx.setTransform(1, 0, 0, 1, 0, 0);
+				tctx.clearRect(0, 0, sw, sh);
+				tctx.drawImage(SRC, 0, 0);
+				const full = tctx.getImageData(0, 0, sw, sh).data;
+				let minx = sw, miny = sh, maxx = -1, maxy = -1;
+				for (let y = 0; y < sh; y++) {
+					for (let x = 0; x < sw; x++) {
+						if (full[(y * sw + x) * 4 + 3] > 120) {
+							if (x < minx) minx = x; if (x > maxx) maxx = x;
+							if (y < miny) miny = y; if (y > maxy) maxy = y;
 						}
-						lw *= SQUISH[i];
-						w += lw;
-						if (i < MAXIM.length - 1) w += (TRACK + KERN[i]) * size;
 					}
-					return w;
-				};
-				const ratio = wordWidth(100) / 100;
-				const fontSize = Math.min(TARGET, colW / ratio);
-				W = Math.ceil(wordWidth(fontSize)) + 6;
-				H = Math.ceil(fontSize * 1.02);
+				}
+				if (maxx < 0) { minx = 0; miny = 0; maxx = sw - 1; maxy = sh - 1; }
+				const bw = maxx - minx + 1, bh = maxy - miny + 1; // cropped grid
 
+				W = Math.round(bw * pixel);
+				H = Math.round(bh * pixel);
 				canvas.style.width = W * DISPLAY_SCALE + "px";
 				canvas.style.height = H * DISPLAY_SCALE + "px";
-				canvas.width = Math.round(W * dpr);
-				canvas.height = Math.round(H * dpr);
+				canvas.width = Math.round(bw * pixel * dpr);
+				canvas.height = Math.round(bh * pixel * dpr);
 
-				tcanvas.width = canvas.width;
-				tcanvas.height = canvas.height;
-				tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-				tctx.clearRect(0, 0, W, H);
-				tctx.fillStyle = "#fff";
-				tctx.textBaseline = "alphabetic";
-				if ("letterSpacing" in tctx) tctx.letterSpacing = "0px";
-
-				// render each letter in its own font, advancing the pen with tracking
-				const baselineY = fontSize * 0.8;
-				tctx.font = `${FONT_STYLE} ${fontSize}px ${VERDANA}`;
-				const refXH = tctx.measureText("x").actualBoundingBoxAscent; // height to match
-				let penX = 2, iX = 0, iW = 0, mX = 0, mW = 0;
-				for (let i = 0; i < MAXIM.length; i++) {
-					tctx.font = `${LETTER_WEIGHTS[i]} ${fontSize}px ${LETTER_FONTS[i]}`;
-					const ch = MAXIM[i];
-					let w = tctx.measureText(ch).width;
-					let hs = 1;
-					if (MATCH_HEIGHT[i]) {
-						const ownXH = tctx.measureText("x").actualBoundingBoxAscent;
-						hs = (refXH / ownXH) * HMATCH; // scale up toward the others' height
-					}
-					const sx = SQUISH[i];
-					if (hs !== 1 || sx !== 1) {
-						tctx.save();
-						tctx.translate(penX, baselineY);
-						tctx.scale(sx, 1);
-						tctx.font = `${LETTER_WEIGHTS[i]} ${(fontSize * hs).toFixed(2)}px ${LETTER_FONTS[i]}`;
-						tctx.fillText(ch, 0, 0);
-						tctx.restore();
-						w *= hs * sx;
-						mX = penX; mW = w;
-					} else {
-						if (ch === "i") { iX = penX; iW = w; }
-						tctx.fillText(ch, penX, baselineY);
-					}
-					penX += w + (i < MAXIM.length - 1 ? (TRACK + KERN[i]) * fontSize : 0);
-				}
-
-				// carve a gap under the "i" dot so it stays separated when pixelated
-				tctx.font = `${FONT_STYLE} ${fontSize}px ${VERDANA}`;
-				const xH = tctx.measureText("x").actualBoundingBoxAscent; // x-height (stem top)
-				const gapH = (+ctrl.px.value) * 1.5; // gap under the i dot
-				tctx.clearRect(iX - 1, baselineY - xH - gapH, iW + 2, gapH);
-
+				// crop into a tight canvas, upload as the texture (NEAREST = 1 texel/block)
+				const crop = document.createElement("canvas");
+				crop.width = bw; crop.height = bh;
+				const cctx = crop.getContext("2d");
+				cctx.drawImage(SRC, minx, miny, bw, bh, 0, 0, bw, bh);
 				gl.bindTexture(gl.TEXTURE_2D, tex);
-				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tcanvas);
+				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, crop);
 
-				// overlay grid + coverage sampling
+				// coverage (block grid) for the click -> glyph overlay
+				covData = cctx.getImageData(0, 0, bw, bh).data; covW = bw; covH = bh;
+
+				// overlay sizing (matches the display)
 				overlay.style.width = W * DISPLAY_SCALE + "px";
 				overlay.style.height = H * DISPLAY_SCALE + "px";
 				overlay.width = canvas.width;
 				overlay.height = canvas.height;
 				octx.setTransform(dpr, 0, 0, dpr, 0, 0);
-				const img = tctx.getImageData(0, 0, tcanvas.width, tcanvas.height);
-				covData = img.data; covW = tcanvas.width; covH = tcanvas.height;
 			}
+			SRC.onload = layout;
 
 			syncLabels();
 			layout();
@@ -422,8 +386,8 @@
 			}
 			function covered(cx, cy) {
 				if (!covData) return false;
-				const ix = Math.min(covW - 1, Math.max(0, Math.round(cx * dpr)));
-				const iy = Math.min(covH - 1, Math.max(0, Math.round(cy * dpr)));
+				const ix = Math.min(covW - 1, Math.max(0, Math.floor(cx / (+ctrl.px.value))));
+				const iy = Math.min(covH - 1, Math.max(0, Math.floor(cy / (+ctrl.px.value))));
 				return covData[(iy * covW + ix) * 4 + 3] > 120;
 			}
 			canvas.addEventListener("pointerdown", (e) => {
@@ -515,6 +479,65 @@
 				requestAnimationFrame(loop);
 			}
 			requestAnimationFrame(loop);
+
+			// ---- export the static pixel grid as a 1px-per-block PNG ----
+			function exportPNG() {
+				// draw one clean frame: no hover, no ripples, static
+				gl.viewport(0, 0, canvas.width, canvas.height);
+				gl.clearColor(0, 0, 0, 0);
+				gl.clear(gl.COLOR_BUFFER_BIT);
+				gl.useProgram(prog);
+				gl.activeTexture(gl.TEXTURE0);
+				gl.bindTexture(gl.TEXTURE_2D, tex);
+				gl.uniform1i(u.text, 0);
+				gl.uniform1f(u.time, 0);
+				gl.uniform1f(u.clock, 0);
+				gl.uniform2f(u.res, canvas.width, canvas.height);
+				gl.uniform1f(u.pr, dpr);
+				gl.uniform1f(u.px, +ctrl.px.value);
+				gl.uniform1f(u.scale, +ctrl.scale.value);
+				gl.uniform1f(u.edge, +ctrl.edge.value);
+				gl.uniform1f(u.fill, +ctrl.fill.value);
+				gl.uniform3fv(u.front, ctrl.invert.checked ? LIGHT : INK);
+				gl.uniform2fv(u.ripplePos, new Float32Array(MAXR * 2));
+				gl.uniform1fv(u.rippleStart, new Float32Array(MAXR).fill(-1));
+				gl.uniform2f(u.hoverPos, -1e4, -1e4);
+				gl.uniform1f(u.hover, 0);
+				gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+				const pxDev = (+ctrl.px.value) * dpr;
+				const cols = Math.round(canvas.width / pxDev);
+				const rows = Math.round(canvas.height / pxDev);
+				const pixels = new Uint8Array(canvas.width * canvas.height * 4);
+				gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+				const out = document.createElement("canvas");
+				out.width = cols; out.height = rows;
+				const o2 = out.getContext("2d");
+				const img = o2.createImageData(cols, rows);
+				const front = ctrl.invert.checked ? LIGHT : INK;
+				for (let by = 0; by < rows; by++) {
+					for (let bx = 0; bx < cols; bx++) {
+						const sx = Math.min(canvas.width - 1, Math.floor(bx * pxDev + pxDev / 2));
+						const syTop = Math.min(canvas.height - 1, Math.floor(by * pxDev + pxDev / 2));
+						const fy = canvas.height - 1 - syTop; // readPixels is bottom-up
+						const on = pixels[(fy * canvas.width + sx) * 4 + 3] > 127;
+						const o = (by * cols + bx) * 4;
+						if (on) {
+							img.data[o] = Math.round(front[0] * 255);
+							img.data[o + 1] = Math.round(front[1] * 255);
+							img.data[o + 2] = Math.round(front[2] * 255);
+							img.data[o + 3] = 255;
+						}
+					}
+				}
+				o2.putImageData(img, 0, 0);
+				const a = document.createElement("a");
+				a.download = `maxim-${cols}x${rows}.png`;
+				a.href = out.toDataURL("image/png");
+				a.click();
+			}
+			el("export").addEventListener("click", exportPNG);
 		</script>
 	</body>
 </html>
