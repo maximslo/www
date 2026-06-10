@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>pixel-edge title — experiment</title>
+		<title>Maxim Slobodchikov</title>
 		<style>
 			:root {
 				--paper: #fbfbf9;
@@ -37,11 +37,11 @@
 				color: var(--muted);
 				text-decoration: none;
 			}
-			nav a:hover {
+			nav a:hover,
+			nav a.active {
 				color: var(--ink);
 			}
 			nav a.active {
-				color: var(--ink);
 				font-weight: 600;
 			}
 			#stage {
@@ -49,7 +49,6 @@
 			}
 			#stage canvas {
 				display: block;
-				cursor: pointer;
 			}
 			.name {
 				font-weight: 400;
@@ -84,37 +83,17 @@
 			.links a:hover {
 				color: var(--ink);
 			}
-			.note {
-				font-family: ui-monospace, Menlo, monospace;
-				font-size: 0.72rem;
-				color: #999;
-				margin-top: 1rem;
-				max-width: 60ch;
-			}
-			.controls {
-				margin-top: 3rem;
-				padding-top: 1.5rem;
-				border-top: 1px solid #e5e5e0;
-				display: flex;
-				gap: 1.25rem 1.5rem;
-				flex-wrap: wrap;
-				align-items: center;
-				font-size: 0.8rem;
-				color: #555;
-			}
-			.controls label {
-				display: flex;
-				gap: 0.45rem;
-				align-items: center;
-			}
-			.controls input[type="range"] {
-				width: 120px;
-			}
-			.controls .val {
-				font-family: ui-monospace, Menlo, monospace;
-				font-size: 0.72rem;
-				color: #999;
-				min-width: 2.6ch;
+			/* visually hidden, but available to screen readers, search engines, and copy */
+			.sr-only {
+				position: absolute;
+				width: 1px;
+				height: 1px;
+				margin: -1px;
+				padding: 0;
+				overflow: hidden;
+				clip: rect(0, 0, 0, 0);
+				white-space: nowrap;
+				border: 0;
 			}
 		</style>
 	</head>
@@ -125,9 +104,10 @@
 				<a href="#">blog</a>
 			</nav>
 
-			<div id="stage"></div>
+			<!-- decorative pixel rendering of "Maxim"; the real text lives in the heading -->
+			<div id="stage" aria-hidden="true"></div>
 
-			<h1 class="name">Slobodchikov</h1>
+			<h1 class="name"><span class="sr-only">Maxim </span>Slobodchikov</h1>
 
 			<p class="bio">One line about you — what you build and what you're into.</p>
 			<p class="links">
@@ -135,409 +115,152 @@
 				<a href="#">github</a>
 				<a href="#">strava</a>
 			</p>
-
-			<div class="controls">
-				<label>pixel <input id="px" type="range" min="1.5" max="8" step="0.1" value="6.3" /><span class="val" id="pxv"></span></label>
-				<label>edge <input id="edge" type="range" min="0" max="0.6" step="0.01" value="0.02" /><span class="val" id="edgev"></span></label>
-				<label>scale <input id="scale" type="range" min="0" max="0.4" step="0.02" value="0" /><span class="val" id="scalev"></span></label>
-				<label>speed <input id="speed" type="range" min="0" max="1" step="0.05" value="0" /><span class="val" id="speedv"></span></label>
-				<label>fill <input id="fill" type="range" min="-0.3" max="0.3" step="0.02" value="0" /><span class="val" id="fillv"></span></label>
-				<label>tracking <input id="track" type="range" min="-0.12" max="0.02" step="0.005" value="-0.075" /><span class="val" id="trackv"></span></label>
-				<label>invert <input id="invert" type="checkbox" /></label>
-				<button id="export" type="button" style="font:inherit;font-size:0.8rem;padding:0.25rem 0.7rem;border:1px solid #ccc4b4;border-radius:6px;background:transparent;cursor:pointer;">export png</button>
-			</div>
-
-			<p class="note">
-				Source: /maxim.png (31×10, hand-editable). Each pixel = one block.
-				Hover to churn it; click to scatter glyphs through it.
-			</p>
 		</div>
 
 		<script type="module">
-			const MAXIM = "Maxim";
-			// mixed wordmark: M + final m in Courier; a,x,i in Verdana (the prior font)
-			const COURIER = '"Courier New", Courier, monospace';
-			const VERDANA = 'Verdana, Tahoma, "DejaVu Sans", sans-serif';
-			const LETTER_FONTS = [COURIER, VERDANA, VERDANA, VERDANA, VERDANA]; // M a x i m
-			const KERN = [0.06, 0, 0, 0, 0]; // extra space (em) after each letter; M->a gap
-			const MATCH_HEIGHT = [false, false, false, false, true]; // scale last m toward others' x-height
-			const HMATCH = 0.95; // how close the scaled letter gets to the reference x-height
-			const LETTER_WEIGHTS = [700, 700, 700, 700, 700]; // last letter
-			const SQUISH = [1, 1, 1, 1, 0.88]; // horizontal scale per letter
-			const FONT_STYLE = "700"; // upright bold
-			const TARGET = 64; // px size for the title (bigger = more blocks per letter)
-			const DISPLAY_SCALE = 0.7; // shrink displayed size without changing the pixelization
-			const MAXR = 6; // ripple pool size
+			// Pixel title baked inline (no image file). "#" = a block, "." = empty.
+			// Edit these rows to change the wordmark.
+			const ART = [
+				"...................##........",
+				".............................",
+				"##..##.#####.##.#####.#.##.##",
+				".##.##....##..####.##.#######",
+				".#####..####..###..##.##.##.#",
+				".#.#.#.##..#..###..##.##.##.#",
+				".#...#.##.##.#####.##.##.##.#",
+				"###.##.###.####..####.##.##.#",
+			];
+			const covW = ART[0].length, covH = ART.length;
+			const covered = (col, row) =>
+				row >= 0 && row < covH && col >= 0 && col < covW && ART[row][col] === "#";
+
+			const PIXEL = 4.5; // css px per block
+			const INK = "#6b6b6b"; // title color (matches --muted / Slobodchikov)
+			const PAPER = "#fbfbf9"; // page background
+			const GLYPHS = "&#@~%*+}:;?=$".split("");
+			const GLYPH_COLORS = ["#ec9c8b", "#f0b98a", "#e58fa6", "#e9c46a", "#c9a6e0", "#f2a9a0"];
 
 			const stage = document.getElementById("stage");
 			stage.style.position = "relative";
-			const canvas = document.createElement("canvas");
-			stage.appendChild(canvas);
-			const gl = canvas.getContext("webgl2", { premultipliedAlpha: false, alpha: true });
 
-			// 2D overlay (same grid) for the click->glyph transform
+			// static title canvas (in #stage) + hover-aura overlay (spans .home)
+			const base = document.createElement("canvas");
+			stage.appendChild(base);
+			const bctx = base.getContext("2d");
+
 			const overlay = document.createElement("canvas");
-			overlay.style.cssText = "position:absolute; left:0; top:0; pointer-events:none;";
-			stage.appendChild(overlay);
+			overlay.style.cssText = "position:absolute; left:0; top:0; pointer-events:none; z-index:50; opacity:0;";
+			stage.parentElement.style.position = "relative";
+			stage.parentElement.appendChild(overlay);
+			overlay.setAttribute("aria-hidden", "true"); // decorative
 			const octx = overlay.getContext("2d");
-			let covData = null, covW = 0, covH = 0; // Maxim coverage (alpha) sampled per cell
 
-			// offscreen 2D canvas -> text coverage texture
-			const tcanvas = document.createElement("canvas");
-			const tctx = tcanvas.getContext("2d");
-			const dpr = Math.min(window.devicePixelRatio || 1, 2);
+			let blockCss = 1, pxDev = 1; // css / device px per block
+			let gx = 0, gy = 0, ovW = 0, ovH = 0; // title offset + overlay size within .home
+			let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-			// ---- controls ----
-			const el = (id) => document.getElementById(id);
-			const ctrl = {
-				px: el("px"), edge: el("edge"), scale: el("scale"),
-				speed: el("speed"), fill: el("fill"), track: el("track"), invert: el("invert"),
-			};
-			function syncLabels() {
-				el("pxv").textContent = ctrl.px.value;
-				el("edgev").textContent = (+ctrl.edge.value).toFixed(2);
-				el("scalev").textContent = (+ctrl.scale.value).toFixed(2);
-				el("speedv").textContent = (+ctrl.speed.value).toFixed(2);
-				el("fillv").textContent = (+ctrl.fill.value).toFixed(2);
-				el("trackv").textContent = (+ctrl.track.value).toFixed(3);
-			}
-
-			// ---- shaders ----
-			const VERT = `#version 300 es
-			in vec2 a_pos; void main(){ gl_Position = vec4(a_pos,0.,1.); }`;
-			const FRAG = `#version 300 es
-			precision mediump float;
-			#define MAXR ${MAXR}
-			uniform sampler2D u_text;
-			uniform float u_time, u_pxSize, u_pixelRatio, u_scale, u_edge, u_fill;
-			uniform vec2 u_resolution;
-			uniform vec3 u_front;
-			uniform float u_clock;
-			uniform vec2 u_ripplePos[MAXR];
-			uniform float u_rippleStart[MAXR];
-			uniform vec2 u_hoverPos;
-			uniform float u_hover;
-			out vec4 fragColor;
-			vec3 permute(vec3 x){ return mod(((x*34.0)+1.0)*x,289.0); }
-			float snoise(vec2 v){
-				const vec4 C=vec4(0.211324865405187,0.366025403784439,-0.577350269189626,0.024390243902439);
-				vec2 i=floor(v+dot(v,C.yy)); vec2 x0=v-i+dot(i,C.xx);
-				vec2 i1=(x0.x>x0.y)?vec2(1.,0.):vec2(0.,1.);
-				vec4 x12=x0.xyxy+C.xxzz; x12.xy-=i1; i=mod(i,289.);
-				vec3 p=permute(permute(i.y+vec3(0.,i1.y,1.))+i.x+vec3(0.,i1.x,1.));
-				vec3 m=max(0.5-vec3(dot(x0,x0),dot(x12.xy,x12.xy),dot(x12.zw,x12.zw)),0.); m=m*m; m=m*m;
-				vec3 x=2.*fract(p*C.www)-1.; vec3 h=abs(x)-0.5; vec3 ox=floor(x+0.5); vec3 a0=x-ox;
-				m*=1.79284291400159-0.85373472095314*(a0*a0+h*h);
-				vec3 g; g.x=a0.x*x0.x+h.x*x0.y; g.yz=a0.yz*x12.xz+h.yz*x12.yw; return 130.*dot(m,g);
-			}
-			float noise2(vec2 uv,float t){ float n=.6*snoise(uv-vec2(0.,.3*t)); n+=.4*snoise(2.*uv+vec2(0.,.4*t)); return n; }
-			const int bayer4x4[16]=int[16](0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5);
-			float getBayer(vec2 uv){ ivec2 p=ivec2(fract(uv/4.)*4.); int idx=p.y*4+p.x; return float(bayer4x4[idx])/16.; }
-			void main(){
-				float pxBase=u_pxSize*u_pixelRatio;
-				vec2 frag=gl_FragCoord.xy;
-				// cursor hotspot -> locally bigger pixel blocks (centralized, no extra noise)
-				vec2 baseCP=(floor(frag/pxBase)+.5)*pxBase;
-				float hd=distance(baseCP, u_hoverPos);
-				float hot=u_hover*exp(-pow(hd/(18.0*u_pixelRatio),2.0));
-				float pxSize=pxBase*(1.0+floor(hot*2.5));   // 1x..3x blocks under cursor
-				vec2 cp=(floor(frag/pxSize)+.5)*pxSize;
-				vec2 uv=cp/u_resolution; uv.y=1.0-uv.y;
-				float cov=texture(u_text,uv).a;
-
-				// expanding ripples from clicks -> churning, blooming ring
-				float rip=0.0;
-				for(int i=0;i<MAXR;i++){
-					float st=u_rippleStart[i];
-					if(st<0.0) continue;
-					float age=u_clock-st;
-					if(age<0.0 || age>1.8) continue;
-					float radius=age*320.0*u_pixelRatio;
-					float d=distance(cp, u_ripplePos[i]);
-					float band=exp(-pow((d-radius)/(26.0*u_pixelRatio),2.0));
-					rip+=band*(1.0-age/1.8);
-				}
-				rip=clamp(rip,0.0,1.5);
-
-				float n=noise2(cp*u_scale*0.1, .5*u_time);  // animated, -1..1
-				float edgeAmt=u_edge + rip*0.55;            // ripple churn
-				float value=(cov-0.5) + n*edgeAmt + u_fill + rip*0.08;
-				if (cov < 0.2) value = -1.0;                // suppress stray pixels in empty space
-				float d=getBayer(frag/pxSize)-0.5;          // ordered dither
-				float res=step(0.0, value); // binary PNG source: no dither (exact blocks)
-				fragColor=vec4(u_front, res);               // off pixels -> transparent
-			}`;
-
-			function compile(type, src) {
-				const s = gl.createShader(type);
-				gl.shaderSource(s, src.replace(/\t/g, ""));
-				gl.compileShader(s);
-				if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
-				return s;
-			}
-			const prog = gl.createProgram();
-			gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
-			gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FRAG));
-			gl.linkProgram(prog);
-			gl.useProgram(prog);
-			const buf = gl.createBuffer();
-			gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-			const loc = gl.getAttribLocation(prog, "a_pos");
-			gl.enableVertexAttribArray(loc);
-			gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-			const U = (n) => gl.getUniformLocation(prog, n);
-			const u = {
-				text: U("u_text"), time: U("u_time"), res: U("u_resolution"), pr: U("u_pixelRatio"),
-				px: U("u_pxSize"), scale: U("u_scale"), edge: U("u_edge"), fill: U("u_fill"), front: U("u_front"),
-				clock: U("u_clock"), ripplePos: U("u_ripplePos"), rippleStart: U("u_rippleStart"),
-				hoverPos: U("u_hoverPos"), hover: U("u_hover"),
-			};
-
-			// text coverage texture
-			const tex = gl.createTexture();
-			gl.bindTexture(gl.TEXTURE_2D, tex);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-			let W = 0, H = 0;
-			const SRC = new Image(); // hand-edited pixel art; alpha channel = "on"
-			SRC.src = "/maxim.png";
-
-			function layout() {
-				if (!SRC.complete || !SRC.naturalWidth) return;
-				const pixel = +ctrl.px.value; // css px per block
-
-				// read the PNG and auto-crop to the bounding box of opaque pixels
-				const sw = SRC.naturalWidth, sh = SRC.naturalHeight;
-				tcanvas.width = sw; tcanvas.height = sh;
-				tctx.setTransform(1, 0, 0, 1, 0, 0);
-				tctx.clearRect(0, 0, sw, sh);
-				tctx.drawImage(SRC, 0, 0);
-				const full = tctx.getImageData(0, 0, sw, sh).data;
-				let minx = sw, miny = sh, maxx = -1, maxy = -1;
-				for (let y = 0; y < sh; y++) {
-					for (let x = 0; x < sw; x++) {
-						if (full[(y * sw + x) * 4 + 3] > 120) {
-							if (x < minx) minx = x; if (x > maxx) maxx = x;
-							if (y < miny) miny = y; if (y > maxy) maxy = y;
-						}
-					}
-				}
-				if (maxx < 0) { minx = 0; miny = 0; maxx = sw - 1; maxy = sh - 1; }
-				const bw = maxx - minx + 1, bh = maxy - miny + 1; // cropped grid
-
-				W = Math.round(bw * pixel);
-				H = Math.round(bh * pixel);
-				canvas.style.width = W * DISPLAY_SCALE + "px";
-				canvas.style.height = H * DISPLAY_SCALE + "px";
-				canvas.width = Math.round(bw * pixel * dpr);
-				canvas.height = Math.round(bh * pixel * dpr);
-
-				// crop into a tight canvas, upload as the texture (NEAREST = 1 texel/block)
-				const crop = document.createElement("canvas");
-				crop.width = bw; crop.height = bh;
-				const cctx = crop.getContext("2d");
-				cctx.drawImage(SRC, minx, miny, bw, bh, 0, 0, bw, bh);
-				gl.bindTexture(gl.TEXTURE_2D, tex);
-				gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-				gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, crop);
-
-				// coverage (block grid) for the click -> glyph overlay
-				covData = cctx.getImageData(0, 0, bw, bh).data; covW = bw; covH = bh;
-
-				// overlay sizing (matches the display)
-				overlay.style.width = W * DISPLAY_SCALE + "px";
-				overlay.style.height = H * DISPLAY_SCALE + "px";
-				overlay.width = canvas.width;
-				overlay.height = canvas.height;
-				octx.setTransform(dpr, 0, 0, dpr, 0, 0);
-			}
-			SRC.onload = layout;
-
-			syncLabels();
-			layout();
-			ctrl.track.addEventListener("input", () => { syncLabels(); layout(); });
-			ctrl.px.addEventListener("input", layout); // re-rasterize so the i-gap scales
-			[ctrl.px, ctrl.edge, ctrl.scale, ctrl.speed, ctrl.fill].forEach((c) =>
-				c.addEventListener("input", syncLabels),
-			);
-			window.addEventListener("resize", layout);
-
-			gl.enable(gl.BLEND);
-			gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
-			// ---- ripples on click ----
-			const rPos = new Float32Array(MAXR * 2);
-			const rStart = new Float32Array(MAXR).fill(-1);
-			let rIdx = 0;
-			const start = performance.now();
-			// ---- click: transform letter cells into glyphs along an expanding ring ----
-			const GLYPHS = "&#@~%*+}:;?=$".split("");
-			const GLYPH_COLORS = ["#ec9c8b", "#f0b98a", "#e58fa6", "#e9c46a", "#c9a6e0", "#f2a9a0"];
-			const PAPER = "#fbfbf9";
-			const ripples = [];
 			function hash(c, r) {
 				let h = (c * 374761393 + r * 668265263) >>> 0;
 				h = Math.imul(h ^ (h >>> 13), 1274126177);
 				return (h ^ (h >>> 16)) >>> 0;
 			}
-			function covered(cx, cy) {
-				if (!covData) return false;
-				const ix = Math.min(covW - 1, Math.max(0, Math.floor(cx / (+ctrl.px.value))));
-				const iy = Math.min(covH - 1, Math.max(0, Math.floor(cy / (+ctrl.px.value))));
-				return covData[(iy * covW + ix) * 4 + 3] > 120;
+
+			function layout() {
+				dpr = Math.min(window.devicePixelRatio || 1, 2); // handles browser zoom
+
+				// integer device px per block -> crisp, and overlay aligns to the grid
+				pxDev = Math.max(1, Math.round(PIXEL * dpr));
+				blockCss = pxDev / dpr;
+				const W = covW * blockCss, H = covH * blockCss;
+
+				base.style.width = W + "px";
+				base.style.height = H + "px";
+				base.width = covW * pxDev;
+				base.height = covH * pxDev;
+				drawBase();
+
+				// overlay spans the whole .home column; record the title's offset
+				const hr = stage.parentElement.getBoundingClientRect();
+				const cr = base.getBoundingClientRect();
+				gx = cr.left - hr.left; gy = cr.top - hr.top;
+				ovW = hr.width; ovH = hr.height;
+				overlay.style.width = ovW + "px";
+				overlay.style.height = ovH + "px";
+				overlay.width = Math.round(ovW * dpr);
+				overlay.height = Math.round(ovH * dpr);
+				octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+				if (hoverAmt > 0.01) drawAura(performance.now() / 1000);
 			}
-			canvas.addEventListener("pointerdown", (e) => {
-				const rect = canvas.getBoundingClientRect();
-				ripples.push({
-					x: (e.clientX - rect.left) * (W / rect.width), // map to canvas logical coords
-					y: (e.clientY - rect.top) * (H / rect.height),
-					start: (performance.now() - start) / 1000,
-				});
-			});
-			function drawOverlay(now) {
-				octx.clearRect(0, 0, W, H);
-				const cell = +ctrl.px.value;
-				const SPEED = 175, BAND = cell * 2.6, LIFE = 1.15; // px/s, ring thickness, seconds
+
+			function drawBase() {
+				bctx.setTransform(1, 0, 0, 1, 0, 0);
+				bctx.clearRect(0, 0, base.width, base.height);
+				bctx.fillStyle = INK;
+				for (let row = 0; row < covH; row++) {
+					for (let col = 0; col < covW; col++) {
+						if (covered(col, row)) bctx.fillRect(col * pxDev, row * pxDev, pxDev, pxDev);
+					}
+				}
+			}
+
+			// ---------- hover aura (loop runs only while active) ----------
+			let hovering = false, hoverAmt = 0, running = false;
+
+			function drawAura(t) {
+				octx.clearRect(0, 0, ovW, ovH);
+				if (hoverAmt <= 0.01) return;
+				const cell = blockCss;
 				octx.textAlign = "center";
 				octx.textBaseline = "middle";
 				octx.font = `700 ${(cell * 1.7).toFixed(1)}px ui-monospace, Menlo, monospace`;
-				for (let k = ripples.length - 1; k >= 0; k--) {
-					const rp = ripples[k];
-					const age = now - rp.start;
-					if (age > LIFE) { ripples.splice(k, 1); continue; }
-					if (age < 0) continue;
-					const radius = age * SPEED;
-					const fade = 1 - age / LIFE;
-					const seed = (rp.start * 100) | 0;
-					for (let cy = cell / 2; cy < H; cy += cell) {
-						for (let cx = cell / 2; cx < W; cx += cell) {
-							const db = Math.abs(Math.hypot(cx - rp.x, cy - rp.y) - radius);
-							if (db > BAND) continue;
-							const a = fade * (1 - db / BAND);
-							if (a <= 0.03) continue;
-							const h = hash(Math.floor(cx / cell) + seed, Math.floor(cy / cell));
-							const isOn = covered(cx, cy);
-							if (!isOn && (h % 100) >= 34) continue; // sparse noisy scatter outside the letters
-							octx.globalAlpha = isOn ? a : a * 0.7;
-							if (isOn) { // erase the ink block first...
-								octx.fillStyle = PAPER;
-								octx.fillRect(cx - cell / 2, cy - cell / 2, cell + 0.6, cell + 0.6);
-							}
-							octx.fillStyle = GLYPH_COLORS[(h >>> 3) % GLYPH_COLORS.length];
-							octx.fillText(GLYPHS[h % GLYPHS.length], cx, cy); // ...stamp a glyph
-						}
+				// (the whole overlay is faded via CSS opacity — no per-cell alpha to compound)
+				for (let row = 0; row < covH; row++) {
+					const cy = gy + (row + 0.5) * cell;
+					for (let col = 0; col < covW; col++) {
+						if (!covered(col, row)) continue;
+						const cx = gx + (col + 0.5) * cell;
+						const ph = Math.floor(t * 7 + (col + row) * 0.6); // shifts over time
+						const h = hash(col * 7 + ph, row * 13);
+						octx.fillStyle = PAPER; // erase the gray block...
+						octx.fillRect(cx - cell / 2, cy - cell / 2, cell + 0.6, cell + 0.6);
+						octx.fillStyle = GLYPH_COLORS[(h >>> 3) % GLYPH_COLORS.length];
+						octx.fillText(GLYPHS[h % GLYPHS.length], cx, cy); // ...draw a glyph
 					}
 				}
 				octx.globalAlpha = 1;
 			}
 
-			// ---- cursor-follow churn on hover ----
-			let hovering = false, hoverAmt = 0;
-			let hx = 0, hy = 0, htx = 0, hty = 0; // smoothed pos + target
-			canvas.addEventListener("pointermove", (e) => {
-				const rect = canvas.getBoundingClientRect();
-				htx = (e.clientX - rect.left) * (canvas.width / rect.width); // device coords
-				hty = canvas.height - (e.clientY - rect.top) * (canvas.height / rect.height);
-				hovering = true;
-			});
-			canvas.addEventListener("pointerleave", () => { hovering = false; });
-
-			const INK = [0.42, 0.42, 0.42]; // == --muted #6b6b6b (matches Slobodchikov)
-			const LIGHT = [0.984, 0.984, 0.976];
-			function loop(now) {
-				const realT = (now - start) / 1000;
-				const time = realT * (+ctrl.speed.value) * 6;
-				gl.viewport(0, 0, canvas.width, canvas.height);
-				gl.clearColor(0, 0, 0, 0);
-				gl.clear(gl.COLOR_BUFFER_BIT);
-				gl.useProgram(prog);
-				gl.activeTexture(gl.TEXTURE0);
-				gl.bindTexture(gl.TEXTURE_2D, tex);
-				gl.uniform1i(u.text, 0);
-				gl.uniform1f(u.time, time);
-				gl.uniform1f(u.clock, realT);
-				gl.uniform2f(u.res, canvas.width, canvas.height);
-				gl.uniform1f(u.pr, dpr);
-				gl.uniform1f(u.px, +ctrl.px.value);
-				gl.uniform1f(u.scale, +ctrl.scale.value);
-				gl.uniform1f(u.edge, +ctrl.edge.value);
-				gl.uniform1f(u.fill, +ctrl.fill.value);
-				gl.uniform3fv(u.front, ctrl.invert.checked ? LIGHT : INK);
-				gl.uniform2fv(u.ripplePos, rPos);
-				gl.uniform1fv(u.rippleStart, rStart);
-				hoverAmt += ((hovering ? 1 : 0) - hoverAmt) * 0.45; // fade in/out
-				hx += (htx - hx) * 0.8; // tight follow
-				hy += (hty - hy) * 0.8;
-				gl.uniform2f(u.hoverPos, hx, hy);
-				gl.uniform1f(u.hover, hoverAmt);
-				gl.drawArrays(gl.TRIANGLES, 0, 3);
-				drawOverlay(realT);
-				requestAnimationFrame(loop);
-			}
-			requestAnimationFrame(loop);
-
-			// ---- export the static pixel grid as a 1px-per-block PNG ----
-			function exportPNG() {
-				// draw one clean frame: no hover, no ripples, static
-				gl.viewport(0, 0, canvas.width, canvas.height);
-				gl.clearColor(0, 0, 0, 0);
-				gl.clear(gl.COLOR_BUFFER_BIT);
-				gl.useProgram(prog);
-				gl.activeTexture(gl.TEXTURE0);
-				gl.bindTexture(gl.TEXTURE_2D, tex);
-				gl.uniform1i(u.text, 0);
-				gl.uniform1f(u.time, 0);
-				gl.uniform1f(u.clock, 0);
-				gl.uniform2f(u.res, canvas.width, canvas.height);
-				gl.uniform1f(u.pr, dpr);
-				gl.uniform1f(u.px, +ctrl.px.value);
-				gl.uniform1f(u.scale, +ctrl.scale.value);
-				gl.uniform1f(u.edge, +ctrl.edge.value);
-				gl.uniform1f(u.fill, +ctrl.fill.value);
-				gl.uniform3fv(u.front, ctrl.invert.checked ? LIGHT : INK);
-				gl.uniform2fv(u.ripplePos, new Float32Array(MAXR * 2));
-				gl.uniform1fv(u.rippleStart, new Float32Array(MAXR).fill(-1));
-				gl.uniform2f(u.hoverPos, -1e4, -1e4);
-				gl.uniform1f(u.hover, 0);
-				gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-				const pxDev = (+ctrl.px.value) * dpr;
-				const cols = Math.round(canvas.width / pxDev);
-				const rows = Math.round(canvas.height / pxDev);
-				const pixels = new Uint8Array(canvas.width * canvas.height * 4);
-				gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-				const out = document.createElement("canvas");
-				out.width = cols; out.height = rows;
-				const o2 = out.getContext("2d");
-				const img = o2.createImageData(cols, rows);
-				const front = ctrl.invert.checked ? LIGHT : INK;
-				for (let by = 0; by < rows; by++) {
-					for (let bx = 0; bx < cols; bx++) {
-						const sx = Math.min(canvas.width - 1, Math.floor(bx * pxDev + pxDev / 2));
-						const syTop = Math.min(canvas.height - 1, Math.floor(by * pxDev + pxDev / 2));
-						const fy = canvas.height - 1 - syTop; // readPixels is bottom-up
-						const on = pixels[(fy * canvas.width + sx) * 4 + 3] > 127;
-						const o = (by * cols + bx) * 4;
-						if (on) {
-							img.data[o] = Math.round(front[0] * 255);
-							img.data[o + 1] = Math.round(front[1] * 255);
-							img.data[o + 2] = Math.round(front[2] * 255);
-							img.data[o + 3] = 255;
-						}
-					}
+			function tick(now) {
+				hoverAmt += ((hovering ? 1 : 0) - hoverAmt) * 0.45;
+				overlay.style.opacity = Math.min(1, hoverAmt * 1.3);
+				drawAura(now / 1000);
+				if (hovering || hoverAmt > 0.01) {
+					requestAnimationFrame(tick);
+				} else {
+					running = false;
+					overlay.style.opacity = 0;
+					octx.clearRect(0, 0, ovW, ovH);
 				}
-				o2.putImageData(img, 0, 0);
-				const a = document.createElement("a");
-				a.download = `maxim-${cols}x${rows}.png`;
-				a.href = out.toDataURL("image/png");
-				a.click();
 			}
-			el("export").addEventListener("click", exportPNG);
+			function startLoop() { if (!running) { running = true; requestAnimationFrame(tick); } }
+
+			// respect users who prefer reduced motion: skip the hover animation
+			const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+			const onEnter = () => { if (!reduceMotion) { hovering = true; startLoop(); } };
+			base.addEventListener("pointerenter", onEnter);
+			base.addEventListener("pointermove", onEnter);
+			base.addEventListener("pointerleave", () => { hovering = false; });
+
+			// ---------- init ----------
+			layout();
+			window.addEventListener("resize", layout);
+			(function watchDPR() {
+				matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener(
+					"change",
+					() => { layout(); watchDPR(); },
+					{ once: true },
+				);
+			})();
 		</script>
 	</body>
 </html>
