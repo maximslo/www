@@ -53,7 +53,7 @@
 			}
 			.name {
 				font-weight: 400;
-				font-size: 2rem;
+				font-size: 1.9rem;
 				line-height: 1.25;
 				letter-spacing: -0.03em;
 				color: var(--ink);
@@ -63,7 +63,6 @@
 				color: var(--muted);
 				font-size: 1.05rem;
 				margin: 1.25rem 0 1.25rem;
-				max-width: 55ch;
 			}
 			.links {
 				font-size: 0.9rem;
@@ -135,15 +134,19 @@
 			}
 			.thumb-media {
 				position: absolute;
-				inset: 0;
-				width: 100%;
-				height: 100%;
+				/* overflow the box by 1px so edges never sit exactly on the
+				   rounded clip — avoids a dark seam during the scale transition */
+				inset: -1px;
+				width: calc(100% + 2px);
+				height: calc(100% + 2px);
 				object-fit: cover;
 				display: block;
 				transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+				backface-visibility: hidden;
+				transform: translateZ(0);
 			}
 			.card:hover .thumb-media {
-				transform: scale(1.04);
+				transform: translateZ(0) scale(1.04);
 			}
 			@media (prefers-reduced-motion: reduce) {
 				.thumb-media { transition: none; }
@@ -173,9 +176,10 @@
 			<!-- decorative pixel rendering of "Maxim"; the real text lives in the heading -->
 			<div id="stage" aria-hidden="true"></div>
 
-			<h1 class="name"><span class="sr-only">Maxim </span>Slobodchikov</h1>
+			<h1 class="name"><span class="sr-only">Maxim </span>SLOBODCHIKOV</h1>
 
-			<p class="bio">is a 23-year-old software engineer and designer. He is making visual things on and off the web. Previously at the New York Times and Washington Post.</p>
+			<p class="bio">is a 23-year-old software engineer and designer. He is making visual things on and off the web. Previously at the New York Times, the Washington Post, and NPR.</p>
+			
 			<p class="links">
 				<a href="#">linkedin</a>
 				<a href="#">github</a>
@@ -203,20 +207,20 @@
 			// Pixel title baked inline (no image file). "#" = a block, "." = empty.
 			// Edit these rows to change the wordmark.
 			const ART = [
-				"...................##........",
-				".............................",
-				"##..##.#####.##.#####.#.##.##",
-				".##.##....##..####.##.#######",
-				".#####..####..###..##.##.##.#",
-				".#.#.#.##..#..###..##.##.##.#",
-				".#...#.##.##.#####.##.##.##.#",
-				"###.##.###.####..####.##.##.#",
+				"....................##.........",
+				"...............................",
+				"##...##.#####.##.#####.#.##.##.",
+				".##..##....##..####.##.########",
+				".######..####..###..##.##.##.##",
+				".#.#.##.##..#..###..##.##.##.##",
+				".#...##.##.##.#####.##.##.##.##",
+				"###.####.##.####..####.##.##.##",
 			];
 			const covW = ART[0].length, covH = ART.length;
 			const covered = (col, row) =>
 				row >= 0 && row < covH && col >= 0 && col < covW && ART[row][col] === "#";
 
-			const PIXEL = 4.5; // css px per block
+			const PIXEL = 6.75; // css px per block
 			const INK = "#1a1a1a"; // title color (black)
 			const PAPER = "#fbfbf9"; // page background
 			const GLYPHS = "&#@~%*+}:;?=$".split("");
