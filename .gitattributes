@@ -1,0 +1,3 @@
+# Standalone canvas demo with everything inlined — keep it out of the
+# repo language stats so the Astro source is represented accurately.
+public/mask.html linguist-vendored
