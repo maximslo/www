@@ -3,7 +3,6 @@ import { defineConfig } from 'astro/config';
 
 // https://astro.build/config
 export default defineConfig({
-  // served as a GitHub project page at maximslo.github.io/www/
-  site: 'https://maximslo.github.io',
-  base: '/www',
+  // custom domain (served at the root) — no `base` needed
+  site: 'https://www.maximslo.com',
 });
