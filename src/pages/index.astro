@@ -1,16 +1,22 @@
 ---
 // Port of public/mask.html, minus the "Maxim" pixel-art wordmark and the
 // name heading. Self-contained page (own styles + script).
+
+// base path normalized to always end in a slash (BASE_URL can be "/www")
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+// absolute URL of this page, for canonical + social meta
+const pageUrl = new URL(base, Astro.site).href;
+const ogImage = new URL(`${base}og.png`, Astro.site).href;
 ---
 
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<link rel="icon" type="image/svg+xml" href="/fish.svg" />
-		<link rel="icon" type="image/png" href="/fish.png" />
-		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-		<link rel="manifest" href="/site.webmanifest" />
+		<link rel="icon" type="image/svg+xml" href={`${base}fish.svg`} />
+		<link rel="icon" type="image/png" href={`${base}fish.png`} />
+		<link rel="apple-touch-icon" href={`${base}apple-touch-icon.png`} />
+		<link rel="manifest" href={`${base}site.webmanifest`} />
 		<meta name="theme-color" content="#fbfbf9" />
 
 		<title>Maxim Slobodchikov</title>
@@ -18,17 +24,17 @@
 			name="description"
 			content="Maxim Slobodchikov is a 23-year-old engineer and designer making visual things on and off the web. Previously at the New York Times and the Washington Post."
 		/>
-		<link rel="canonical" href="https://maximslo.io/" />
+		<link rel="canonical" href={pageUrl} />
 
 		<!-- Open Graph (link previews: iMessage, Slack, LinkedIn, Facebook) -->
 		<meta property="og:type" content="website" />
-		<meta property="og:url" content="https://maximslo.io/" />
+		<meta property="og:url" content={pageUrl} />
 		<meta property="og:title" content="Maxim Slobodchikov" />
 		<meta
 			property="og:description"
 			content="A 23-year-old engineer and designer making visual things on and off the web. Previously at the New York Times and the Washington Post."
 		/>
-		<meta property="og:image" content="https://maximslo.io/og.png" />
+		<meta property="og:image" content={ogImage} />
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />
 		<meta property="og:image:alt" content="Maxim Slobodchikov" />
@@ -40,7 +46,7 @@
 			name="twitter:description"
 			content="A 23-year-old engineer and designer making visual things on and off the web. Previously at the New York Times and the Washington Post."
 		/>
-		<meta name="twitter:image" content="https://maximslo.io/og.png" />
+		<meta name="twitter:image" content={ogImage} />
 		<script is:inline>
 			// set theme before first paint to avoid a flash
 			(function () {
@@ -328,15 +334,15 @@
 
 			<section class="work" aria-label="Selected work">
 				<div class="work-grid">
-					<a class="card" href="#" data-title="NYT Cooking" data-meta="2024"><span class="thumb"><video class="thumb-media" src="/videos/project-one.mp4" poster="/videos/project-one.jpg" muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="10,000 Beers" data-meta="2026"><span class="thumb"><video class="thumb-media" src="/videos/project-two.mp4" poster="/videos/project-two.jpg" muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="Every Movie Released in 2024" data-meta="2024"><span class="thumb"><img class="thumb-media" src="/images/project-three.jpg" alt="" loading="lazy" /></span></a>
-					<a class="card" href="#" data-title="Medal Tracker" data-meta="2026"><span class="thumb"><video class="thumb-media" src="/videos/project-four.mp4" poster="/videos/project-four.jpg" muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="BU Graduate Workers Union" data-meta="2024"><span class="thumb"><img class="thumb-media" src="/images/project-five.jpg" alt="" loading="lazy" /></span></a>
-					<a class="card" href="#" data-title="NYT Elections Homepage" data-meta="2024"><span class="thumb"><video class="thumb-media" src="/videos/project-six.mp4" poster="/videos/project-six.jpg" muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="Which Orchestras Pay More?" data-meta="2025"><span class="thumb"><video class="thumb-media" src="/videos/project-seven.mp4" poster="/videos/project-seven.jpg" muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="The Emerald Review" data-meta="2023"><span class="thumb"><img class="thumb-media" src="/images/project-eight.jpg" alt="" loading="lazy" /></span></a>
-					<a class="card" href="#" data-title="Open Source Contributions" data-meta="2026"><span class="thumb"><img class="thumb-media" src="/images/project-nine.jpg" alt="" loading="lazy" /></span></a>
+					<a class="card" href="#" data-title="NYT Cooking" data-meta="2024"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-one.mp4`} poster={`${base}videos/project-one.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
+					<a class="card" href="#" data-title="10,000 Beers" data-meta="2026"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-two.mp4`} poster={`${base}videos/project-two.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
+					<a class="card" href="#" data-title="Every Movie Released in 2024" data-meta="2024"><span class="thumb"><img class="thumb-media" src={`${base}images/project-three.jpg`} alt="" loading="lazy" /></span></a>
+					<a class="card" href="#" data-title="Medal Tracker" data-meta="2026"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-four.mp4`} poster={`${base}videos/project-four.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
+					<a class="card" href="#" data-title="BU Graduate Workers Union" data-meta="2024"><span class="thumb"><img class="thumb-media" src={`${base}images/project-five.jpg`} alt="" loading="lazy" /></span></a>
+					<a class="card" href="#" data-title="NYT Elections Homepage" data-meta="2024"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-six.mp4`} poster={`${base}videos/project-six.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
+					<a class="card" href="#" data-title="Which Orchestras Pay More?" data-meta="2025"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-seven.mp4`} poster={`${base}videos/project-seven.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
+					<a class="card" href="#" data-title="The Emerald Review" data-meta="2023"><span class="thumb"><img class="thumb-media" src={`${base}images/project-eight.jpg`} alt="" loading="lazy" /></span></a>
+					<a class="card" href="#" data-title="Open Source Contributions" data-meta="2026"><span class="thumb"><img class="thumb-media" src={`${base}images/project-nine.jpg`} alt="" loading="lazy" /></span></a>
 				</div>
 			</section>
 		</div>

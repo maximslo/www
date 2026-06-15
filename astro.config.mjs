@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config';
 
 // https://astro.build/config
 export default defineConfig({
-  // custom apex domain — served at the root, so no `base` needed
-  site: 'https://maximslo.io',
+  // served as a GitHub project page at maximslo.github.io/www/
+  site: 'https://maximslo.github.io',
+  base: '/www',
 });
