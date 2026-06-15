@@ -126,10 +126,28 @@
 			}
 			.card .thumb {
 				display: block;
+				position: relative;
 				aspect-ratio: 4 / 3;
 				border-radius: 8px;
 				border: 1px solid #e6e3dd;
 				background: transparent;
+				overflow: hidden;
+			}
+			.thumb-media {
+				position: absolute;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				display: block;
+				transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+			}
+			.card:hover .thumb-media {
+				transform: scale(1.04);
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.thumb-media { transition: none; }
+				.card:hover .thumb-media { transform: none; }
 			}
 			.card-title {
 				font-size: 0.9rem;
@@ -157,7 +175,7 @@
 
 			<h1 class="name"><span class="sr-only">Maxim </span>Slobodchikov</h1>
 
-			<p class="bio">One line about you — what you build and what you're into.</p>
+			<p class="bio">is a 23-year-old software engineer and designer. He is making visual things on and off the web. Previously at the New York Times and Washington Post.</p>
 			<p class="links">
 				<a href="#">linkedin</a>
 				<a href="#">github</a>
@@ -168,15 +186,15 @@
 				<h2 class="work-kicker">selected work</h2>
 				<p class="work-sub">things i've built</p>
 				<div class="work-grid">
-					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project one</h3><p class="card-desc">what it is, in a line.</p></a>
-					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project two</h3><p class="card-desc">what it is, in a line.</p></a>
-					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project three</h3><p class="card-desc">what it is, in a line.</p></a>
-					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project four</h3><p class="card-desc">what it is, in a line.</p></a>
-					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project five</h3><p class="card-desc">what it is, in a line.</p></a>
-					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project six</h3><p class="card-desc">what it is, in a line.</p></a>
-					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project seven</h3><p class="card-desc">what it is, in a line.</p></a>
-					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project eight</h3><p class="card-desc">what it is, in a line.</p></a>
-					<a class="card" href="#"><span class="thumb"></span><h3 class="card-title">project nine</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"><video class="thumb-media" src="/videos/project-one.mp4" poster="/videos/project-one.jpg" muted loop autoplay playsinline preload="metadata"></video></span><h3 class="card-title">NYT Cooking</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"><video class="thumb-media" src="/videos/project-two.mp4" poster="/videos/project-two.jpg" muted loop autoplay playsinline preload="metadata"></video></span><h3 class="card-title">project two</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"><img class="thumb-media" src="/images/project-three.jpg" alt="" loading="lazy" /></span><h3 class="card-title">project three</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"><video class="thumb-media" src="/videos/project-four.mp4" poster="/videos/project-four.jpg" muted loop autoplay playsinline preload="metadata"></video></span><h3 class="card-title">Olympics</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"><img class="thumb-media" src="/images/project-five.jpg" alt="" loading="lazy" /></span><h3 class="card-title">project five</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"><video class="thumb-media" src="/videos/project-six.mp4" poster="/videos/project-six.jpg" muted loop autoplay playsinline preload="metadata"></video></span><h3 class="card-title">Elections</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"><video class="thumb-media" src="/videos/project-seven.mp4" poster="/videos/project-seven.jpg" muted loop autoplay playsinline preload="metadata"></video></span><h3 class="card-title">project seven</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"><img class="thumb-media" src="/images/project-eight.jpg" alt="" loading="lazy" /></span><h3 class="card-title">project eight</h3><p class="card-desc">what it is, in a line.</p></a>
+					<a class="card" href="#"><span class="thumb"><img class="thumb-media" src="/images/project-nine.jpg" alt="" loading="lazy" /></span><h3 class="card-title">project nine</h3><p class="card-desc">what it is, in a line.</p></a>
 				</div>
 			</section>
 		</div>
@@ -314,6 +332,22 @@
 			base.addEventListener("pointerenter", onEnter);
 			base.addEventListener("pointermove", onEnter);
 			base.addEventListener("pointerleave", () => { hovering = false; });
+
+			// ---------- project card videos: autoplay, but only while on screen ----------
+			const vids = document.querySelectorAll("video.thumb-media");
+			if (vids.length) {
+				const io = new IntersectionObserver(
+					(entries) => {
+						for (const e of entries) {
+							const v = e.target;
+							if (e.isIntersecting) v.play().catch(() => {});
+							else v.pause();
+						}
+					},
+					{ rootMargin: "200px" },
+				);
+				vids.forEach((v) => io.observe(v));
+			}
 
 			// ---------- init ----------
 			layout();
