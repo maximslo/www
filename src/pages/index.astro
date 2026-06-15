@@ -227,12 +227,21 @@ const ogImage = new URL(`${base}og.png`, Astro.site).href;
 			/* mobile / narrow: keep the big text, drop to 2 columns,
 			   and tighten the page padding so nothing overflows */
 			@media (max-width: 768px) {
+				/* scale the whole layout down on mobile (desktop stays 150%) */
+				html {
+					font-size: 115%;
+				}
 				body {
 					padding: 1.75rem 1.25rem 2.5rem;
 				}
 				nav {
 					padding-top: 1rem;
 					gap: 0.75rem;
+				}
+				/* give answers more room: label column only as wide as its text
+				   (labels keep full size), answer takes the rest */
+				.qa-row {
+					grid-template-columns: auto 1fr;
 				}
 				.work-grid {
 					grid-template-columns: repeat(2, 1fr);
