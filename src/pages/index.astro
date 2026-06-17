@@ -2,6 +2,20 @@
 // Port of public/mask.html, minus the "Maxim" pixel-art wordmark and the
 // name heading. Self-contained page (own styles + script).
 
+import { getCollection } from "astro:content";
+
+const work = await getCollection("work", ({ data }) => !data.draft && !data.unlisted);
+// the work grid is ordered by the `order` frontmatter…
+const projects = [...work].sort((a, b) => a.data.order - b.data.order);
+// …the index list below it is newest-first by date, and excludes external-only
+// projects (no blog page) and any marked `hideFromList`
+const posts = [...work]
+	.filter((p) => !p.data.external && !p.data.hideFromList)
+	.sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+
+const shortDate = (d: Date) =>
+	d.toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric", month: "short", day: "numeric" });
+
 // base path normalized to always end in a slash (BASE_URL can be "/www")
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 // absolute URL of this page, for canonical + social meta
@@ -55,10 +69,18 @@ const ogImage = new URL(`${base}og.png`, Astro.site).href;
 				if (dark) document.documentElement.dataset.theme = "dark";
 			})();
 		</script>
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+		<!-- self-hosted DM Sans, preloaded so it is ready before first paint (no FOUT) -->
+		<link rel="preload" href={`${base}fonts/dmsans-variable.woff2`} as="font" type="font/woff2" crossorigin />
 		<style>
+			@font-face {
+				font-family: "DM Sans";
+				font-style: normal;
+				font-weight: 300 700;
+				font-display: swap;
+				src: url("/fonts/dmsans-variable.woff2") format("woff2");
+				/* match Google's latin subset so non-latin glyphs (the ↗ / ← arrows) fall back to the system font, as on the live site */
+				unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+			}
 			:root {
 				--paper: #fbfbf9;
 				--ink: #1a1a1a;
@@ -84,6 +106,9 @@ const ogImage = new URL(`${base}og.png`, Astro.site).href;
 				/* baked-in 150% scale — everything is sized in rem, so bumping
 				   the root size scales the whole layout like a 150% zoom */
 				font-size: 150%;
+				/* always reserve the scrollbar gutter so the centered column
+				   doesn't shift when a scrollbar appears (e.g. after font load) */
+				scrollbar-gutter: stable;
 			}
 			html,
 			body {
@@ -142,7 +167,7 @@ const ogImage = new URL(`${base}og.png`, Astro.site).href;
 			}
 			.qa-row {
 				display: grid;
-				grid-template-columns: 5rem 1fr;
+				grid-template-columns: 5.5rem 1fr;
 				gap: 0.75rem;
 				font-size: 0.9rem;
 				line-height: 1.4;
@@ -163,7 +188,7 @@ const ogImage = new URL(`${base}og.png`, Astro.site).href;
 			}
 			.qa-a {
 				margin: 0;
-				text-align: right;
+				text-align: left;
 			}
 			.links {
 				display: flex;
@@ -226,6 +251,73 @@ const ogImage = new URL(`${base}og.png`, Astro.site).href;
 			}
 			/* mobile / narrow: keep the big text, drop to 2 columns,
 			   and tighten the page padding so nothing overflows */
+			/* dated index of every project, below the grid */
+			.index {
+				/* quite a bit of breathing room below the project grid */
+				margin-top: calc(var(--space-section) * 2.5);
+			}
+			.post {
+				display: grid;
+				grid-template-columns: 5rem 1fr;
+				gap: 0.6rem;
+				/* align the date's baseline with the project name */
+				align-items: baseline;
+				text-decoration: none;
+				color: var(--ink);
+				padding: 0.55rem 0;
+				border-bottom: 1px dashed var(--rule);
+			}
+			.post:first-child {
+				padding-top: 0;
+			}
+			.post:last-child {
+				padding-bottom: 0;
+				border-bottom: 0;
+			}
+			.post-date {
+				color: var(--label);
+				font-size: 0.6rem;
+				line-height: 1.5;
+				white-space: nowrap;
+			}
+			.post-main {
+				display: block;
+			}
+			.post-title {
+				font-size: 0.7rem;
+				font-weight: 500;
+				line-height: 1.5;
+				text-decoration: underline;
+				text-underline-offset: 3px;
+				text-decoration-thickness: 1px;
+			}
+			.post:hover .post-title {
+				text-decoration-thickness: 2px;
+			}
+			.post-desc {
+				display: block;
+				font-size: 0.7rem;
+				font-weight: 300;
+				line-height: 1.5;
+				margin-top: 0.2rem;
+			}
+			.post-tags {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.35rem;
+				margin-top: 0.45rem;
+			}
+			.tag {
+				font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+				font-size: 0.6rem;
+				text-transform: uppercase;
+				letter-spacing: 0.04em;
+				color: var(--label);
+				background: var(--thumb-border);
+				padding: 0.12rem 0.4rem;
+				border-radius: 4px;
+				white-space: nowrap;
+			}
 			@media (max-width: 768px) {
 				/* scale the whole layout down on mobile (desktop stays 150%) */
 				html {
@@ -238,13 +330,11 @@ const ogImage = new URL(`${base}og.png`, Astro.site).href;
 					padding-top: 1rem;
 					gap: 0.75rem;
 				}
-				/* give answers more room: label column only as wide as its text
-				   (labels keep full size), answer takes the rest */
-				.qa-row {
-					grid-template-columns: auto 1fr;
-				}
 				.work-grid {
 					grid-template-columns: repeat(2, 1fr);
+				}
+				.index {
+					margin-top: var(--space-section);
 				}
 			}
 			.card {
@@ -343,16 +433,41 @@ const ogImage = new URL(`${base}og.png`, Astro.site).href;
 
 			<section class="work" aria-label="Selected work">
 				<div class="work-grid">
-					<a class="card" href="#" data-title="NYT Cooking" data-meta="2024"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-one.mp4`} poster={`${base}videos/project-one.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="10,000 Beers" data-meta="2026"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-two.mp4`} poster={`${base}videos/project-two.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="Every Movie Released in 2024" data-meta="2024"><span class="thumb"><img class="thumb-media" src={`${base}images/project-three.jpg`} alt="" loading="lazy" /></span></a>
-					<a class="card" href="#" data-title="Medal Tracker" data-meta="2026"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-four.mp4`} poster={`${base}videos/project-four.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="BU Graduate Workers Union" data-meta="2024"><span class="thumb"><img class="thumb-media" src={`${base}images/project-five.jpg`} alt="" loading="lazy" /></span></a>
-					<a class="card" href="#" data-title="NYT Elections Homepage" data-meta="2024"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-six.mp4`} poster={`${base}videos/project-six.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="Which Orchestras Pay More?" data-meta="2025"><span class="thumb"><video class="thumb-media" src={`${base}videos/project-seven.mp4`} poster={`${base}videos/project-seven.jpg`} muted loop autoplay playsinline preload="metadata"></video></span></a>
-					<a class="card" href="#" data-title="The Emerald Review" data-meta="2023"><span class="thumb"><img class="thumb-media" src={`${base}images/project-eight.jpg`} alt="" loading="lazy" /></span></a>
-					<a class="card" href="#" data-title="Open Source Contributions" data-meta="2026"><span class="thumb"><img class="thumb-media" src={`${base}images/project-nine.jpg`} alt="" loading="lazy" /></span></a>
+					{
+						projects.map(({ id, data }) => (
+							<a class="card" href={data.external ?? `${base}work/${id}/`} data-title={data.title} data-meta={data.date.getUTCFullYear()}>
+								<span class="thumb">
+									{data.media.type === "video" ? (
+										<video class="thumb-media" src={`${base}${data.media.src}`} poster={`${base}${data.media.poster}`} muted loop autoplay playsinline preload="metadata" />
+									) : (
+										<img class="thumb-media" src={`${base}${data.media.src}`} alt="" loading="lazy" />
+									)}
+								</span>
+							</a>
+						))
+					}
 				</div>
+			</section>
+
+			<section class="index" aria-label="All projects">
+				{
+					posts.map(({ id, data }) => (
+						<a class="post" href={`${base}work/${id}/`}>
+							<span class="post-date">{shortDate(data.date)}</span>
+							<span class="post-main">
+								<span class="post-title">{data.title}</span>
+								<span class="post-desc">{data.lede}</span>
+								{data.tags && data.tags.length > 0 && (
+									<span class="post-tags">
+										{data.tags.map((t) => (
+											<span class="tag">{t}</span>
+										))}
+									</span>
+								)}
+							</span>
+						</a>
+					))
+				}
 			</section>
 		</div>
 

@@ -1,0 +1,54 @@
+---
+title: "Drinkbot"
+date: 2026-05-22
+lede: "A story of friendship, 10,000 beers, and multi-agent orchestration."
+url: https://drinks-pearl.vercel.app/
+order: 2
+media:
+  type: video
+  src: videos/project-two.mp4
+  poster: videos/project-two.jpg
+---
+
+import Grid from "../../components/Grid.astro";
+
+<Grid row images={[
+  { src: "drinkbot/leaderboard.png", alt: "leaderboard" },
+  { src: "drinkbot/3.png", alt: "3" },
+]} />
+
+In May 2025 my friends wanted a way to stay in touch after graduation. So we decided to start a challenge. The rules were simple.
+
+> "Text the groupchat a picture every time you have a beer."
+
+Repeat until ten thousand. One year later, we're halfway done.
+
+To celebrate, I built a [live updating leaderboard](https://drinks-pearl.vercel.app/) for my friends. Here's how:
+
+### TL;DR on maintaining friendships:
+- Distance takes away spontaneous togetherness. Stay close by building a system of rituals to create spontaneity.
+- Keep a stupid, low-friction sense of play
+- Small consistent gestures go a long way (so make it easy to try a little, every day.)
+- Spontaneity is the real friendship infrastructure. Friendship without structure evaporates, so invent the lowest-friction structure imaginable.
+
+
+## Chapter 1 - iMessage (Data Source)
+
+The ideal format of every drink “log” is `<image> <# drink> <type>`. For example: `<image> 9999, Modelo`. Technically the values can be separated by a comma (or not), and can also include a story, thoughts, or feeling. Data gets messy when you drink.
+
+For a while, our friend Jacob manually maintained a spreadsheet with four columns: person / type of drink / date / details.
+
+When I first experimented with automating this process, I realized scraping iMessage data is notoriously difficult. A Mac Mini was perfect for accessing a local chat.db, the only way to really scrape data.
+
+But while building, a complex data wrangling problem emerged.
+
+## Chapter 2 - Edge Cases / Data Wrangling / Scraping
+
+## Chapter 3 - Facial Embeddings
+
+## Chapter 4 - The Frontend
+
+## Chapter 5 - Agentic UI
+I had made a beautiful *Spotify Wrapped*  visualization for our 5,000 drink milestone and year post-grad reunion. I personally chose the best moments to highlight. But as the logging continues and time moves forward, I didn't want to curate 24/7.
+
+Can I make an agent that curates my photo album?

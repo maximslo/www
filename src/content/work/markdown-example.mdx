@@ -1,0 +1,61 @@
+---
+title: "Markdown Example"
+date: 2026-06-15
+lede: "every syntax, rendered"
+order: 99
+unlisted: true
+media:
+  type: image
+  src: images/project-nine.jpg
+---
+
+import Grid from "../../components/Grid.astro";
+
+This first block is a normal paragraph. You write plain text and it
+becomes a `<p>`. You can mark words as **bold** or *italic*, and drop in
+`inline code` mid-sentence.
+
+## A second-level heading
+
+Headings use `##`. Below it, here's a paragraph with a [link to the
+homepage](/) — links get underlined in ink.
+
+A plain Markdown image (full-width):
+
+![A single full-width image](/images/project-three.jpg)
+
+A single full-width, optimized image (`cols={1}`):
+
+<Grid cols={1} images={[
+  { src: "demo/one.jpg", alt: "A single full-width image" },
+]} />
+
+A single image scaled to one cell of a 2-column grid (left-aligned, half width):
+
+<Grid cols={2} images={[
+  { src: "demo/one.jpg", alt: "A single half-width image" },
+]} />
+
+A two-column grid of optimized images:
+
+<Grid cols={2} images={[
+  { src: "demo/one.jpg", alt: "First screen" },
+  { src: "demo/two.jpg", alt: "Second screen", caption: "Captions are optional" },
+]} />
+
+A three-column grid:
+
+<Grid cols={3} images={[
+  { src: "demo/one.jpg", alt: "One" },
+  { src: "demo/two.jpg", alt: "Two" },
+  { src: "demo/three.jpg", alt: "Three" },
+  { src: "demo/four.jpg", alt: "Four" },
+]} />
+
+> A blockquote, for pulling out a quote or an aside. It gets a left rule
+> and muted text.
+
+---
+
+Text after a horizontal rule (`---`), which renders as a dashed divider
+matching the rest of the site.
