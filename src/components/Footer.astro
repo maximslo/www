@@ -1,0 +1,63 @@
+---
+const socials = [
+  { label: 'LinkedIn', href: '#' },
+  { label: 'Email', href: '#' },
+  { label: 'X', href: '#' },
+  { label: 'GitHub', href: '#' },
+  { label: 'Devpost', href: '#' },
+];
+---
+
+<footer class="site-footer">
+  <div class="container foot">
+    <p class="credit">Designed + Coded with ♥ by Your Name</p>
+    <nav class="socials" aria-label="Social links">
+      {
+        socials.map((s) => (
+          <a href={s.href} class="social" target="_blank" rel="noopener">
+            {s.label}
+          </a>
+        ))
+      }
+    </nav>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    border-top: 1px solid var(--line);
+    margin-top: 96px;
+    padding-block: 32px;
+  }
+
+  .foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .credit {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    color: var(--muted);
+  }
+
+  .socials {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .social {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    color: var(--muted);
+    transition: color 0.15s ease;
+  }
+
+  .social:hover {
+    color: var(--fg);
+  }
+</style>

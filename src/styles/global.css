@@ -1,0 +1,87 @@
+@import './fonts.css';
+@import './tiempos.css';
+
+/* ---- Design tokens ---- */
+:root {
+  --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', 'Menlo', monospace;
+  --font-serif: 'Tiempos Text', 'Source Serif 4', Georgia, 'Times New Roman', serif;
+
+  --bg: #fafcfd;
+  --fg: #32404f;
+  --muted: #32404f95;
+  --faint: #32404f70;
+  --line: #32404f1a;
+  --accent: #e65f2e;
+
+  --maxw: 1800px;
+  --pad: 20px;
+
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 15px;
+  --fs-label: 15px; /* mono UI labels: nav, brand, timeline year, card meta */
+  --fs-lg: 17px;
+}
+
+/* ---- Reset ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---- Layout primitives ---- */
+.container {
+  max-width: var(--maxw);
+  margin-inline: auto;
+  padding-inline: var(--pad);
+}
+
+@media (max-width: 720px) {
+  :root {
+    --pad: 16px;
+  }
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.02em;
+}
+
+/* Utility: subtle link underline on hover */
+.link-underline {
+  transition: opacity 0.15s ease;
+}
+.link-underline:hover {
+  opacity: 0.55;
+}

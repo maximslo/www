@@ -1,0 +1,152 @@
+---
+const path = Astro.url.pathname;
+const isActive = (href: string) =>
+  href === '/' ? path === '/' : path.startsWith(href);
+
+const links = [
+  { label: 'Work', href: '/' },
+  { label: 'Fun', href: '/fun' },
+  { label: 'About', href: '/about' },
+];
+---
+
+<header class="site-header">
+  <div class="container bar">
+    <a href="/" class="brand" aria-label="Home">
+      <span class="brand-name">RACHEL CHEN</span>
+      <span class="brand-role">Product Designer + Engineer</span>
+    </a>
+
+    <div class="bar-right">
+      <nav class="nav" aria-label="Primary">
+        {
+          links.map((l) => (
+            <a
+              href={l.href}
+              class:list={['nav-link', { active: isActive(l.href) }]}
+              aria-current={isActive(l.href) ? 'page' : undefined}
+            >
+              {l.label}
+            </a>
+          ))
+        }
+        <a href="/resume.pdf" class="nav-link" target="_blank" rel="noopener">
+          Resume
+        </a>
+      </nav>
+
+      <a href="/" class="wordmark" aria-label="Home">
+        <span class="spark">✦</span> YN
+      </a>
+    </div>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: saturate(1.2) blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .bar {
+    /* same 1fr 1fr + 24px gap as the hero/work grids, so the right column
+       (nav) starts at the exact x where the dates / 2nd project column start */
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    column-gap: 24px;
+    height: 64px;
+  }
+
+  /* right column: nav pinned to its left edge, wordmark to the far right */
+  .bar-right {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  /* Left: name + role */
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0;
+    text-transform: uppercase;
+    color: var(--muted);
+    justify-self: start;
+  }
+  .brand-name {
+    font-weight: 500;
+    color: var(--fg);
+  }
+  .brand-role {
+    color: var(--muted);
+  }
+
+  /* Center: nav */
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+  .nav-link {
+    font-family: var(--font-mono);
+    font-size: var(--fs-label);
+    letter-spacing: 0;
+    text-transform: uppercase;
+    color: var(--muted);
+    transition: color 0.15s ease;
+  }
+  .nav-link:hover {
+    color: var(--fg);
+  }
+  .nav-link.active {
+    color: var(--accent);
+  }
+
+  /* Right: wordmark */
+  .wordmark {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: var(--fs-label);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg);
+    white-space: nowrap;
+  }
+  .spark {
+    color: var(--accent);
+  }
+
+  @media (max-width: 860px) {
+    .bar {
+      grid-template-columns: auto 1fr;
+      column-gap: 16px;
+    }
+    .brand-role {
+      display: none;
+    }
+    .bar-right {
+      justify-content: flex-end;
+    }
+    .nav {
+      gap: 18px;
+    }
+    .wordmark {
+      display: none;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .nav {
+      gap: 14px;
+    }
+  }
+</style>
