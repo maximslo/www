@@ -5,9 +5,9 @@ import ProjectCard from '../components/ProjectCard.astro';
 
 type Project = Awaited<ReturnType<typeof getCollection<'projects'>>>[number];
 
-const projects = (await getCollection('projects')).sort(
-  (a, b) => a.data.order - b.data.order
-);
+const projects = (await getCollection('projects'))
+  .filter((p) => !p.data.draft)
+  .sort((a, b) => a.data.order - b.data.order);
 
 // Placeholder experience timeline (most recent first)
 const experience = [

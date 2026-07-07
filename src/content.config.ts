@@ -23,6 +23,8 @@ const projects = defineCollection({
     pair: z.string().optional(),
     // Optional external link — when set, the homepage links out instead of to /projects/<slug>
     href: z.string().url().optional(),
+    // When true, hides the project from the homepage grid without deleting it
+    draft: z.boolean().optional(),
   }),
 });
 
