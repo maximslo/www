@@ -62,7 +62,7 @@ blocks.forEach((b, i) => columns[i % 2].push(b));
     <section class="top">
       <div class="hero-col">
         <h1 class="hero-line">
-          I'm Rachel, a product designer who <em>engineers</em>.
+          I'm Maxim, a product designer who <em>engineers</em>.
         </h1>
       </div>
 
@@ -72,8 +72,10 @@ blocks.forEach((b, i) => columns[i % 2].push(b));
             experience.map((e) => (
               <li class="timeline-row">
                 <span class="tl-year">{e.year}</span>
-                <span class="tl-company">{e.company}</span>
-                <span class="tl-role">{e.role}</span>
+                <span class="tl-body">
+                  <span class="tl-company">{e.company}</span>
+                  <span class="tl-role">{e.role}</span>
+                </span>
               </li>
             ))
           }
@@ -117,7 +119,7 @@ blocks.forEach((b, i) => columns[i % 2].push(b));
     display: flex;
     flex-direction: column;
     gap: 24px;
-    padding-block: 0 24px;
+    padding-block: 24px;
   }
 
   /* ---- Hero + experience (two columns) ---- */
@@ -159,6 +161,10 @@ blocks.forEach((b, i) => columns[i % 2].push(b));
     grid-template-columns: 104px 224px 1fr;
     gap: 8px;
     align-items: baseline;
+  }
+  /* lets tl-company/tl-role act as direct grid items at the wide (side-by-side) layout */
+  .tl-body {
+    display: contents;
   }
   .tl-year {
     font-family: var(--font-mono);
@@ -205,7 +211,7 @@ blocks.forEach((b, i) => columns[i % 2].push(b));
   }
 
   /* ---- Responsive ---- */
-  @media (max-width: 1023px) {
+  @media (max-width: 1199px) {
     .top {
       grid-template-columns: 1fr;
       gap: 48px;
@@ -218,12 +224,20 @@ blocks.forEach((b, i) => columns[i % 2].push(b));
       grid-template-columns: 1fr;
       gap: 24px;
     }
+    .timeline {
+      gap: 12px;
+    }
+    .timeline-row {
+      grid-template-columns: 104px 1fr;
+    }
+    .tl-body {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
   }
 
   @media (max-width: 520px) {
-    .hero-line {
-      font-size: 2.25rem;
-    }
     .timeline-row {
       grid-template-columns: 72px 1fr;
       row-gap: 2px;

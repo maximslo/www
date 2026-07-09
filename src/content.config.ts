@@ -6,7 +6,11 @@ const projects = defineCollection({
   schema: z.object({
     title: z.string(),
     company: z.string(),
-    status: z.enum(['Concept', 'Contract', 'Shipped', 'Handed off']),
+    status: z.preprocess((val) => {
+      if (typeof val !== 'string') return val;
+      const canonical = ['Concept', 'Contract', 'Shipped', 'Handed off'];
+      return canonical.find((c) => c.toLowerCase() === val.toLowerCase()) ?? val;
+    }, z.enum(['Concept', 'Contract', 'Shipped', 'Handed off'])),
     year: z.number(),
     order: z.number(),
     role: z.string(),
@@ -19,6 +23,8 @@ const projects = defineCollection({
     image: z.string().optional(),
     // Optional thumbnail aspect ratio, e.g. "16 / 9" or "4 / 3" (falls back to a cycling default)
     ratio: z.string().optional(),
+    // Optional px to crop off the top+bottom of the thumbnail media (e.g. to hide letterboxing)
+    cropY: z.number().optional(),
     // Optional pair id — projects sharing a value render side-by-side as two small tiles
     pair: z.string().optional(),
     // Optional external link — when set, the homepage links out instead of to /projects/<slug>

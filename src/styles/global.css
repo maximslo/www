@@ -15,13 +15,14 @@
   --accent: #e65f2e;
 
   --maxw: 1800px;
-  --pad: 20px;
+  --pad: 24px;
 
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
   --fs-base: 15px;
   --fs-label: 15px; /* mono UI labels: nav, brand, timeline year, card meta */
   --fs-lg: 17px;
+  --fs-xl: 1.5rem;
 }
 
 /* ---- Reset ---- */
@@ -64,12 +65,6 @@ a {
   max-width: var(--maxw);
   margin-inline: auto;
   padding-inline: var(--pad);
-}
-
-@media (max-width: 720px) {
-  :root {
-    --pad: 16px;
-  }
 }
 
 .mono {
