@@ -60,6 +60,14 @@ a {
   text-decoration: none;
 }
 
+/* Explicit focus ring so links/buttons don't fall back to the browser/OS
+   default (which can pick up the system accent color, e.g. bright orange). */
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent-focus, #0ea5e9);
+  outline-offset: 2px;
+}
+
 /* ---- Layout primitives ---- */
 .container {
   max-width: var(--maxw);

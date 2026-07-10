@@ -21,10 +21,16 @@ const projects = defineCollection({
     video: z.string().optional(),
     // Optional static image thumbnail (path under /public) — used when there's no video
     image: z.string().optional(),
+    // Optional override for the homepage card only — falls back to video/image
+    thumbImage: z.string().optional(),
     // Optional thumbnail aspect ratio, e.g. "16 / 9" or "4 / 3" (falls back to a cycling default)
     ratio: z.string().optional(),
     // Optional px to crop off the top+bottom of the thumbnail media (e.g. to hide letterboxing)
     cropY: z.number().optional(),
+    // Optional px to crop off just the top (overrides cropY's top side)
+    cropTop: z.number().optional(),
+    // Optional px to crop off just the bottom (overrides cropY's bottom side)
+    cropBottom: z.number().optional(),
     // Optional pair id — projects sharing a value render side-by-side as two small tiles
     pair: z.string().optional(),
     // Optional external link — when set, the homepage links out instead of to /projects/<slug>

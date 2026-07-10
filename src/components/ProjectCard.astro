@@ -13,12 +13,15 @@ const { data } = project;
 const external = Boolean(data.href);
 const href = data.href ?? `/projects/${project.id}`;
 const ratio = data.ratio ?? fallbackRatio;
-const hasMedia = Boolean(data.video || data.image);
+const hasMedia = Boolean(data.thumbImage || data.video || data.image);
 // Crops the rendered tile itself (not just the media) by clipping the box and
 // pulling its layout space in by the same amount, so it actually gets shorter.
-const cropStyle = data.cropY
-  ? `margin-block:-${data.cropY}px;clip-path:inset(${data.cropY}px 0 ${data.cropY}px 0);`
-  : '';
+const cropTop = data.cropTop ?? data.cropY ?? 0;
+const cropBottom = data.cropBottom ?? data.cropY ?? 0;
+const cropStyle =
+  cropTop || cropBottom
+    ? `margin-top:-${cropTop}px;margin-bottom:-${cropBottom}px;clip-path:inset(${cropTop}px 0 ${cropBottom}px 0);`
+    : '';
 ---
 
 <a
@@ -32,7 +35,9 @@ const cropStyle = data.cropY
     style={`aspect-ratio:${ratio};${hasMedia ? '' : `background:${fallbackGradient};`}${cropStyle}`}
   >
     {
-      data.video ? (
+      data.thumbImage ? (
+        <img class="thumb-media" src={data.thumbImage} alt={data.title} loading="lazy" />
+      ) : data.video ? (
         <video class="thumb-media" src={data.video} loop muted playsinline preload="metadata" />
       ) : data.image ? (
         <img class="thumb-media" src={data.image} alt={data.title} loading="lazy" />

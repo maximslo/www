@@ -319,6 +319,32 @@ const meta = [
     margin-block: 28px;
     width: 100%;
   }
+  .prose :global(video) {
+    display: block;
+    margin-block: 28px;
+    width: 100%;
+  }
+  /* Opt-in grey outline, matching the homepage project card thumbnails */
+  .prose :global(img.outlined),
+  .prose :global(video.outlined) {
+    /* outline instead of border: doesn't shrink the content box, so video
+       pixels keep an exact 1:1 mapping to device pixels (no resample blur) */
+    outline: 1px solid var(--line);
+    outline-offset: -1px;
+  }
+  /* Opt-in half-width, e.g. class="outlined half" */
+  .prose :global(.half) {
+    width: 50%;
+  }
+  /* Z-pattern stacking: narrower media pushed to opposite edges */
+  .prose :global(.align-left) {
+    width: 72%;
+    margin-right: auto;
+  }
+  .prose :global(.align-right) {
+    width: 72%;
+    margin-left: auto;
+  }
 
   @media (min-width: 768px) {
     .project-grid {
