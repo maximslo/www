@@ -1,0 +1,119 @@
+---
+// Dev-only test page: every arrangement of the row 1-3 homepage tiles with
+// OpenAI pinned to the top-left slot. Not linked from nav — visit directly.
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+
+type Project = Awaited<ReturnType<typeof getCollection<'projects'>>>[number];
+
+const all = await getCollection('projects');
+const bySlug = (slug: string) => {
+  const p = all.find((p) => p.id === slug);
+  if (!p) throw new Error(`Missing project: ${slug}`);
+  return p;
+};
+
+// OpenAI stays fixed top-left; the other five permute through the remaining slots.
+const fixed = bySlug('project-one');
+const rest = [
+  bySlug('project-two'),
+  bySlug('project-six'),
+  bySlug('project-five'),
+  bySlug('project-four'),
+  bySlug('project-eight'),
+];
+
+function permutations<T>(items: T[]): T[][] {
+  if (items.length <= 1) return [items];
+  const result: T[][] = [];
+  items.forEach((item, i) => {
+    const remaining = [...items.slice(0, i), ...items.slice(i + 1)];
+    for (const perm of permutations(remaining)) {
+      result.push([item, ...perm]);
+    }
+  });
+  return result;
+}
+
+const allPermutations = permutations(rest).map((perm) => [fixed, ...perm]);
+---
+
+<BaseLayout title="Grid permutations (test)" description="">
+  <div class="container page">
+    <h1>All {allPermutations.length} arrangements (OpenAI fixed top-left)</h1>
+    <div class="grid-of-grids">
+      {
+        allPermutations.map((perm, i) => (
+          <div class="perm">
+            <p class="perm-label mono">#{i + 1}</p>
+            <div class="perm-grid">
+              {perm.map((p) => (
+                <ProjectCard project={p} fallbackRatio="4 / 3" fallbackGradient="#ccc" />
+              ))}
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding-block: 32px 96px;
+  }
+  h1 {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 32px;
+  }
+  .grid-of-grids {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 32px;
+  }
+  .perm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .perm-label {
+    color: var(--faint);
+  }
+  .perm-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: 200px;
+    gap: 12px;
+  }
+  .perm-grid :global(.cap) {
+    display: none;
+  }
+  /* Force every tile to the row's fixed height (overriding each card's own
+     aspect-ratio) so paired tiles always line up, same as the equal-height
+     rows on the homepage — regardless of which two tiles land together. */
+  .perm-grid :global(.thumb) {
+    height: 100% !important;
+  }
+</style>
+
+<script>
+  // This page is for comparing layout/heights across 120 arrangements, not
+  // for motion — with 3 of 6 tiles being <video>, autoplay-on-scroll (from
+  // ProjectCard's own IntersectionObserver) thrashes across 360 instances and
+  // can make screenshots look torn. Freeze every video to a static frame
+  // instead: block ProjectCard's play() calls and seek once to get a frame.
+  const videos = document.querySelectorAll<HTMLVideoElement>('.perm-grid video.thumb-media');
+  videos.forEach((video) => {
+    video.play = () => Promise.resolve();
+    video.pause();
+    const freeze = () => {
+      video.currentTime = 0.1;
+    };
+    if (video.readyState >= 1) freeze();
+    else video.addEventListener('loadedmetadata', freeze, { once: true });
+  });
+</script>

@@ -265,7 +265,7 @@ const meta = [
     letter-spacing: -0.02em;
     color: var(--fg);
     margin-top: 4px;
-    margin-bottom: 4px;
+    margin-bottom: 24px;
   }
 
   .prose :global(h4) {
@@ -298,6 +298,12 @@ const meta = [
   .prose :global(.cols img) {
     margin-block: 0;
   }
+  /* Opt-in narrower, centered variant, e.g. class="cols centered" */
+  .prose :global(.cols.centered) {
+    width: 66%;
+    margin-left: auto;
+    margin-right: auto;
+  }
 
   @media (max-width: 600px) {
     .prose :global(.cols) {
@@ -305,6 +311,9 @@ const meta = [
       grid-auto-columns: unset;
       grid-template-columns: 1fr;
       row-gap: 24px;
+    }
+    .prose :global(.cols.centered) {
+      width: 100%;
     }
   }
 

@@ -22,6 +22,19 @@ const cropStyle =
   cropTop || cropBottom
     ? `margin-top:-${cropTop}px;margin-bottom:-${cropBottom}px;clip-path:inset(${cropTop}px 0 ${cropBottom}px 0);`
     : '';
+// Optional zoomed-out/repositioned media: scales the media down within its box
+// (revealing thumbBg at the edges) and/or shifts it horizontally/vertically.
+// translate is applied after scale so the px offset is exact regardless of zoom.
+const mediaTransforms = [
+  data.thumbOffsetX || data.thumbOffsetY
+    ? `translate(${data.thumbOffsetX ?? 0}px, ${data.thumbOffsetY ?? 0}px)`
+    : '',
+  data.thumbZoom ? `scale(${data.thumbZoom})` : '',
+]
+  .filter(Boolean)
+  .join(' ');
+const mediaStyle = mediaTransforms ? `transform:${mediaTransforms};` : '';
+const thumbBgStyle = hasMedia && data.thumbBg ? `background:${data.thumbBg};` : '';
 ---
 
 <a
@@ -32,15 +45,15 @@ const cropStyle =
 >
   <span
     class:list={['thumb', { 'has-media': hasMedia }]}
-    style={`aspect-ratio:${ratio};${hasMedia ? '' : `background:${fallbackGradient};`}${cropStyle}`}
+    style={`aspect-ratio:${ratio};${hasMedia ? thumbBgStyle : `background:${fallbackGradient};`}${cropStyle}`}
   >
     {
       data.thumbImage ? (
-        <img class="thumb-media" src={data.thumbImage} alt={data.title} loading="lazy" />
+        <img class="thumb-media" src={data.thumbImage} alt={data.title} loading="lazy" style={mediaStyle} />
       ) : data.video ? (
-        <video class="thumb-media" src={data.video} loop muted playsinline preload="metadata" />
+        <video class="thumb-media" src={data.video} loop muted playsinline preload="metadata" style={mediaStyle} />
       ) : data.image ? (
-        <img class="thumb-media" src={data.image} alt={data.title} loading="lazy" />
+        <img class="thumb-media" src={data.image} alt={data.title} loading="lazy" style={mediaStyle} />
       ) : (
         <span class="thumb-label">{data.company}</span>
       )

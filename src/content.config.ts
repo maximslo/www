@@ -31,6 +31,14 @@ const projects = defineCollection({
     cropTop: z.number().optional(),
     // Optional px to crop off just the bottom (overrides cropY's bottom side)
     cropBottom: z.number().optional(),
+    // Optional scale (<1 zooms out) applied to the homepage thumb media, revealing thumbBg at the edges
+    thumbZoom: z.number().optional(),
+    // Optional background color shown behind the homepage thumb media (e.g. to match zoomed-out edges)
+    thumbBg: z.string().optional(),
+    // Optional px to shift the homepage thumb media vertically (negative moves it up)
+    thumbOffsetY: z.number().optional(),
+    // Optional px to shift the homepage thumb media horizontally (negative moves it left)
+    thumbOffsetX: z.number().optional(),
     // Optional pair id — projects sharing a value render side-by-side as two small tiles
     pair: z.string().optional(),
     // Optional external link — when set, the homepage links out instead of to /projects/<slug>
