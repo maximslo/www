@@ -34,7 +34,7 @@ const mediaTransforms = [
   .filter(Boolean)
   .join(' ');
 const mediaStyle = mediaTransforms ? `transform:${mediaTransforms};` : '';
-const thumbBgStyle = hasMedia && data.thumbBg ? `background:${data.thumbBg};` : '';
+const thumbBgStyle = hasMedia && data.thumbBg ? `background-color:${data.thumbBg};` : '';
 ---
 
 <a
