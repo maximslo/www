@@ -65,7 +65,6 @@ const meta = [
                 <video
                   class="hero-media-el"
                   src={data.video}
-                  autoplay
                   loop
                   muted
                   playsinline
@@ -121,6 +120,86 @@ const meta = [
     );
     sections.forEach((section) => observer.observe(section));
   }
+
+  // Videos (hero + any embedded in the case study body) only play while
+  // scrolled into view, so we don't burn bandwidth/battery off-screen.
+  //
+  // The Ask The Post AI hero hangs on its first frame for a beat before it
+  // starts looping, so the opening state actually registers instead of
+  // getting lost in the loop.
+  const HANG_MS = 900;
+  const pendingPlays = new WeakMap<HTMLVideoElement, number>();
+
+  const videoObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        const video = entry.target as HTMLVideoElement;
+        const pending = pendingPlays.get(video);
+        if (pending) {
+          window.clearTimeout(pending);
+          pendingPlays.delete(video);
+        }
+
+        if (entry.isIntersecting) {
+          if (video.src.includes('ask-the-post')) {
+            video.pause();
+            video.currentTime = 0;
+            const id = window.setTimeout(() => video.play().catch(() => {}), HANG_MS);
+            pendingPlays.set(video, id);
+          } else {
+            video.play().catch(() => {});
+          }
+        } else {
+          video.pause();
+          if (video.src.includes('ask-the-post')) video.currentTime = 0;
+        }
+      }
+    },
+    { rootMargin: '200px' }
+  );
+
+  // Videos with manual play/pause controls (.video-frame) opt out of the
+  // scroll-driven autoplay above — they should sit paused on their first
+  // frame until the viewer presses play.
+  document.querySelectorAll<HTMLVideoElement>('.project video').forEach((video) => {
+    if (video.closest('.video-frame')) return;
+    videoObserver.observe(video);
+  });
+
+  // Manual play/pause + restart overlay controls — the buttons just call the
+  // same play()/pause() the observer above uses, and the icon swap listens to
+  // the video's own events so it stays in sync regardless of which one
+  // triggered it.
+  const DEFAULT_START_TIME = 0.5;
+
+  document.querySelectorAll<HTMLElement>('.video-frame').forEach((frame) => {
+    const video = frame.querySelector('video');
+    if (!video) return;
+
+    const startTime = Number(frame.dataset.start ?? DEFAULT_START_TIME);
+
+    const setStartFrame = () => {
+      video.currentTime = startTime;
+      video.removeEventListener('loadedmetadata', setStartFrame);
+    };
+    if (video.readyState >= 1) setStartFrame();
+    else video.addEventListener('loadedmetadata', setStartFrame);
+
+    const syncIcon = () => frame.classList.toggle('paused', video.paused);
+    video.addEventListener('play', syncIcon);
+    video.addEventListener('pause', syncIcon);
+    syncIcon();
+
+    frame.querySelector('.btn-play-pause')?.addEventListener('click', () => {
+      if (video.paused) video.play().catch(() => {});
+      else video.pause();
+    });
+
+    frame.querySelector('.btn-restart')?.addEventListener('click', () => {
+      video.currentTime = startTime;
+      video.play().catch(() => {});
+    });
+  });
 </script>
 
 <style>
@@ -288,6 +367,7 @@ const meta = [
     grid-auto-columns: 1fr;
     column-gap: 12px;
     margin-top: 24px;
+    margin-bottom: 24px;
   }
   .prose :global(.cols h4) {
     margin-top: 0;
@@ -321,7 +401,6 @@ const meta = [
     font-size: var(--fs-base);
     color: var(--muted);
     margin-bottom: 20px;
-    max-width: 62ch;
   }
 
   .prose :global(img) {
@@ -353,6 +432,106 @@ const meta = [
   .prose :global(.align-right) {
     width: 72%;
     margin-left: auto;
+  }
+  /* Half-width media, left-aligned, with a caption set beside it on the
+     right, bottom-aligned — wrap <video>/<img> + a
+     <div class="media-row-caption"><h3/><p/></div> in <div class="media-row">. */
+  .prose :global(.media-row) {
+    display: flex;
+    align-items: flex-end;
+    gap: 32px;
+    margin-block: 28px;
+  }
+  .prose :global(.media-row img),
+  .prose :global(.media-row .video-frame) {
+    width: 50%;
+    flex-shrink: 0;
+    margin-block: 0;
+  }
+  .prose :global(.media-row-caption h3) {
+    font-size: 1.4rem;
+    margin: 0 0 8px;
+  }
+  .prose :global(.media-row-caption p) {
+    font-size: var(--fs-sm);
+    max-width: 32ch;
+    margin: 0;
+  }
+  @media (max-width: 600px) {
+    .prose :global(.media-row) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .prose :global(.media-row img),
+    .prose :global(.media-row .video-frame) {
+      width: 100%;
+    }
+  }
+
+  /* Play/pause + restart overlay for a <video> — wrap it in
+     <div class="video-frame"> with a <div class="video-controls"> of two
+     buttons (see mdx). Controls fade in on hover, like native video chrome. */
+  .prose :global(.video-frame) {
+    position: relative;
+  }
+  .prose :global(.video-frame video) {
+    display: block;
+    width: 100%;
+    margin-block: 0;
+  }
+  .prose :global(.video-controls) {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .prose :global(.video-frame:hover .video-controls),
+  .prose :global(.video-frame:focus-within .video-controls) {
+    opacity: 1;
+  }
+  .prose :global(.video-controls button) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #fff;
+    cursor: pointer;
+  }
+  .prose :global(.video-controls button:hover) {
+    background: rgba(0, 0, 0, 0.75);
+  }
+  /* Opt-in variant for videos with dark footage, so the buttons stay legible
+     — add class="light" to the .video-controls wrapper. */
+  .prose :global(.video-controls.light button) {
+    background: rgba(255, 255, 255, 0.85);
+    color: #111;
+  }
+  .prose :global(.video-controls.light button:hover) {
+    background: rgba(255, 255, 255, 1);
+  }
+  .prose :global(.video-controls svg) {
+    width: 16px;
+    height: 16px;
+  }
+  .prose :global(.video-controls .icon-play) {
+    display: none;
+  }
+  .prose :global(.video-frame.paused .icon-pause) {
+    display: none;
+  }
+  .prose :global(.video-frame.paused .icon-play) {
+    display: block;
   }
 
   @media (min-width: 768px) {

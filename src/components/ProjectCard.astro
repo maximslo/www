@@ -153,12 +153,36 @@ const thumbBgStyle = hasMedia && data.thumbBg ? `background-color:${data.thumbBg
 <script>
   // Thumbnail videos only play while scrolled into view, so we don't burn
   // bandwidth/battery on autoplaying tiles the user hasn't scrolled to yet.
+  //
+  // The Ask The Post AI thumbnail hangs on its first frame for a beat before
+  // it starts looping, so the opening state actually registers instead of
+  // getting lost in the loop.
+  const HANG_MS = 900;
+  const pendingPlays = new WeakMap<HTMLVideoElement, number>();
+
   const observer = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
         const video = entry.target as HTMLVideoElement;
-        if (entry.isIntersecting) video.play().catch(() => {});
-        else video.pause();
+        const pending = pendingPlays.get(video);
+        if (pending) {
+          window.clearTimeout(pending);
+          pendingPlays.delete(video);
+        }
+
+        if (entry.isIntersecting) {
+          if (video.src.includes('ask-the-post')) {
+            video.pause();
+            video.currentTime = 0;
+            const id = window.setTimeout(() => video.play().catch(() => {}), HANG_MS);
+            pendingPlays.set(video, id);
+          } else {
+            video.play().catch(() => {});
+          }
+        } else {
+          video.pause();
+          if (video.src.includes('ask-the-post')) video.currentTime = 0;
+        }
       }
     },
     { rootMargin: '200px' }
