@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import Terminal from '../../components/Terminal.astro';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects');
@@ -17,6 +18,11 @@ const { Content, headings } = await render(project);
 const sections = headings.filter((h) => h.depth === 2);
 const hasMedia = Boolean(data.video || data.image);
 const ratio = data.ratio ?? '16 / 9';
+// terminal2's hero is the scripted <Terminal /> demo, not a video/image —
+// it needs to sit above the meta row like hero-media does, which only a
+// slug check in the shared template can do (MDX content only reaches the
+// .prose column below the meta row).
+const showHeroTerminal = project.id === 'terminal2';
 
 const meta = [
   { label: 'Role', values: [data.role] },
@@ -57,6 +63,8 @@ const meta = [
           </p>
           <h1 class="project-title">{data.title}</h1>
         </header>
+
+        {showHeroTerminal && <Terminal />}
 
         {
           hasMedia && (
@@ -376,7 +384,16 @@ const meta = [
     margin-bottom: 0;
   }
   .prose :global(.cols img) {
-    margin-block: 0;
+    margin-block: 0 16px;
+  }
+  /* A CodeWindow narrowed to half-width by .cols has no room for a long
+     single-line transcript to run its full length — let it wrap instead of
+     relying on horizontal scroll, which reads as truncated with no
+     affordance at a glance. Only scoped inside .cols: the full-width
+     CodeWindow examples elsewhere still preserve exact code formatting. */
+  .prose :global(.cols .code-window-screen pre.astro-code) {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
   /* Opt-in narrower, centered variant, e.g. class="cols centered" */
   .prose :global(.cols.centered) {
@@ -401,6 +418,235 @@ const meta = [
     font-size: var(--fs-base);
     color: var(--muted);
     margin-bottom: 20px;
+  }
+
+  /* Fallback for a fenced code block that isn't wrapped in <CodeWindow> —
+     in practice every snippet is wrapped (see terminal.mdx), so this just
+     keeps a stray block from rendering dark-theme tokens on a light card.
+     Scoped to Shiki's own .astro-code class, not every <pre> — the Terminal
+     component also renders a <pre class="term-grid"> inside .prose and must
+     stay untouched. */
+  .prose :global(pre.astro-code) {
+    background: hsl(266 14% 10%) !important;
+    border-radius: 8px;
+    padding: 16px;
+    margin-block: 24px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+  .prose :global(pre.astro-code code) {
+    font-family: var(--font-mono);
+  }
+  /* Inline `code` outside a fenced block */
+  .prose :global(:not(pre) > code) {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--line);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+  }
+
+  /* Design-system exhibit boxes — a labeled specimen card, e.g.
+     <div class="spec-row"><div class="spec"><span class="spec-label mono">x</span>
+     <div class="spec-body">...</div></div></div> — for showing atomic
+     components (status glyphs, tokens) next to their code. */
+  .prose :global(.spec-row) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-block: 24px;
+  }
+  .prose :global(.spec) {
+    position: relative;
+    flex: 1 1 180px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 20px 16px 16px;
+  }
+  .prose :global(.spec-label) {
+    position: absolute;
+    top: -10px;
+    left: 12px;
+    padding: 2px 8px;
+    background: var(--fg);
+    color: var(--bg);
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .prose :global(.spec-body) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  /* success/verified and info reuse the wapo-cli query palette (green
+     #4ade80, cyan #22d3ee), darkened to the same hue for ~5:1 contrast on
+     this light background — the originals measure ~1.7:1 here, illegible */
+  .prose :global(.spec-body .st-success) {
+    color: #15803d;
+  }
+  .prose :global(.spec-body .st-error) {
+    color: #c0392b;
+  }
+  .prose :global(.spec-body .st-warning) {
+    color: #a3790a;
+  }
+  .prose :global(.spec-body .st-info) {
+    color: #0e7490;
+  }
+  .prose :global(.spec-body .st-verified) {
+    color: #15803d;
+  }
+  .prose :global(.spec-body .st-unverified) {
+    color: var(--faint);
+  }
+  /* News-specific epistemic state, e.g. <span class="live-badge">.
+     The source PNG is a single solid color (#dc2626) with alpha carrying
+     both the pill shape and the "LIVE" text cutout — used here as a mask
+     so background-color can recolor the badge while the cutout stays
+     genuinely transparent (shows whatever's behind it) at any color. */
+  .prose :global(.spec-body .live-badge) {
+    display: inline-block;
+    height: 11px;
+    width: auto;
+    aspect-ratio: 226 / 127;
+    margin: 0;
+    vertical-align: middle;
+    position: relative;
+    top: -1.5px;
+    background-color: #dc2626;
+    -webkit-mask-image: url(/projects/live-badge-red.png);
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-image: url(/projects/live-badge-red.png);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+  }
+  .prose :global(.spec-body .meter-fill) {
+    color: #1a7f4b;
+  }
+  .prose :global(.spec-body .meter-empty) {
+    color: var(--faint);
+  }
+  .prose :global(.spec-body .st-corrected) {
+    color: #4338ca;
+  }
+  .prose :global(.spec-body .st-flagged) {
+    color: var(--faint);
+  }
+
+  /* Dark variant of the exhibit above — same spec-row/spec/spec-label
+     markup plus class="dark", e.g. <div class="spec-row dark">. Lets the
+     status hues run at the same saturation the CLI itself uses (dimmed
+     to ~5:1 on the light card above because they measure ~1.7:1 there). */
+  .prose :global(.spec-row.dark) {
+    background: hsl(266 14% 10%);
+    border-radius: 14px;
+    /* matches CodeWindow.astro's .code-window-screen padding, so this
+       exhibit's outer frame reads at the same scale as the terminal
+       windows elsewhere in the case study */
+    padding: 24px;
+    gap: 10px;
+    margin-block: 20px;
+  }
+  .prose :global(.spec-row.dark .spec) {
+    /* top stays roomy for the label tag straddling the border; sides
+       brought up from 12px to breathe like the terminal windows. Bottom
+       stays tight (unlike top/sides) since cards stretch to the row's
+       tallest column — anything more here is dead space, not padding. */
+    padding: 30px 16px 2px;
+    border-color: hsl(0 0% 100%);
+    /* narrower basis than the light variant's 180px — the 13px text
+       needs more room per column, and without this the 4th column
+       (confidence) has nowhere left to grow and wraps to its own row */
+    flex: 1 1 150px;
+  }
+  /* Stacks two labeled .spec boxes in one column slot — e.g. temporal
+     and correction sharing a single flex-row position — instead of
+     each claiming its own slot in the row. */
+  .prose :global(.spec-row.dark .spec-col) {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1 1 150px;
+  }
+  .prose :global(.spec-row.dark .spec-col .spec) {
+    flex: 0 0 auto;
+  }
+  .prose :global(.spec-row.dark .spec-col .spec:last-child) {
+    flex: 1 1 auto;
+  }
+  /* Opaque, matching the card behind it — not transparent — so it fully
+     covers its own box's top border where the tag straddles it (like a
+     fieldset legend). Left transparent, that border reappears as a stray
+     line whenever another box sits directly above in a wrapped layout,
+     since there's barely any gap for the two borders to stay apart. */
+  .prose :global(.spec-row.dark .spec-label) {
+    top: -8px;
+    padding: 1px 6px;
+    background: hsl(266 14% 10%);
+    border: 1px solid hsl(255 30% 60% / 0.6);
+    color: #fff;
+    font-size: 14px;
+  }
+  .prose :global(.spec-row.dark .spec-body) {
+    gap: 4px;
+    line-height: 1.3;
+  }
+  /* .prose :global(p) sets font-size and color directly on every <p>,
+     which otherwise beats an inherited value set on this ancestor —
+     target the <p> itself to win. Font-size matches Terminal.astro/
+     CodeWindow.astro's mono text size. */
+  .prose :global(.spec-row.dark .spec-body p) {
+    font-size: 13px;
+    color: #fff;
+  }
+  .prose :global(.spec-row.dark .st-success),
+  .prose :global(.spec-row.dark .st-verified),
+  .prose :global(.spec-row.dark .meter-fill) {
+    color: #4ade80;
+  }
+  .prose :global(.spec-row.dark .st-error) {
+    color: #f87171;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .prose :global(.spec-row.dark .live-badge) {
+    background-color: #f87171;
+  }
+  .prose :global(.spec-row.dark .st-warning) {
+    color: #fbbf24;
+  }
+  .prose :global(.spec-row.dark .st-info) {
+    color: #22d3ee;
+  }
+  .prose :global(.spec-row.dark .st-unverified),
+  .prose :global(.spec-row.dark .meter-empty),
+  .prose :global(.spec-row.dark .st-flagged) {
+    color: hsl(260 6% 50%);
+  }
+  .prose :global(.spec-row.dark .st-corrected) {
+    color: #a78bfa;
+  }
+  /* Gives the SETTLED bullet the same footprint as the DEVELOPING row's
+     .live-badge (height 11px, aspect-ratio 226/127) so both rows' labels
+     start on the same vertical line. */
+  .prose :global(.spec-row.dark .badge-align) {
+    display: inline-block;
+    width: calc(11px * 226 / 127);
+    text-align: center;
+  }
+  /* ●/○/◉/◎ render slightly low against the mono text's baseline */
+  .prose :global(.spec-row.dark .st-verified),
+  .prose :global(.spec-row.dark .st-unverified),
+  .prose :global(.spec-row.dark .st-corrected),
+  .prose :global(.spec-row.dark .st-flagged) {
+    position: relative;
+    top: -1px;
   }
 
   .prose :global(img) {
@@ -457,6 +703,77 @@ const meta = [
     max-width: 32ch;
     margin: 0;
   }
+  /* A <div class="centered-caption"> + a centered (usually .fit) CodeWindow,
+     wrapped together in <div class="setup-terminal-wrap"> — the wrap is
+     width:fit-content so it hugs the CodeWindow's own rendered width (the
+     caption is position:absolute and doesn't contribute to that intrinsic
+     width), which is what lets `right:0` below land exactly on the
+     terminal's own edge instead of the wider .prose column's edge. */
+  .prose :global(.setup-terminal-wrap) {
+    position: relative;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+    margin-top: 64px;
+  }
+  .prose :global(.setup-terminal-wrap) :global(.code-window) {
+    margin-block: 0;
+  }
+  .prose :global(.centered-caption) {
+    text-align: center;
+  }
+  .prose :global(.setup-terminal-wrap .centered-caption) {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    z-index: 1;
+    transform: translate(38%, -50%);
+    margin: 0;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px 28px;
+    box-shadow: 0 16px 40px rgba(50, 64, 79, 0.14);
+  }
+  .prose :global(.centered-caption h3) {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+  }
+  .prose :global(.centered-caption p) {
+    font-size: var(--fs-sm);
+    max-width: 32ch;
+    margin-inline: auto;
+    /* the base .prose p rule's margin-bottom:20px doesn't collapse through
+       this card's own bottom padding, so it was adding extra space below
+       the text instead of just the padding — zero it out here */
+    margin-bottom: 4px;
+  }
+  @media (max-width: 600px) {
+    .prose :global(.setup-terminal-wrap .centered-caption) {
+      position: static;
+      transform: none;
+      max-width: none;
+      margin: 0 0 20px;
+      box-shadow: none;
+    }
+    .prose :global(.setup-terminal-wrap) {
+      margin-top: 28px;
+    }
+  }
+
+  /* A terminal window (ResponseToggle in compact mode, or a CodeWindow)
+     takes more of the row than a video does, so the caption can stay a
+     slim sidebar instead of splitting the row evenly. */
+  .prose :global(.media-row .resp-window),
+  .prose :global(.media-row .code-window) {
+    width: 66%;
+    flex-shrink: 0;
+    margin-block: 0;
+  }
+  .prose :global(.media-row:has(.resp-window) .media-row-caption p),
+  .prose :global(.media-row:has(.code-window) .media-row-caption p) {
+    max-width: 20ch;
+  }
   @media (max-width: 600px) {
     .prose :global(.media-row) {
       flex-direction: column;
@@ -464,8 +781,13 @@ const meta = [
       gap: 16px;
     }
     .prose :global(.media-row img),
-    .prose :global(.media-row .video-frame) {
+    .prose :global(.media-row .video-frame),
+    .prose :global(.media-row .resp-window),
+    .prose :global(.media-row .code-window) {
       width: 100%;
+    }
+    .prose :global(.media-row:has(.resp-window) .media-row-caption p) {
+      max-width: none;
     }
   }
 

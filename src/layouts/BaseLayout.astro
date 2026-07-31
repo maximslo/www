@@ -6,12 +6,17 @@ import Footer from '../components/Footer.astro';
 interface Props {
   title?: string;
   description?: string;
+  image?: string;
 }
 
 const {
-  title = 'Your Name | Product Designer + Engineer',
-  description = "I'm a product builder who loves bringing ideas to life with design + code.",
+  title = 'Maxim Slobodchikov',
+  description = "Maxim is a 23-year-old engineer and designer making visual things on and off the web. Previously at the New York Times and the Washington Post.",
+  image = '/og.png',
 } = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const imageURL = new URL(image, Astro.site);
 ---
 
 <!doctype html>
@@ -19,17 +24,30 @@ const {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#fafcfd" />
+    <link rel="icon" type="image/svg+xml" href="/fish.svg" />
+    <link rel="icon" type="image/png" href="/fish.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#fbfbf9" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonicalURL} />
 
+    <!-- Open Graph (link previews: iMessage, Slack, LinkedIn, Facebook) -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
+    <meta property="og:image" content={imageURL} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title} />
+
+    <!-- Twitter / X card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageURL} />
   </head>
   <body>
     <Header />

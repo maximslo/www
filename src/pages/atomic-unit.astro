@@ -1,0 +1,446 @@
+---
+// A standalone decision artboard for the wapo case study: why the API's
+// atomic unit is the *claim*, not the headline, article, or embedding chunk.
+// Four columns show what an agent actually receives for each candidate unit
+// (structured but human-readable, not raw JSON) so the failure/win is visible
+// rather than argued. Fixed 1600x1200 canvas, #eff3f6 — built to be captured
+// as a single figure. Not linked from nav; visit directly.
+// Riffs on the "INTERFACE FORM FACTOR EXPLORATION" reference layout.
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#eff3f6" />
+    <title>wapo — Choosing the atomic unit</title>
+    <meta name="description" content="Why the atomic unit is the claim, not the headline, article, or embedding chunk." />
+    <link rel="icon" href="/fish.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="stage">
+      <div class="artboard">
+        <header class="head">
+          <p class="eyebrow">CHOOSING THE ATOMIC UNIT</p>
+          <h1>What is the smallest thing this API serves?</h1>
+          <p class="principle">
+            Principle borrowed from how Context7 chunks docs — the atomic unit is the smallest
+            <em>independently-citable</em> thing, and every unit carries its own provenance. Four candidates,
+            shown as the agent receives them:
+          </p>
+        </header>
+
+        <div class="cols">
+          <!-- 1 — ARTICLE -->
+          <section class="col">
+            <div class="col-head">
+              <span class="cand">Article</span>
+              <span class="verdict reject">✗&nbsp; too big</span>
+            </div>
+            <div class="panel">
+              <div class="panel-tag mono">one article ⊃ many claims — <span class="warn">no single type · sourcing_tier fits</span></div>
+              <div class="blob">
+                <p class="blob-line" data-kind="fact">
+                  <span class="kind kind-fact mono">reported_fact</span>
+                  School closures have spiked 35 percent over the past four years, according to data from the National Center for Education Statistics.
+                </p>
+                <p class="blob-line" data-kind="quote">
+                  <span class="kind kind-quote mono">quote</span>
+                  “We call it the big shrink,” said Marguerite Roza, who tracks school funding as director of Georgetown University’s Edunomics Lab.
+                </p>
+                <p class="blob-line" data-kind="analysis">
+                  <span class="kind kind-analysis mono">analysis</span>
+                  Experts say the trend will accelerate as relief funds run out.
+                </p>
+              </div>
+            </div>
+            <p class="note">
+              One blob mixes reported fact, analysis, and quotes. To cite anything, the agent has to
+              chunk it itself — <strong>re-inheriting the exact problem we're here to solve.</strong>
+            </p>
+          </section>
+
+          <!-- 2 — HEADLINE -->
+          <section class="col">
+            <div class="col-head">
+              <span class="cand">Headline</span>
+              <span class="verdict reject">✗&nbsp; marketing copy</span>
+            </div>
+            <div class="panel">
+              <div class="headline-card">
+                <p class="hl-text">Shrinking student populations cause spike in public school closures across U.S.</p>
+                <p class="hl-date mono">July 20, 2026</p>
+              </div>
+              <dl class="fields dim">
+                <div><dt class="mono">claim_id</dt><dd class="mono missing">— none</dd></div>
+                <div><dt class="mono">sourcing_tier</dt><dd class="mono missing">— none</dd></div>
+                <div><dt class="mono">attribution</dt><dd class="mono missing">— none</dd></div>
+              </dl>
+            </div>
+            <p class="note">
+              Optimized for human clicks: attribution is compressed out and it goes stale as the story
+              develops. <strong>Grounding an agent on headlines is grounding it on marketing copy.</strong>
+            </p>
+          </section>
+
+          <!-- 3 — EMBEDDING CHUNK -->
+          <section class="col">
+            <div class="col-head">
+              <span class="cand">Embedding chunk</span>
+              <span class="verdict reject">✗&nbsp; drifts</span>
+            </div>
+            <div class="panel">
+              <div class="chunk">
+                <span class="cut cut-top mono">— chunk boundary · cut by token window —</span>
+                <p class="chunk-text">
+                  …partly because there are fewer kids in the U.S. Public school closures temporarily
+                  slowed during the pandemic as administrators focused on the fallout from covid and tapped
+                  relief funds to balance their budgets.
+                </p>
+                <span class="cut cut-bot mono">— chunk boundary —</span>
+                <p class="orphan mono">attribution.speaker <span class="missing">lost — “said Marguerite Roza” landed in the previous chunk</span></p>
+              </div>
+            </div>
+            <p class="note">
+              A cosine-similarity window, not a semantic boundary. The quote drifts from its speaker —
+              <strong>exactly how attribution breaks in the search tools we'd be replacing.</strong>
+            </p>
+          </section>
+
+          <!-- 4 — CLAIM (selected) -->
+          <section class="col selected">
+            <div class="col-head">
+              <span class="cand">Claim</span>
+              <span class="verdict accept">✓&nbsp; selected</span>
+            </div>
+            <div class="panel">
+              <div class="claim-id mono"><span class="k">claim_id</span> clm_e5f6</div>
+              <p class="statement">“Enrollment at public schools is declining, partly because there are fewer kids in the U.S.”</p>
+              <div class="attr-block">
+                <span class="env-label mono">attribution</span>
+                <dl class="fields tight">
+                  <div><dt class="mono">speaker</dt><dd class="mono">Marguerite Roza</dd></div>
+                  <div><dt class="mono">setting</dt><dd class="mono">interview</dd></div>
+                  <div><dt class="mono">date</dt><dd class="mono">2026-07-18</dd></div>
+                </dl>
+              </div>
+              <dl class="fields">
+                <div><dt class="mono">type</dt><dd class="mono">quote</dd></div>
+                <div><dt class="mono">sourcing_tier</dt><dd class="mono">on_record</dd></div>
+                <div><dt class="mono">content_type</dt><dd class="mono">reporting</dd></div>
+              </dl>
+              <div class="envelope">
+                <span class="env-label mono">article · provenance, rides along not content</span>
+                <div class="env-row mono"><span class="k">title</span> Shrinking student populations cause spike in public school closures</div>
+                <div class="env-row mono"><span class="k">url</span> wapo.st/3xY2z</div>
+                <div class="env-row mono"><span class="k">published</span> 2026-07-20</div>
+              </div>
+            </div>
+            <p class="note">
+              An attributed statement + sourcing metadata in an article-provenance envelope. Drop any single
+              claim into context and <strong>it still knows where it came from.</strong> The <code>claim_id</code>
+              is the handle <code>verify</code> and correction-tracking hang off later.
+            </p>
+          </section>
+        </div>
+
+        <footer class="foot">
+          <p class="mono">
+            THE REMAINING RISK IS UPSTREAM OF THE SCHEMA: CLAIMS ONLY STAY CLEAN IF THE
+            EDITORIAL PIPELINE MINTS THEM CONSISTENTLY — A NEWSROOM-TOOLING PROBLEM THIS CONCEPT DOESN'T SOLVE.
+          </p>
+        </footer>
+      </div>
+    </div>
+  </body>
+</html>
+
+<style>
+  :root {
+    --board-bg: #eff3f6;
+    --panel-bg: #ffffff;
+    --panel-line: #32404f1f;
+    --reject: #b0553f;
+    --accept: #2f7d63;
+    --wapo-blue: #6b8afd;
+  }
+
+  body {
+    background: #e2e7ec;
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+  }
+
+  /* Fixed capture canvas. */
+  .stage {
+    width: 1600px;
+    height: 1200px;
+    flex: 0 0 auto;
+  }
+  .artboard {
+    width: 1600px;
+    height: 1200px;
+    background: var(--board-bg);
+    padding: 64px 72px 56px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---- header ---- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    color: var(--faint);
+    margin-bottom: 20px;
+  }
+  h1 {
+    font-family: var(--font-serif);
+    font-size: 40px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--fg);
+    margin-bottom: 16px;
+  }
+  .principle {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--muted);
+    max-width: 980px;
+  }
+  .principle em {
+    font-style: italic;
+    color: var(--fg);
+  }
+
+  /* ---- columns ---- */
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-top: 40px;
+    align-items: start;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+  }
+  .col-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .cand {
+    font-family: var(--font-serif);
+    font-size: 27px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+  }
+  .verdict {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .verdict.reject { color: var(--reject); }
+  .verdict.accept { color: var(--accept); }
+
+  /* ---- panel shared ---- */
+  .panel {
+    height: 600px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-line);
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 1px 2px #32404f0d, 0 8px 24px -16px #32404f30;
+    overflow: hidden;
+  }
+  .col.selected .panel {
+    border: 2px solid var(--wapo-blue);
+    box-shadow: 0 1px 2px #32404f0d, 0 12px 32px -14px #6b8afd55;
+  }
+
+  .note {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin-top: 18px;
+    min-height: 84px;
+  }
+  .note strong { color: var(--fg); font-weight: 600; }
+  .note code {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    background: #32404f0f;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  .mono { font-family: var(--font-mono); }
+  .missing { color: var(--faint); }
+  .warn { color: var(--reject); }
+
+  /* ---- 1 · article blob ---- */
+  .panel-tag {
+    font-size: 12px;
+    color: var(--faint);
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+    border-bottom: 1px dashed var(--panel-line);
+  }
+  .blob { display: flex; flex-direction: column; gap: 14px; }
+  .blob-line {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    line-height: 1.42;
+    color: var(--fg);
+    padding-left: 12px;
+    border-left: 3px solid;
+  }
+  .blob-line[data-kind='fact'] { border-color: #6b8afd; }
+  .blob-line[data-kind='quote'] { border-color: #d98a3d; }
+  .blob-line[data-kind='analysis'] { border-color: #9b7fce; }
+  .kind {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-right: 8px;
+    vertical-align: 2px;
+  }
+  .kind-fact { background: #6b8afd1f; color: #4a63c9; }
+  .kind-quote { background: #d98a3d24; color: #a8641f; }
+  .kind-analysis { background: #9b7fce22; color: #6f52a3; }
+
+  /* ---- 2 · headline ---- */
+  .headline-card {
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    padding: 18px;
+    margin-bottom: 22px;
+  }
+  .hl-text {
+    font-family: var(--font-serif);
+    font-size: 21px;
+    line-height: 1.3;
+    color: var(--fg);
+    margin-bottom: 16px;
+  }
+  .hl-date {
+    font-size: 12.5px;
+    color: var(--faint);
+  }
+  .fields { display: flex; flex-direction: column; gap: 12px; }
+  .fields.dim { opacity: 0.92; }
+  .fields > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    border-bottom: 1px dotted var(--panel-line);
+    padding-bottom: 11px;
+  }
+  .fields > div:last-child { border-bottom: none; }
+  .fields dt { font-size: 12.5px; color: var(--faint); }
+  .fields dd { font-size: 12.5px; color: var(--fg); text-align: right; }
+
+  /* ---- 3 · chunk ---- */
+  .chunk { display: flex; flex-direction: column; gap: 0; }
+  .cut {
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+    color: var(--reject);
+    opacity: 0.75;
+    padding: 4px 0;
+  }
+  .chunk-text {
+    font-family: var(--font-serif);
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--fg);
+    border-top: 1px dashed var(--reject);
+    border-bottom: 1px dashed var(--reject);
+    padding: 14px 0;
+    margin: 4px 0;
+  }
+  .orphan {
+    font-size: 12.5px;
+    color: var(--fg);
+    margin-top: 18px;
+    line-height: 1.5;
+  }
+
+  /* ---- 4 · claim ---- */
+  .claim-id {
+    font-size: 12px;
+    color: var(--faint);
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--panel-line);
+  }
+  .claim-id .k, .env-row .k { color: var(--wapo-blue); margin-right: 8px; }
+  .statement {
+    font-family: var(--font-serif);
+    font-size: 20px;
+    line-height: 1.3;
+    color: var(--fg);
+    margin-bottom: 14px;
+  }
+  .attr-block {
+    padding-left: 14px;
+    border-left: 2px solid #6b8afd55;
+    margin-bottom: 14px;
+  }
+  .attr-block .env-label {
+    color: #4a63c9;
+    margin-bottom: 8px;
+  }
+  .col.selected .fields > div { padding-bottom: 8px; }
+  .fields.tight > div { padding-bottom: 6px; }
+  .col.selected .fields { margin-bottom: 14px; }
+  .envelope {
+    background: #6b8afd0f;
+    border: 1px solid #6b8afd33;
+    border-radius: 10px;
+    padding: 13px 14px;
+  }
+  .env-label {
+    display: block;
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #4a63c9;
+    margin-bottom: 9px;
+  }
+  .env-row {
+    font-size: 12px;
+    color: var(--fg);
+    line-height: 1.5;
+    word-break: break-word;
+  }
+  .env-row + .env-row { margin-top: 6px; }
+
+  /* ---- footer ---- */
+  .foot {
+    margin-top: auto;
+    padding-top: 22px;
+    border-top: 1px solid var(--panel-line);
+  }
+  .foot p {
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    line-height: 1.7;
+    color: var(--faint);
+    max-width: 1100px;
+  }
+</style>

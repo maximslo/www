@@ -35,10 +35,6 @@ const links = [
         </a>
       </nav>
 
-      <a href="/" class="wordmark" aria-label="Home">
-        <span class="spark">✦</span> YN
-      </a>
-
       <button class="menu-toggle" type="button" aria-label="Toggle menu" aria-expanded="false">
         <span class="menu-icon">
           <span></span>
@@ -145,20 +141,6 @@ const links = [
     color: #0ea5e9;
   }
 
-  /* Right: wordmark */
-  .wordmark {
-    font-family: var(--font-mono);
-    font-weight: 600;
-    font-size: var(--fs-label);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--fg);
-    white-space: nowrap;
-  }
-  .spark {
-    color: var(--accent);
-  }
-
   /* Hamburger toggle (mobile only) */
   .menu-toggle {
     display: none;
@@ -232,9 +214,6 @@ const links = [
       justify-content: flex-end;
     }
     .nav {
-      display: none;
-    }
-    .wordmark {
       display: none;
     }
     .menu-toggle {

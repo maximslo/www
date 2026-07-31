@@ -1,0 +1,496 @@
+---
+// Reverse-engineered from the terminal block on kiro.dev/blog/new-look-for-cli
+// (data-component="terminal-block"). Faithful translation of its Tailwind
+// utilities + "prey" palette into plain CSS. The asciinema cast player inside
+// is replaced with a scripted session: an intro logo animation (The Washington
+// Post's console easter-egg "wp", like Kiro's animated intro), then a mock
+// flow of wapo: init lands on a welcome screen, then a --since cursor check
+// returns the golden no_changes response.
+interface Props {
+  cols?: number;
+  rows?: number;
+  title?: string;
+}
+
+const { cols = 80, rows = 24, title } = Astro.props;
+const label = title ?? `Terminal — ${cols}×${rows}`;
+---
+
+<div class="term-root" data-cols={cols}>
+  <!-- carries the font-size the fit script scales, like the original's style="font-size:16px" wrapper -->
+  <div class="term-sizer">
+    <div class="term-shell">
+      <div class="term-titlebar">
+        <div class="term-dots" aria-hidden="true">
+          <span class="term-dot"></span>
+          <span class="term-dot"></span>
+          <span class="term-dot"></span>
+        </div>
+        <p class="term-title">{label}</p>
+        <!-- mirrors the dots' width (3 × 8.8px + 2 × 8px gaps) so justify-between stays balanced -->
+        <div class="term-spacer" aria-hidden="true"></div>
+      </div>
+      <div class="term-screen">
+        <div class="term-pad">
+          <pre
+            class="term-grid"
+            style={`width:${cols}ch;height:calc(${rows} * 1.2em)`}><span class="term-text"></span><span class="term-cursor"></span></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  // The Washington Post's console easter egg — the blackletter "wp" that
+  // prints in devtools on every washingtonpost.com page.
+  const LOGO = [
+    '   ▄█▀',
+    '  ▄██',
+    ' ████▄',
+    '  █████   ▄█▄     ▄█▄      ▄█▄  ▐   ▄█▄',
+    '   ████ ▄█████▄ ▄█████▄  ▄█████▌▐ ▄█████▄',
+    '   ████▀  ▀████▀ ▀█████    ████▌▐▀  ▀████',
+    '   ████    ████   ▐████    ████▌▐    ████',
+    '  ▄████    ████   ▐████  ▄█████▌▐    ████',
+    '▄██████    ████   ▐████ ███████▌▐    ████',
+    '█▀ ████    ████   ▐████ ▀  ████▌▐    ████',
+    '   ████    ████   ▐████    ████▌▐    ████',
+    '   ████    ████   ▐████    ████▌▐    ████',
+    '   █████▄  █████▄ ▐██▀    ▄████▌▐▄▄  ████',
+    '   ▀███████▀███████▀    ▄██████▌▐███▄██▀',
+    '     ▀███▀   ▀███▀      █▀▀████▌▐▀███▀',
+    '       ▀       ▀           ████▌▐  ▀',
+    '                           ████▌▐',
+    '                           ████▀▐',
+    '                           ██▀',
+    '                           ▀',
+  ].map((row) => ' '.repeat(19) + row); // center the 41-col logo in the 80-col grid
+  // one banner, not two — a separate tagline and "Welcome to..." line said
+  // "wapo" and "structured news for agents" twice
+  const TAGLINE = "Welcome to wapo — The Washington Post's structured news for agents.";
+
+  // The logo is the CLI's own splash screen — it boots straight into an
+  // init + welcome landing screen in the same scene, no typed command.
+  // The help content renders as separate bordered boxes — one per section
+  // (Ramp CLI's own "─ Options ─" / "─ Commands ─" panel style), each with
+  // its own frame/label/name/description colors — rather than one box
+  // wrapping everything in a single flat color.
+  type HelpRow = { plain: string } | { name: string; desc: string };
+  type Segment = { cls: string; text: string };
+
+  const usageRows: HelpRow[] = [{ plain: '' }, { plain: '  wapo <command> [OPTIONS]' }, { plain: '' }];
+  const optionRows: HelpRow[] = [
+    { plain: '' },
+    { name: '--since TS', desc: 'Only changes after this timestamp' },
+    { name: '--reporting-only', desc: 'Exclude analysis and opinion claims' },
+    { name: '--agent', desc: 'Machine-readable JSON (default when piped)' },
+    { name: '--human', desc: 'Human-readable table (default in a terminal)' },
+    { plain: '' },
+  ];
+  const commandRows: HelpRow[] = [
+    { plain: '' },
+    { name: 'story', desc: 'Resolve a topic to a thread ID' },
+    { name: 'brief', desc: 'Current state of a story, with claims + provenance' },
+    { name: 'verify', desc: 'Check a claim against reporting' },
+    { plain: '' },
+  ];
+  const HELP_SECTIONS: { label: string; rows: HelpRow[] }[] = [
+    { label: 'Usage', rows: usageRows },
+    { label: 'Options', rows: optionRows },
+    { label: 'Commands', rows: commandRows },
+  ];
+
+  // width is shared across all boxes (driven by whichever section's
+  // longest line needs the most room), not computed per box — otherwise
+  // Usage, Options, and Commands each end up a different width
+  const nameWidthOf = (rows: HelpRow[]) => Math.max(0, ...rows.map((r) => ('name' in r ? r.name.length : 0)));
+  const lineText = (r: HelpRow, nameWidth: number) =>
+    'plain' in r ? r.plain : `  ${r.name.padEnd(nameWidth)}   ${r.desc}`;
+  const HELP_WIDTH = Math.max(
+    ...HELP_SECTIONS.map(({ label, rows }) => {
+      const nameWidth = nameWidthOf(rows);
+      return Math.max(label.length + 4, ...rows.map((r) => lineText(r, nameWidth).length)) + 2;
+    })
+  );
+
+  // builds one section's boxed rows as colored segments (frame / label /
+  // flag name / description) instead of one flat string, so a flag name
+  // can match the wp logo's blue while its description stays muted
+  const boxSection = (label: string, rows: HelpRow[]): Segment[][] => {
+    const nameWidth = nameWidthOf(rows);
+    const dashes = Math.max(1, HELP_WIDTH - label.length - 3);
+    const top: Segment[] = [
+      { cls: 't-frame', text: '┌─ ' },
+      { cls: 't-label', text: label },
+      { cls: 't-frame', text: ` ${'─'.repeat(dashes)}┐` },
+    ];
+    const bottom: Segment[] = [{ cls: 't-frame', text: `└${'─'.repeat(HELP_WIDTH)}┘` }];
+    const mid = rows.map((r): Segment[] => {
+      const text = lineText(r, nameWidth).padEnd(HELP_WIDTH - 2);
+      const content: Segment[] =
+        'plain' in r
+          ? [{ cls: 't-usage', text }]
+          : [
+              { cls: 't-opt-name', text: text.slice(0, 2 + nameWidth) },
+              { cls: 't-opt-desc', text: text.slice(2 + nameWidth) },
+            ];
+      return [{ cls: 't-frame', text: '│ ' }, ...content, { cls: 't-frame', text: ' │' }];
+    });
+    return [top, ...mid, bottom];
+  };
+  const HELP_BOXES = HELP_SECTIONS.map(({ label, rows }) => boxSection(label, rows));
+
+  const CMD = 'wapo brief /econ/fed-2026 --since 2026-07-18T14:00Z --human';
+
+  // the "golden response": nothing changed since the agent's cursor —
+  // tiny, nearly free to compute, and the call agents make most often.
+  // --human renders it as the one line it actually is, not a one-row table.
+  const RESPONSE = 'no changes since 2026-07-18T14:00Z · thread updated 4h ago';
+
+  const OUTRO = '# no_changes — context still true · 1 call · nothing to re-read';
+
+  document.querySelectorAll<HTMLElement>('.term-root').forEach((root) => {
+    const sizer = root.querySelector<HTMLElement>('.term-sizer');
+    const grid = root.querySelector<HTMLElement>('.term-grid');
+    const text = root.querySelector<HTMLElement>('.term-text');
+    if (!sizer || !grid || !text) return;
+
+    // The original player scales the wrapper's font-size so the full 80-column
+    // grid (sized in ch) always fits its container; same trick here.
+    const fit = () => {
+      sizer.style.fontSize = '13px';
+      const needed = grid.offsetWidth + 56; // + .term-pad's left+right padding (28px each)
+      const scale = Math.min(1, root.clientWidth / needed);
+      // round to a whole pixel — box-drawing glyphs only tile seamlessly at
+      // integer font sizes; a fractional size leaves hairline gaps between cells
+      sizer.style.fontSize = `${Math.max(1, Math.floor(13 * scale))}px`;
+    };
+    fit();
+    new ResizeObserver(fit).observe(root);
+
+    // same 80-col grid the titlebar label and LOGO's own hand-centering
+    // assume — read from data-cols instead of a second hardcoded 80
+    const gridCols = Number(root.dataset.cols) || 80;
+    const center = (str: string) => ' '.repeat(Math.max(0, Math.floor((gridCols - str.length) / 2))) + str;
+
+    const clear = () => (text.textContent = '');
+    const scroll = () => (grid.scrollTop = grid.scrollHeight);
+    const span = (cls: string, content = '') => {
+      const s = document.createElement('span');
+      s.className = cls;
+      s.textContent = content;
+      text.appendChild(s);
+      scroll();
+      return s;
+    };
+
+    const renderCommand = () => {
+      span('t-prompt', '$ ');
+      return span('t-cmd');
+    };
+
+    const renderFinal = () => {
+      clear();
+      renderCommand().textContent = CMD;
+      span('t-dim', '\n');
+      span('t-ok', RESPONSE + '\n');
+      span('t-note', OUTRO + '\n');
+      span('t-prompt', '$ ');
+      scroll();
+    };
+
+    const run = async () => {
+      for (;;) {
+        // 1. intro: the wp logo reveals row by row, like Kiro's animated open —
+        // then, in the same scene (no clear, no typed command), it boots
+        // straight into an init + welcome landing screen right under the art
+        clear();
+        for (const row of LOGO) {
+          span('t-logo', row + '\n');
+          await sleep(45);
+        }
+        await sleep(300);
+        span('t-tag', '\n' + center(TAGLINE));
+        await sleep(900);
+
+        span('t-dim', '\n\n');
+        const initLine = span('t-init', '● Initializing...');
+        await sleep(1300);
+        initLine.className = 't-ok';
+        initLine.textContent = '✔ Initialized';
+        await sleep(450);
+        span('t-dim', '\n\n');
+        // without this pause, the two blank lines above and the first help
+        // row below land in the same synchronous tick — the browser never
+        // gets a frame to paint the blank lines alone, so the scroll that
+        // makes room for both appears as one jump instead of two smooth steps
+        await sleep(80);
+        // reveal line by line (not all at once) so the boxes scroll into
+        // place the same way everything else in this scene does
+        for (let i = 0; i < HELP_BOXES.length; i++) {
+          if (i > 0) {
+            span('t-dim', '\n');
+            await sleep(180);
+          }
+          for (const row of HELP_BOXES[i]) {
+            row.forEach((seg) => span(seg.cls, seg.text));
+            span('t-frame', '\n');
+            await sleep(35);
+          }
+        }
+        // one more blank line so the command doesn't sit flush against the
+        // closing border — added here, before the pause, so the cursor is
+        // already resting where the command will run for the whole pause
+        // instead of jumping down again the moment typing starts
+        span('t-dim', '\n');
+        await sleep(2600);
+
+        // 2. from that landing screen, the agent runs a --since cursor
+        // check — scrolling the box out of view instead of clearing,
+        // like a real continuous session rather than a scene cut
+        const cmd = renderCommand();
+        for (const ch of CMD) {
+          cmd.textContent += ch;
+          scroll();
+          await sleep(18 + Math.random() * 30);
+        }
+        await sleep(450);
+        span('t-dim', '\n');
+        // same reasoning as the help-box pause above: without a yield here,
+        // this blank line and the response line right after it both land
+        // before the next paint, so the terminal scrolls both into place at
+        // once — a visible jump right where the typed command finishes.
+        await sleep(80);
+
+        // 3. the golden no_changes line streams back — one shot, no follow-up calls
+        span('t-ok', RESPONSE + '\n');
+        await sleep(500);
+        span('t-note', OUTRO + '\n');
+        span('t-prompt', '$ ');
+        scroll();
+        await sleep(9000);
+      }
+    };
+
+    if (REDUCED) {
+      renderFinal();
+      return;
+    }
+
+    // Only start once the terminal scrolls into view
+    let started = false;
+    const io = new IntersectionObserver((entries) => {
+      if (started || !entries.some((e) => e.isIntersecting)) return;
+      started = true;
+      io.disconnect();
+      run();
+    });
+    io.observe(root);
+  });
+</script>
+
+<style>
+  /* kiro.dev "prey" palette (from their compiled Tailwind CSS) */
+  .term-root {
+    /* the scripted session clears and rebuilds .term-text on every loop
+       restart; without this, CSS scroll anchoring picks a node inside the
+       terminal as its anchor and yanks the whole page's scroll position
+       to compensate as that node's layout shifts mid-rebuild */
+    overflow-anchor: none;
+    --prey-100: hsl(260 12% 95%);
+    --prey-300: hsl(263 7% 76%);
+    --prey-400: hsl(260 6% 58%);
+    --prey-500: hsl(0 0% 36%);
+    --prey-600: hsl(267 6% 29%);
+    --prey-700: hsl(266 13% 21%);
+    --prey-750: hsl(264 12% 16%);
+    --prey-900: hsl(266 14% 10%);
+    --wapo-blue: #6b8afd;
+  }
+
+  .term-sizer {
+    font-size: 13px;
+  }
+
+  /* mx-auto w-fit max-w-full overflow-hidden rounded-2xl bg-prey-750 md:rounded-[32px] */
+  .term-shell {
+    margin-inline: auto;
+    width: fit-content;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: 16px;
+    background: var(--prey-750);
+  }
+  @media (min-width: 768px) {
+    .term-shell {
+      border-radius: 32px;
+    }
+  }
+
+  /* relative flex h-11 items-center justify-between border-b border-prey-700 px-4 py-1 */
+  .term-titlebar {
+    position: relative;
+    display: flex;
+    height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--prey-700);
+    padding: 4px 16px;
+  }
+
+  .term-dots {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  /* h-[8.8px] w-[8.8px] rounded-full bg-prey-600 */
+  .term-dot {
+    width: 8.8px;
+    height: 8.8px;
+    border-radius: 9999px;
+    background: var(--prey-600);
+  }
+
+  /* font-sans text-sm leading-[2] tracking-[-0.14px] text-prey-300 */
+  /* .term-titlebar-qualified selector, not just .term-title: the site's
+     global `.prose p { color: var(--muted); margin-bottom: 20px }` rule (in
+     [slug].astro) has higher specificity than a single class and was
+     silently winning on color, and its margin was throwing off centering.
+     position:absolute + a transform keyed to the border-box (not the
+     margin-box) sidesteps that stray margin entirely, so it's zeroed here
+     mainly for clarity/safety rather than because it's still load-bearing. */
+  .term-titlebar .term-title {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 2;
+    letter-spacing: -0.14px;
+    color: var(--prey-300);
+  }
+
+  .term-spacer {
+    width: 42.4px;
+  }
+
+  /* relative bg-prey-900 > p-4 */
+  .term-screen {
+    position: relative;
+    background: var(--prey-900);
+  }
+  .term-pad {
+    padding: 16px 28px;
+  }
+
+  /* font-code text-prey-400, width:80ch, height:calc(24 * 1.2em), line-height:1.2 */
+  .term-grid {
+    font-family: var(--font-mono);
+    font-size: 1em;
+    color: var(--prey-400);
+    line-height: 1.2;
+    margin: 0;
+    overflow: hidden;
+    /* pre, not pre-wrap: fit() already scales font-size so every row's
+       natural width fits; wrapping would let one row's overflow spill
+       into the next line and shift rows that should stay independent */
+    white-space: pre;
+  }
+
+  .term-grid :global(.t-logo) {
+    color: var(--wapo-blue);
+    /* Geist Mono has no glyphs for block-drawing chars (▄█▀▐▌), so it falls
+       back per-character to the next font in --font-mono; mixed fonts in one
+       run have mismatched advance widths and leave hairline seams between
+       cells. Pin the logo to a single font with full block-glyph coverage. */
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  .term-grid :global(.t-tag) {
+    color: var(--prey-400);
+  }
+  .term-grid :global(.t-prompt) {
+    color: var(--prey-500);
+  }
+  .term-grid :global(.t-cmd) {
+    color: var(--prey-100);
+  }
+  .term-grid :global(.t-dim) {
+    color: var(--prey-500);
+  }
+  /* help box: dim frame, bright section label, flag/command names in the
+     same blue as the wp ascii art, descriptions a step more muted */
+  .term-grid :global(.t-frame) {
+    color: var(--prey-600);
+  }
+  .term-grid :global(.t-label) {
+    color: var(--prey-300);
+  }
+  .term-grid :global(.t-usage) {
+    color: var(--prey-100);
+  }
+  .term-grid :global(.t-opt-name) {
+    color: var(--wapo-blue);
+  }
+  .term-grid :global(.t-opt-desc) {
+    color: var(--prey-400);
+  }
+  .term-grid :global(.t-note) {
+    color: var(--prey-500);
+    font-style: italic;
+  }
+  .term-grid :global(.t-ok) {
+    color: #4ade80;
+  }
+  /* loading shimmer: a bright band sweeps across the dim text, like a
+     skeleton-loader gradient rather than a rotating spinner glyph */
+  .term-grid :global(.t-init) {
+    background: linear-gradient(90deg, var(--prey-500) 35%, var(--prey-100) 50%, var(--prey-500) 65%);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: term-shimmer 1.1s linear infinite;
+  }
+  @keyframes term-shimmer {
+    from {
+      background-position: 180% 0;
+    }
+    to {
+      background-position: -80% 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .term-grid :global(.t-init) {
+      animation: none;
+      background: none;
+      -webkit-background-clip: unset;
+      background-clip: unset;
+      color: var(--prey-500);
+    }
+  }
+
+  .term-cursor {
+    display: inline-block;
+    width: 1ch;
+    height: 1.1em;
+    vertical-align: text-bottom;
+    background: var(--prey-300);
+    animation: term-blink 1.1s steps(1) infinite;
+  }
+  @keyframes term-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .term-cursor {
+      animation: none;
+    }
+  }
+</style>

@@ -1,0 +1,417 @@
+---
+title: Designing a CLI for AI agents
+company: WASHINGTON POST
+status: Concept
+year: 2026
+order: 99
+role: Design Engineer
+timeline: Jul 2026
+team: Solo
+skills:
+  - Product Design
+  - Systems Design
+  - Prototyping
+  - CSS
+draft: true
+---
+
+import Terminal from '../../components/Terminal.astro';
+import CodeWindow from '../../components/CodeWindow.astro';
+import ProgressSpinner from '../../components/ProgressSpinner.astro';
+
+## The element
+
+### wapo-cli: a Washington Post concept where the "user" is an agent.
+
+Every other case study on this site is designed for a person reading a screen. This one isn't — the user is an LLM agent calling a command and parsing whatever comes back. <Terminal /> 
+
+## Why a CLI for agents
+
+### Agents don't want a webpage. They want a schema.
+
+In 2025, The Post signed a deal with OpenAI that allows display-only license of its journalism.
+
+This CLI is for startups, solo developers, or research shops. Fresh, verified reporting sold at API-call instead of licensing-deal pricing for everyone that isn't OpenAI.
+
+## Design system
+
+### Four conventions carry the entire interface.
+
+None of these are novel — they're the load-bearing patterns good CLIs already converge on ([Specify](https://specifyapp.com/blog/designing-specify-cli), [Atlassian](https://www.atlassian.com/blog/it-teams/10-design-principles-for-delightful-clis), Ramp's own CLI). The work here was picking the smallest set that covers a newsroom's needs and giving each one a single implementation every command shares, instead of every command re-inventing its own output.
+
+#### 1. Semantic, short `--help`
+
+Usage, then options, then commands — one line each, no prose paragraphs. `--agent`/`--human` isn't a bolt-on flag we invented; it's lifted wholesale from Ramp's own CLI, which already ships exactly this convention for telling machine output from human output apart.
+
+<CodeWindow title="wapo-cli --help">
+
+```text
+$ wapo-cli --help
+Usage
+  wapo-cli <command> [OPTIONS]
+
+Options
+  -t, --topic TEXT       Filter by topic or keyword
+  --hours INT            Look back this many hours (default: 24)
+  --verified-only        Drop unverified / developing reports
+  --agent                Machine-readable JSON (default when piped)
+  --human                Human-readable table (default in a terminal)
+
+Commands
+  query        Search recent reporting
+  consensus    Check reporter agreement on a claim
+  diff         See what changed on a story since a given time
+```
+
+</CodeWindow>
+
+#### 2. Progress, narrated
+
+Every multi-step command prints what it's doing as it happens — not a spinner, a log. Each line is a present-tense verb phrase, prefixed with the same status glyph an agent gets back in `meta.steps`.
+
+<CodeWindow title="wapo-cli query">
+
+```text
+$ wapo-cli query --topic breaking-news --hours 2 --verified-only
+```
+
+<ProgressSpinner />
+
+</CodeWindow>
+
+#### 3. A reaction for everything
+
+No command ends on raw output. It closes with one plain-English sentence recapping what happened — the same sentence whether 6 stories matched or zero did, so an agent parsing stdout (or a person skimming it) never has to infer the outcome from a list's length.
+
+<div class="cols">
+
+<CodeWindow title="zsh">
+
+```text
+✔ Found 6 verified stories in the last 2h. Held back 41 that didn't clear the verification bar.
+```
+
+</CodeWindow>
+
+<CodeWindow title="zsh">
+
+```text
+✔ No verified stories in the last 2h. 12 unverified reports are still developing.
+```
+
+</CodeWindow>
+
+</div>
+
+#### 4. Built for skimming
+
+Headline first, detail indented under it, a blank line between blocks. Nobody reads a CLI top to bottom — they scan for the glyph and the first six words.
+
+<CodeWindow title="zsh">
+
+```text
+✔ Created query
+
+  Verified: 6
+  Held back: 41 unverified
+
+✔ Query complete
+```
+
+</CodeWindow>
+## Design system
+### Rethinking the architecture
+Here are new glyphs I created to capture the complexity of newsroom reporting:
+
+<div class="spec-row dark">
+  <div class="spec">
+    <span class="spec-label mono">status</span>
+    <div class="spec-body">
+      <p><span class="st-success">✔</span> SUCCEEDED</p>
+      <p><span class="st-error">⨯</span> FAILED</p>
+      <p><span class="st-warning">▲</span> WARNING</p>
+      <p><span class="st-info">i</span> INFO</p>
+    </div>
+  </div>
+  <div class="spec">
+    <span class="spec-label mono">trust</span>
+    <div class="spec-body">
+      <p><span class="st-verified">●</span> VERIFIED</p>
+      <p><span class="st-unverified">○</span> UNVERIFIED</p>
+    </div>
+  </div>
+  <div class="spec-col">
+    <div class="spec">
+      <span class="spec-label mono">temporal</span>
+      <div class="spec-body">
+        <p><span class="live-badge" aria-hidden="true"></span> DEVELOPING</p>
+      </div>
+    </div>
+    <div class="spec">
+      <span class="spec-label mono">correction</span>
+      <div class="spec-body">
+        <p><span class="st-corrected">◉</span> CORRECTED</p>
+        <p><span class="st-flagged">◎</span> FLAGGED</p>
+      </div>
+    </div>
+  </div>
+  <div class="spec">
+    <span class="spec-label mono">confidence</span>
+    <div class="spec-body">
+      <p><span class="meter-fill">▰▰▰▰</span><span class="meter-empty">▱</span> 92%</p>
+      <p><span class="meter-fill">▰▰▰</span><span class="meter-empty">▱▱</span> 61%</p>
+      <p><span class="meter-fill">▰</span><span class="meter-empty">▱▱▱▱</span> 28%</p>
+    </div>
+  </div>
+</div>
+
+The first big decision was evolving my thinking about reporting having "status" entirely.
+
+A news article can be wrong, not just outdated. It's a best-available claim about a state that might get overturned.
+
+To handle this new dimension of metadata, I introduced a developing flag because the CLI must be upfront that a specific answer might be wrong later. Traditional CLI's flag progress, news has to flag fallibility. 
+
+
+This CLI exists to make news actionable for agents with structured output. trust metadata, retrieval-backed freshness.
+
+What I'm selling isn't analysis. It's access to verified, structured, fresh source material that agents couldn't get anywhere else without our CLI. The same model as Bloomberg Terminal. Nobody pays Bloomberg for their AI to think, they pay for verified, timestamped, structured financial data that's authoritative enough to act on.
+
+What exactly are they paying for, since the raw text is technically free on your website?
+
+First, structure. Free-scraping your site gets an agent messy HTML. Your CLI gets it clean JSON with fields already parsed, no cost to the agent in tokens or errors, which is real value even if the underlying facts are public.
+Second, verification metadata. This is the part that's genuinely yours and genuinely hard to fake. A confidence_score or verified: true field isn't just data, it's a judgment your editorial process already made. An agent scraping your raw HTML doesn't get that judgment, it just gets prose. You're selling the output of your institutional trust process, packaged as a machine-readable signal. That's not something a competitor or a scraper can replicate just by copying your words.
+Third, legal legitimacy and access reliability. A scraper can get blocked, rate-limited, or sued. A paying CLI customer has a stable, licensed, guaranteed channel. For an agent running in production, that reliability is worth paying for on its own, independent of the content.
+
+The distinction that matters
+When an LLM outputs something with implicit uncertainty, that uncertainty is about the model's own internal state, how confident it is in the next token given its training and whatever's in its context window. That's model-confidence. It's notoriously poorly calibrated, it's not auditable, and it resets every time you run inference. You can't ask a model "why are you 97% confident" and get a real answer, it's a statistical artifact, not a claim about the world.
+Your confidence_score: 0.97 is a completely different kind of thing. It's not the model's confidence, it's the institution's confidence, derived from your editorial process, sourcing standards, how many independent confirmations you had, whether it's gone through fact-check. That number is grounded in a verifiable human process outside the model entirely. It's auditable. You could defend it in a lawsuit. A model's internal confidence can't be defended at all, it's just vibes shaped by training data.
+The second thing that's actually new: developing: true
+This one's more interesting than it looks. It's not expressing "the model is unsure," it's expressing "the world itself hasn't settled yet." Those are ontologically different kinds of uncertainty. A model can be highly confident about something that later turns out false, because confidence there measures fluency and pattern match, not the actual stability of the underlying event. Your CLI can say "this story exists, is real, but the facts inside it are still moving," which is a claim no LLM's internal state can make, because the model has no concept that a fact it just generated might get updated tomorrow.
+Where the real value sits: correction propagation
+This is probably the sharpest point. If a model says something wrong, that's frozen in the weights until the next training run, months away. If your index issues a correction, every agent that queries after that timestamp gets the corrected fact immediately. That's a live epistemic update mechanism that literally doesn't exist inside a model. It only exists because you separated "where facts live" from "what does the reasoning."
+So what's actually novel about a news CLI, stated plainly
+It's not exposing a number where there wasn't one before, agents can already produce numbers. It's exposing a number that means something different, institutional verification confidence instead of model self-confidence, plus a live correction channel the model itself can never have. That combination, epistemic state that's grounded, auditable, and updatable outside the model, is the actual product. The CLI is just the delivery mechanism for it.
+
+<CodeWindow title="status.ts" variant="plain">
+
+```ts
+type Status =
+  | 'success'
+  | 'error'
+  | 'warning'
+  | 'info'
+  | 'verified'
+  | 'unverified'
+  | 'corrected'
+  | 'flagged';
+
+const STATUS: Record<Status, { glyph: string; word: string }> = {
+  success: { glyph: '✔', word: 'SUCCEEDED' },
+  error: { glyph: '⨯', word: 'FAILED' },
+  warning: { glyph: '▲', word: 'WARNING' },
+  info: { glyph: 'i', word: 'INFO' },
+  verified: { glyph: '●', word: 'VERIFIED' },
+  unverified: { glyph: '○', word: 'UNVERIFIED' },
+  corrected: { glyph: '◉', word: 'CORRECTED' },
+  flagged: { glyph: '◎', word: 'FLAGGED' },
+};
+
+// used by progress lines, reaction sentences, and --help alike
+function line(status: Status, message: string) {
+  return `${STATUS[status].glyph} ${message}`;
+}
+```
+
+</CodeWindow>
+
+A CLI's status registry assumes every signal reduces to one of a handful of named, mutually-exclusive states — true of `corrected`/`flagged`, so they just slot into `Status` above as two more entries. `confidence` and `developing` don't reduce that way: confidence is continuous, not a name, and a story can be `verified` and still `developing` at the same time — it's not an alternative to success/error, it's a second axis. Forcing either into `Status` would mean either faking discrete buckets for a gradient or making `developing` mutually exclusive with the outcome it's actually independent of. So they get their own shapes instead of a seventh and eighth entry:
+
+<CodeWindow title="confidence.ts" variant="plain">
+
+```ts
+// Not a status — a gradient no enum can represent without lying about
+// where the boundaries are.
+function confidenceMeter(score: number, steps = 5) {
+  const filled = Math.round(score * steps);
+  return '▰'.repeat(filled) + '▱'.repeat(steps - filled);
+}
+
+// Not a status either — orthogonal to it. A story can be `verified`
+// and `developing` at once, so this rides alongside Status, not inside it.
+interface StorySignals {
+  status: Status;
+  developing: boolean;
+  confidence: number; // 0–1, rendered via confidenceMeter()
+}
+```
+
+</CodeWindow>
+
+The interesting design constraint here isn't the code, it's the genre: a CLI's whole vocabulary — spinners, exit codes, `✔`/`⨯` — is built for work that's binary, done or not done. News mostly isn't. Most of what a newsroom knows is provisional, partial, or actively still moving, and the honest move is admitting that some signals don't fit the enum at all, rather than rounding them down to the nearest status until they do.
+
+### Two audiences, one code path
+
+`--agent` and `--human` aren't two renderers maintained in parallel — they're one payload with two views, so the JSON an agent gets and the table a person gets can never drift out of sync with each other.
+
+<CodeWindow title="respond.ts">
+
+```ts
+function respond<T extends object>(payload: T, toTable: (p: T) => string) {
+  const machineMode = flags.agent || (!flags.human && !process.stdout.isTTY);
+
+  if (machineMode) {
+    return JSON.stringify({ ...payload, meta: buildMeta(payload) }, null, 2);
+  }
+  return toTable(payload);
+}
+```
+
+</CodeWindow>
+
+## Case study: `wapo-cli query`
+
+### One command, composed from all four conventions.
+
+<CodeWindow title="wapo-cli query">
+
+```text
+$ wapo-cli query --topic breaking-news --hours 2 --verified-only --agent
+
+i Scanning live wire — 247 articles in window
+i Dropping 198 unverified / developing reports
+i Cross-checking reporter consensus on remaining 49
+
+{
+  "query": "breaking-news",
+  "results": [
+    {
+      "article_id": "wp-2026-0714-3821",
+      "headline": "Key Senate Race Called in Nevada",
+      "published_at": "2026-07-14T09:12:00Z",
+      "verified": true,
+      "confidence_score": 0.97,
+      "author": "J. Alvarez",
+      "corrections": [],
+      "related_articles": ["wp-2026-0714-3810"]
+    }
+  ],
+  "meta": {
+    "total_matches": 49,
+    "returned": 6,
+    "index_freshness": "live",
+    "schema_version": "1.2"
+  }
+}
+
+✔ Found 6 verified stories in the last 2h. Held back 41 that didn't clear the verification bar.
+```
+
+</CodeWindow>
+
+### The CLI is a thin shell. The trust index behind it is the moat.
+
+Any team can ship a fast CLI with an `--agent` flag — Ramp already has. What an agent can't get from a wire aggregator or a general-purpose chatbot is a newsroom's verification pipeline exposed as something it can query directly: whether a claim has reporter consensus, and what's changed since it last checked. That's not a CLI feature so much as the same institutional trust The Post has always sold, reformatted for a reader that happens to be a model. Train an agent to condition on `verified` and `confidence_score` enough times, and it starts preferring this source over an unverified one by default — not because it was told to, but because it learned the field is reliable.
+
+Two commands only a newsroom can build:
+
+#### `wapo-cli consensus` — agreement across reporters, not just one byline
+
+<CodeWindow title="wapo-cli consensus">
+
+```text
+$ wapo-cli consensus --story wp-2026-0714-3821 --agent
+
+{
+  "story_id": "wp-2026-0714-3821",
+  "claim": "Final count completed Tuesday morning",
+  "reporters": [
+    { "author": "J. Alvarez", "confirms": true, "filed_at": "2026-07-14T09:12:00Z" },
+    { "author": "R. Chen", "confirms": true, "filed_at": "2026-07-14T09:40:00Z" },
+    { "author": "wire/AP", "confirms": false, "note": "reports count ongoing as of 09:30Z" }
+  ],
+  "consensus": "majority",
+  "agreement_score": 0.82,
+  "meta": { "schema_version": "1.2" }
+}
+```
+
+</CodeWindow>
+
+<CodeWindow title="consensus.ts">
+
+```ts
+function consensus(claims: ReporterClaim[]) {
+  const confirms = claims.filter((c) => c.confirms).length;
+  const agreement_score = confirms / claims.length;
+  const consensus =
+    agreement_score === 1 ? 'unanimous' : agreement_score >= 0.5 ? 'majority' : 'disputed';
+
+  return { consensus, agreement_score, reporters: claims };
+}
+```
+
+</CodeWindow>
+
+#### `wapo-cli diff` — what changed since an agent last looked
+
+<CodeWindow title="wapo-cli diff">
+
+```text
+$ wapo-cli diff --story wp-2026-0714-3821 --since 1h --agent
+
+{
+  "story_id": "wp-2026-0714-3821",
+  "since": "2026-07-14T08:12:00Z",
+  "changes": [
+    {
+      "type": "correction",
+      "field": "vote_count",
+      "from": "51,204",
+      "to": "51,402",
+      "at": "2026-07-14T08:55:00Z"
+    },
+    {
+      "type": "addition",
+      "summary": "Added statement from county election board",
+      "at": "2026-07-14T09:05:00Z"
+    }
+  ],
+  "unchanged_claims": 4,
+  "meta": { "schema_version": "1.2" }
+}
+```
+
+</CodeWindow>
+
+An agent holding a story from an hour ago doesn't need to re-fetch and re-diff the whole article itself — it asks for the delta and gets back exactly what moved, correction-by-correction. That's the feature no chatbot's training cutoff and no aggregator's scrape job can offer: not faster prose, a live audit trail.
+
+## Teardown
+
+### Four values of a ten-step palette do all the work.
+
+Everything above is product design. This section is the opposite kind of work — not designing new behavior, but reverse-engineering someone else's pixels so the shell all of it renders inside is accurate down to the decimal.
+
+The `<Terminal />` demo's chrome is a faithful rebuild of the terminal block on [kiro.dev's CLI redesign post](https://kiro.dev/blog/new-look-for-cli/) (`data-component="terminal-block"`), whose shell resolves to a single Tailwind utility stack — `mx-auto w-fit max-w-full overflow-hidden rounded-2xl bg-prey-750 md:rounded-[32px]` — backed by a custom ten-step scale called `prey`, defined as raw HSL triplets in CSS variables. The shell is `prey-750`, the screen is `prey-900`, the titlebar border is `prey-700`, and the terminal text is `prey-400` — a two-surface layout where the chrome sits one step lighter than the screen it frames.
+
+<div class="cols">
+  <div>
+    <h4>The spacer trick</h4>
+    <p>The window dots are 8.8px circles with 8px gaps — 42.4px total. The titlebar ends with an empty 42.4px div, so `justify-between` stays visually balanced while the title is absolutely centered on top.</p>
+  </div>
+  <div>
+    <h4>A real character grid</h4>
+    <p>The screen isn't sized in pixels. It's `width: 80ch` and `height: calc(24 * 1.2em)` — an actual 80×24 tty, measured in characters and line-heights, exactly what the titlebar label claims.</p>
+  </div>
+  <div>
+    <h4>Font-size as zoom</h4>
+    <p>A wrapper carries `font-size: 16px` inline. Because the grid is sized in `ch` and `em`, scaling that one number rescales the whole terminal — that's how 80 columns fit on a phone.</p>
+  </div>
+</div>
+
+### What I swapped out.
+
+The real element is an asciinema player: the markup ships with a "Loading cast file..." placeholder, then JavaScript fetches a `.cast` recording and renders it frame by frame. I replaced the player with a scripted session — an `IntersectionObserver` starts it when the terminal scrolls into view, a `ResizeObserver` re-runs the font-size fit, output scrolls like a real tty, and `prefers-reduced-motion` renders the final transcript instantly instead of animating.
+
+Kiro's recording opens with an animated logo, so mine does too: the blackletter "wp" is The Washington Post's own console easter egg — the ASCII art that prints in devtools on every washingtonpost.com page — reconstructed line by line from a whitespace-mangled copy by brute-forcing the line breaks until the block glyphs' columns aligned.
+
+Everything else — the radii, the 44px titlebar, the 8.8px dots, the palette — matches the original to the decimal.

@@ -9,4 +9,12 @@ export default defineConfig({
   site: 'https://maximslo.com',
 
   integrations: [mdx()],
+
+  // dark theme — every code snippet on the site renders inside a dark
+  // CodeWindow terminal frame, so token colors need to sit on a dark screen
+  markdown: {
+    shikiConfig: {
+      theme: 'github-dark',
+    },
+  },
 });

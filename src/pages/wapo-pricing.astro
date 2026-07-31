@@ -1,0 +1,476 @@
+---
+// A standalone reskin exercise: Ramp's pricing-page layout (3-tier cards,
+// overlapping badge pill, highlighted middle tier, grouped checklists —
+// see ramp.com/pricing) rebuilt from scratch and filled with wapo's own
+// content from the terminal2 case study, not Ramp's copy. Not part of that
+// case study's flow — a standalone, unlinked companion page.
+import '../styles/global.css';
+
+interface FeatureGroup {
+  label: string;
+  items: string[];
+}
+
+interface Tier {
+  badge: string;
+  badgeStyle: 'grey' | 'accent' | 'black';
+  name: string;
+  priceMain: string;
+  priceUnit?: string;
+  priceSubLines: string[];
+  description: string;
+  ctaQuestion?: string;
+  ctaLabel: string;
+  ctaStyle: 'grey' | 'accent' | 'black';
+  featuresIntro: string;
+  featureGroups: FeatureGroup[];
+  highlighted?: boolean;
+}
+
+const integrations = ['Cursor', 'Claude', 'Codex', 'MCP', 'Other'];
+
+const tiers: Tier[] = [
+  {
+    badge: 'Metered',
+    badgeStyle: 'grey',
+    name: 'Pay-per-call',
+    priceMain: '$0.02',
+    priceUnit: '/call',
+    priceSubLines: [],
+    description: 'Best for small teams who\nwant the freshest news context.',
+    ctaQuestion: "What's your current integration?",
+    ctaLabel: 'Get your first 100 calls free',
+    ctaStyle: 'grey',
+    featuresIntro: 'Key features:',
+    featureGroups: [
+      {
+        label: 'story & brief',
+        items: [
+          'wapo story — resolve topics to threads',
+          'wapo brief — synthesized answer, claims as evidence',
+          'Every claim ships sourcing_tier + content_type',
+        ],
+      },
+      {
+        label: 'Trust',
+        items: ['License receipt on every response', 'Structured quote attribution (speaker, setting, date)'],
+      },
+    ],
+  },
+  {
+    badge: 'Up-to-date',
+    badgeStyle: 'accent',
+    name: 'Team',
+    priceMain: '$40',
+    priceUnit: '/mo/agent',
+    priceSubLines: ['+ platform fee based on agent count'],
+    description:
+      'Perfect for teams whose agents\nmonitor stories continuously.',
+    ctaQuestion: "What's your current integration?",
+    ctaLabel: 'Start monitoring threads',
+    ctaStyle: 'accent',
+    featuresIntro: 'All the features of Pay-per-call, and:',
+    featureGroups: [
+      {
+        label: 'Monitoring',
+        items: [
+          'wapo brief --since — cursor-based deltas, not re-search',
+          'no_changes: the cheapest, most honest response',
+          'Typed events: new_reporting, update, correction, contradiction',
+        ],
+      },
+      {
+        label: 'Verification',
+        items: [
+          'wapo verify — supported / contradicted / superseded / not_covered',
+          '--reporting-only excludes analysis and opinion from evidence',
+          'corrects_claim back-references for correction propagation',
+        ],
+      },
+    ],
+    highlighted: true,
+  },
+  {
+    badge: 'Fully licensed',
+    badgeStyle: 'black',
+    name: 'Newsroom',
+    priceMain: 'Custom',
+    priceSubLines: ['Annual billing'],
+    description:
+      'Specifically built for platforms that\nneed full corpus access on their own terms.',
+    ctaQuestion: "What's your current integration?",
+    ctaLabel: 'Contact sales',
+    ctaStyle: 'black',
+    featuresIntro: 'All the features of Team, and:',
+    featureGroups: [
+      {
+        label: 'Access',
+        items: ['Full corpus + archive, not just active threads', 'Custom rate limits and SLAs'],
+      },
+      {
+        label: 'Compliance',
+        items: ['Custom license terms, negotiated directly', 'Dedicated correction-propagation webhooks'],
+      },
+    ],
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <title>wapo — Pricing</title>
+    <meta name="description" content="Per-call pricing for wapo, The Washington Post's structured news CLI for agents." />
+    <link rel="icon" href="/fish.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="page">
+      <div class="tiers">
+        {
+          tiers.map((tier) => (
+            <div class={`tier ${tier.highlighted ? 'highlighted' : ''}`}>
+              <span class={`badge badge-${tier.badgeStyle}`}>{tier.badge}</span>
+
+              <div class="tier-body">
+                <h2 class="tier-name">{tier.name}</h2>
+                <p class="price">
+                  <span class="price-main">{tier.priceMain}</span>
+                  {tier.priceUnit && <span class="price-unit">{tier.priceUnit}</span>}
+                </p>
+                <div class="price-sublines">
+                  {tier.priceSubLines.map((line) => (
+                    <p>{line}</p>
+                  ))}
+                </div>
+
+                <p class="description">{tier.description}</p>
+
+                <div class="cta">
+                  {tier.ctaQuestion && (
+                    <div class="cta-pills">
+                      <p class="cta-pills-label">{tier.ctaQuestion}</p>
+                      <div class="pill-scroll">
+                        <div class="pill-row">
+                          {integrations.map((option) => (
+                            <button type="button" class="pill">
+                              {option}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <button type="button" class={`cta-button cta-${tier.ctaStyle}`}>
+                    {tier.ctaLabel}
+                  </button>
+                </div>
+
+                <hr class="divider" />
+
+                <p class="features-intro">{tier.featuresIntro}</p>
+
+                <div class="feature-groups">
+                  {tier.featureGroups.map((group) => (
+                    <div class="feature-group">
+                      <p class="feature-group-label">{group.label}</p>
+                      <ul class="feature-list">
+                        {group.items.map((item) => (
+                          <li>
+                            <svg class="check" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                              <path
+                                d="M3 8.5L6.5 12L13 4.5"
+                                stroke="currentColor"
+                                stroke-width="1.6"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              />
+                            </svg>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </body>
+</html>
+
+<script>
+  document.querySelectorAll('.pill-row').forEach((row) => {
+    row.addEventListener('click', (event) => {
+      const pill = (event.target as HTMLElement).closest('.pill');
+      if (!pill) return;
+      row.querySelectorAll('.pill').forEach((p) => p.classList.remove('selected'));
+      pill.classList.add('selected');
+    });
+  });
+</script>
+
+<style>
+  /* global.css sets body to the site's off-white --bg; this page overrides
+     it to plain white, scoped to just this page since it renders its own
+     <html><body> rather than going through BaseLayout */
+  body {
+    background: #fff;
+  }
+
+  .page {
+    max-width: 1320px;
+    margin-inline: auto;
+    padding: 96px 24px 120px;
+    /* tighter tracking across the page, closer to the reference's kerning —
+       inherits down to badges, buttons, feature list, etc. */
+    letter-spacing: -0.015em;
+  }
+
+  .tiers {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .tier {
+    position: relative;
+    background: #fff;
+    border: 1px solid #32404f40;
+    border-radius: 14px;
+    padding: 44px 28px 32px;
+  }
+  .tier.highlighted {
+    border: 3px solid var(--pricing-accent);
+    padding: 42px 26px 30px; /* -2px vs. the 1px default border, so cards stay aligned */
+  }
+
+  .badge {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    /* body's line-height:1.6 was inherited here uncontested, so the text's
+       own line box (22px+ at this font-size) dwarfed the padding — small
+       padding changes barely moved total height. Pin line-height so padding
+       actually drives it. */
+    line-height: 1;
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .badge-grey {
+    background: #f2f3f5;
+    color: var(--fg);
+  }
+  .badge-accent {
+    background: var(--pricing-accent);
+    color: #fff;
+  }
+  .badge-black {
+    background: #14161b;
+    color: #fff;
+  }
+
+  .tier-name {
+    font-family: var(--font-sans);
+    font-size: 1.8rem;
+    font-weight: 450;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+  }
+  .price {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    line-height: 1.2;
+    margin-bottom: 2px;
+  }
+  .price-main {
+    font-family: var(--font-sans);
+    font-size: 1.85rem;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    color: var(--muted);
+  }
+  .price-unit {
+    font-size: 1.85rem;
+    letter-spacing: -0.03em;
+    margin-left: -4px;
+    color: var(--faint);
+  }
+  /* fixed height regardless of 1 vs 2 sublines, so the CTA input below
+     lands on the same row across all three cards */
+  .price-sublines {
+    min-height: 2.8em;
+    margin-bottom: 24px;
+  }
+  .price-sublines p {
+    font-size: 0.8125rem;
+    color: var(--fg);
+    line-height: 1.4;
+  }
+
+  /* fixed height regardless of description length, for the same reason —
+     4.5em = 3 lines at this line-height (1.5em per line), not 3em, which
+     only reserves 2 and let the shortest description undershoot the rest */
+  .description {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: var(--fs-base);
+    line-height: 1.5;
+    margin-bottom: 2px;
+    min-height: 4.5em;
+    white-space: pre-line;
+  }
+
+  .cta {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .cta-pills-label {
+    font-family: var(--font-sans);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .pill-scroll {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #fff;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .pill-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .pill-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    width: max-content;
+  }
+  .pill {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: #f2f3f5;
+    font-family: var(--font-sans);
+    font-size: var(--fs-sm);
+    color: var(--fg);
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+  .pill:hover {
+    border-color: var(--faint);
+  }
+  .pill.selected {
+    border-color: var(--pricing-accent);
+    background: #eef1ff;
+    color: var(--pricing-accent);
+  }
+
+  .cta-button {
+    width: 100%;
+    padding: 14px 16px;
+    border: none;
+    border-radius: 5px;
+    font-family: var(--font-sans);
+    font-size: var(--fs-base);
+    font-weight: 500;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+  }
+  .cta-button:hover {
+    filter: brightness(0.96);
+  }
+  .cta-grey {
+    background: #f2f3f5;
+    color: var(--fg);
+  }
+  .cta-accent {
+    background: var(--pricing-accent);
+    color: #fff;
+  }
+  .cta-black {
+    background: #14161b;
+    color: #fff;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin-bottom: 24px;
+  }
+
+  .features-intro {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    margin-bottom: 20px;
+  }
+
+  .feature-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .feature-group-label {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: var(--fs-sm);
+    margin-bottom: 10px;
+  }
+  .feature-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .feature-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: var(--fs-sm);
+    color: var(--fg);
+    line-height: 1.4;
+  }
+  .check {
+    flex-shrink: 0;
+    margin-top: 3px;
+    color: var(--faint);
+  }
+
+  @media (max-width: 900px) {
+    .tiers {
+      grid-template-columns: 1fr;
+      max-width: 480px;
+      margin-inline: auto;
+    }
+    .title {
+      font-size: 2.1rem;
+    }
+  }
+</style>
+
+<style is:global>
+  :root {
+    /* same blue as the wp ascii-art logo in Terminal.astro (--wapo-blue) */
+    --pricing-accent: #6b8afd;
+  }
+</style>
