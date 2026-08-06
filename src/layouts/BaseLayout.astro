@@ -1,0 +1,189 @@
+---
+import "../styles/global.css";
+import Footer from "../components/Footer.astro";
+import geistSans from "../fonts/geist-sans-400-subset.woff2?url";
+import geistMono from "../fonts/geist-mono-300-subset.woff2?url";
+import geistMonoBox from "../fonts/geist-mono-300-box-subset.woff2?url";
+
+/*
+	Base64-inline the (heavily subsetted) fonts straight into <head>, at build
+	time, so there is never a fallback font on screen — not for one frame.
+
+	The old setup preloaded the fonts and relied on `font-display: swap` plus a
+	metrics-matched Arial face to make the swap invisible. Metrics matching gets
+	the SIZE right but can't fix letterforms or widths, so on a slow connection
+	you still saw Arial re-flow into Geist. Any fix that keeps the font in a
+	separate request has the same hole: preload still costs a round trip, and
+	`font-display` only lets you choose WHICH artifact you get (fallback text
+	with swap, invisible text with block, permanently-wrong text with optional).
+
+	A data: URI has no request at all. The @font-face is fully resolved the
+	moment this <style> is parsed, which is before the first paint of any text
+	below it, so the first frame is already Geist regardless of connection
+	speed. The base64 costs ~27kB raw but only ~20kB gzipped (compression eats
+	most of base64's 33% overhead), against the two font requests and ~43kB it
+	replaces — so the page is both lighter and two round trips shorter.
+
+	The `?url` imports become data: URIs because astro.config.mjs forces these
+	two through Vite's asset inliner. Importing them (rather than reading the
+	files off disk here) keeps them real module dependencies, so re-running
+	scripts/subset-fonts.sh invalidates them. Note that inlining is a BUILD
+	behaviour: `astro dev` serves /src/fonts/*.woff2 as ordinary URLs instead.
+	That's only ever localhost, where the fallback window doesn't exist — but
+	it does mean this particular fix can't be verified from the dev server.
+
+	`font-display: block` is belt-and-braces: with a data: URI there is no load
+	delay to display anything during, but if that ever changes, block waits for
+	Geist instead of flashing a fallback.
+*/
+const fontFace = (family: string, weight: number, src: string, range?: string) =>
+	`@font-face{font-family:"${family}";font-style:normal;font-weight:${weight};font-display:block;src:url(${src}) format("woff2")${range ? `;unicode-range:${range}` : ""}}`;
+
+/*
+	The third face is Geist Mono's box-drawing glyphs (┌─┬┐), which the CLI case
+	study's transcripts use for every table. They come from @fontsource's
+	`symbols2` file — the `latin` file the main mono subset is cut from has no
+	box-drawing at all.
+
+	`unicode-range` is what makes this a second face rather than a replacement:
+	two @font-face rules with the same family, weight and style do NOT merge
+	their coverage, the last one simply wins. Restricting this one to U+2500-257F
+	splits the family by codepoint instead, which is the same mechanism
+	@fontsource's own multi-subset CSS uses.
+*/
+const fontCss =
+	fontFace("Geist Sans", 400, geistSans) +
+	fontFace("Geist Mono", 300, geistMono) +
+	fontFace("Geist Mono", 300, geistMonoBox, "U+2500-257F");
+
+interface Props {
+	title?: string;
+	description?: string;
+}
+
+const {
+	title = "Maxim Slobodchikov — Design Engineer",
+	description = "Maxim is a design engineer making visual things on and off the web. Previously at The New York Times and The Washington Post.",
+} = Astro.props;
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+		{/*
+			See fontCss above. This sits AFTER the title/description rather than
+			first in <head>: it's ~27kB of base64, and putting it ahead of them
+			would bury the metadata past the truncation point of link-preview
+			crawlers that only read the first few kB. It still comes before the
+			stylesheet and all body content, which is all that first paint needs.
+		*/}
+		<style is:inline set:html={fontCss}></style>
+
+		{/*
+			Apply the saved theme before first paint so there's no flash of the
+			wrong theme. Defaults to dark.
+		*/}
+		<script is:inline>
+			(function () {
+				var t = "dark";
+				try {
+					var saved = localStorage.getItem("theme");
+					if (saved === "light" || saved === "dark") t = saved;
+				} catch (e) {}
+				document.documentElement.setAttribute("data-theme", t);
+			})();
+		</script>
+
+		{/*
+			Fade <main> in once the document has finished parsing, not on a timer
+			from first render.
+
+			A bare CSS animation starts at the element's first rendering
+			opportunity, which on a slow connection is BEFORE the HTML has finished
+			streaming — measured at 400kbps, <main> first rendered holding 202 of
+			its 895 characters. Everything that arrived after that (the project
+			titles and subtitles, which sit last in the document) faded from a
+			partial opacity, and on a slower link would have missed the fade and
+			simply popped in. DOMContentLoaded is the gate that matches what this
+			animation is for: all markup parsed and styled, so the whole page fades
+			as one piece. It deliberately does NOT wait on images or video — those
+			have their own per-thumbnail reveal (index.astro) — and it can't wait
+			on fonts either way now that they're inlined above.
+
+			The `js` class is added by the inline script BELOW this comment but
+			ABOVE <body>, so it lands before <main> is ever parsed: main is
+			therefore opacity 0 on its true first frame, with no flash of visible
+			text to fade from. Hiding is scoped to that class so that if the script
+			never runs, the rule never applies and the text is simply visible —
+			this can't strand the page blank the way the old fonts.ready gate did.
+
+			Nav stays outside the fade (a sibling of main), so it's static on every
+			refresh. main sits transparent over .page's already-correct --bg for
+			the very first frame, so it genuinely fades up from that flat color.
+		*/}
+		<script is:inline>
+			(function () {
+				var el = document.documentElement;
+				el.classList.add("js");
+				document.addEventListener("DOMContentLoaded", function () {
+					el.classList.add("content-ready");
+				});
+			})();
+		</script>
+		<style is:inline>
+			.js .page > main {
+				opacity: 0;
+			}
+			.js.content-ready .page > main {
+				animation: main-reveal 400ms ease-out both;
+			}
+			@keyframes main-reveal {
+				from {
+					opacity: 0;
+				}
+				to {
+					opacity: 1;
+				}
+			}
+			/*
+				Both selectors are listed so this matches the specificity of the
+				.content-ready rule above and wins on source order — otherwise the
+				animation would come straight back under reduced motion.
+			*/
+			@media (prefers-reduced-motion: reduce) {
+				.js.content-ready .page > main,
+				.js .page > main {
+					opacity: 1;
+					animation: none;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		{/*
+			.page is opaque and sits above the footer so the sticky footer stays
+			hidden until you scroll to the bottom, where the page slides up to
+			reveal it (the joseph.cv effect).
+		*/}
+		<div class="page">
+			<slot />
+		</div>
+		<Footer />
+	</body>
+</html>
+
+<style>
+	.page {
+		position: relative;
+		z-index: 1;
+		background: var(--bg);
+		/* Fill the viewport so the footer beneath is off-screen on first load. */
+		min-height: 100vh;
+	}
+</style>

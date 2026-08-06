@@ -1,0 +1,52 @@
+---
+// Overlays a slotted <CodeWindow fit> exactly on top of a mock terminal
+// drawn into a source image (e.g. a collage), at the position/size the
+// mockup shows. Built for one specific pairing (see terminal2.mdx) — the
+// box percentages and the 594px "natural width" constant below are
+// measured off that image and that CodeWindow's content, not derived
+// generically, so a different image/transcript needs new numbers.
+interface Props {
+  src: string;
+  alt: string;
+}
+const { src, alt } = Astro.props;
+---
+
+<div class="terminal-overlay-wrap">
+  {/* Intrinsic dimensions are hardcoded, not props: the overlay percentages
+      below are measured off a fixed 1600×1200 source, so any image passed here
+      already has to be that size. Stating them reserves the box before the
+      1.2MB collage loads, instead of collapsing the row mid-scroll. */}
+  <img src={src} alt={alt} width="1600" height="1200" class="outlined" />
+  <div class="terminal-overlay-slot">
+    <slot />
+  </div>
+</div>
+
+<style>
+  /* container-type makes the wrapper's own rendered width the 100cqw
+     basis, so the overlay tracks the image at any viewport instead of
+     matching only one breakpoint. */
+  .terminal-overlay-wrap {
+    position: relative;
+    container-type: inline-size;
+  }
+  .terminal-overlay-wrap img {
+    display: block;
+    margin: 0;
+  }
+  /* Box measured directly off terminal-collage.png (1600×1200): left
+     16.6875%, top 19.0625% of width (the image is a fixed 4:3 ratio, so a
+     vertical fraction is expressed as a fraction of width via ×0.75),
+     target width 66.5% of the image's rendered width. 594px is the
+     CodeWindow's own natural (unscaled) width at this content length —
+     scale is the ratio of target width to that natural width. */
+  .terminal-overlay-slot :global(.code-window.fit) {
+    position: absolute;
+    left: 16.6875cqw;
+    top: 19.0625cqw;
+    margin: 0;
+    transform: scale(calc(66.5cqw / 594px));
+    transform-origin: top left;
+  }
+</style>

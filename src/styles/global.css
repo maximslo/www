@@ -1,0 +1,197 @@
+/*
+ * The @font-face rules for "Geist Sans" / "Geist Mono" are NOT here — they're
+ * base64-inlined into <head> by BaseLayout.astro so the fonts are resolved
+ * before the first paint and no fallback ever renders. Defining them here
+ * instead would reintroduce the flash: this file is an external stylesheet, so
+ * its @font-face would kick off a second request that lands after paint.
+ *
+ * There used to be a metrics-matched "Geist Sans Fallback" (local Arial with
+ * size-adjust/ascent-override, derived from Geist's OS/2 + hhea tables) to
+ * make the swap cost ~zero layout shift. It did its job on the size axis but
+ * couldn't fix letterforms or per-glyph widths, so the swap was still visible.
+ * With nothing left to swap from, it's gone — see scripts/subset-fonts.sh and
+ * BaseLayout.astro's fontCss for what replaced it.
+ *
+ * The generic families still listed in the stacks below are a pure safety net
+ * (e.g. text selected and pasted elsewhere); in the browser the inlined faces
+ * always win.
+ */
+
+/* Theme-independent. The terminal components ported from v2 (CodeWindow,
+   ResponseToggle, ProgressSpinner, SetupTerminal) are always dark regardless
+   of the page theme, and each one reaches for this token rather than
+   repeating the stack — which is why it lives here and not next to the
+   per-theme colors below. The literal stack is duplicated in [slug].astro's
+   scoped styles, which predate this. */
+:root {
+	--font-sans: "Geist Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+		Arial, sans-serif;
+	--font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Dark is the default theme; light overrides below. `data-theme` is set on
+   <html> by an inline head script before first paint, so there's no flash. */
+:root,
+:root[data-theme="dark"] {
+	--bg: #111111;
+	--fg: #fafafa;
+	--muted: #71717a;
+	--rule: rgba(255, 255, 255, 0.12);
+	--accent: #fde047;
+	--link-line: rgba(255, 255, 255, 0.3);
+	--link-hover-bg: rgba(253, 224, 71, 0.1);
+	/*
+	 * Neutral card a project thumbnail sits on before its image arrives. One
+	 * step lighter than --bg so the block reads as a placeholder rather than a
+	 * hole. On dark this also replaces the per-project pastel overlay, which
+	 * would otherwise flash near-white (index.astro, .project-thumb-overlay).
+	 */
+	--thumb-placeholder: #181818;
+	/* Footer has its own shade, distinct from the page background. */
+	--footer-bg: #1c1c1c;
+	--footer-fg: #f4f4f5;
+	--footer-muted: #52525b;
+}
+
+:root[data-theme="light"] {
+	--bg: #fafcfd; /* rachelchen.tech main background */
+	--fg: #111111;
+	--muted: #6b7280;
+	--rule: rgba(0, 0, 0, 0.12);
+	--accent: #0903ff;
+	--link-line: rgba(0, 0, 0, 0.3);
+	--link-hover-bg: rgba(9, 3, 255, 0.1);
+	/* Light keeps the per-project pastel overlay, so this is only ever the
+	   pre-image fallback behind it. */
+	--thumb-placeholder: #ecedef;
+	--footer-bg: #eef1f4;
+	--footer-fg: #1c1c1c;
+	--footer-muted: #9aa0a6;
+}
+
+html,
+body,
+.page,
+.site-footer {
+	transition:
+		background-color 0.25s ease,
+		color 0.25s ease;
+}
+
+::selection {
+	color: var(--accent);
+	background: transparent;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	background: var(--bg);
+	color: var(--fg);
+	/*
+	 * The browser's own scroll anchoring reasons about DOM order, but the
+	 * homepage grid reorders cards visually via `order` at the tablet/mobile
+	 * breakpoints (index.astro) — so on a resize that crosses a grid
+	 * breakpoint, it anchors to the wrong node and can jump scroll well past
+	 * where it should land (worst case: scrolled to the bottom, a resize jumps
+	 * past the thumb-expand animation entirely). Turning it off leaves scrollY
+	 * untouched by the reflow, which is the stable, predictable behavior.
+	 */
+	overflow-anchor: none;
+}
+
+body {
+	font-family: var(--font-sans);
+	font-weight: 400;
+	font-size: 14px;
+	line-height: 1.4;
+}
+
+@media (min-width: 1020px) {
+	body {
+		font-size: 15px;
+	}
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+
+p {
+	margin: 0;
+}
+
+.wrap {
+	max-width: 1800px;
+	margin: 0 auto;
+	padding: 0 0.75rem;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(12, minmax(0, 1fr));
+	gap: 0.75rem;
+}
+
+/*
+ * Shared by the hero (.hero, index.astro) and the nav (.nav-grid, Nav.astro) so
+ * that "Teams" and "Design Engineer" — both starting at column line 7 — always
+ * land at the exact same x position as EVERY other 12-col grid on the page
+ * (the plain, unmodified .grid used by the footer and the work-grid's 2-up
+ * tablet layout, where the 2nd project thumbnail also starts at line 7).
+ *
+ * Columns 7–8 need a hard floor so Teams' box never shrinks below what
+ * "Washington Post" needs (~130px) and wraps. The naive way to add that floor
+ * — minmax(85px, 1fr) — makes those columns compete with ALL ten other 1fr
+ * columns for space, so satisfying the floor steals width from columns 1–6
+ * too. Since there are 6 tracks on the left of the floor vs. 4 on the right,
+ * the left side loses MORE total width, which shifts line 7 itself further
+ * left than a plain grid's line 7 — breaking alignment with the footer and
+ * the (unmodified) work-grid. Columns 1–6 are pinned to their exact "plain
+ * 12-col grid" width via calc() (immune to the floor's pull) so line 7 never
+ * moves; only columns 9–12 (Links' side) flex to absorb the floor's cost.
+ */
+@media (min-width: 630px) {
+	.nav-aligned-grid {
+		grid-template-columns:
+			repeat(6, calc((100% - 11 * 0.75rem) / 12))
+			repeat(2, minmax(85px, calc((100% - 11 * 0.75rem) / 12)))
+			repeat(4, minmax(0, 1fr));
+	}
+}
+
+.caption {
+	font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+	font-size: 12px;
+	font-weight: 300;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+	margin: 0 0 0.5rem;
+}
+
+.link {
+	border-bottom: 1px dotted var(--link-line);
+	padding: 0.35em 0 1px;
+	margin: -0.35em 0 0;
+}
+
+.link:hover {
+	color: var(--accent);
+	border-color: var(--accent);
+	background-color: var(--link-hover-bg);
+}
+
+.arrow {
+	font-size: 10px;
+	line-height: 0;
+	vertical-align: super;
+	color: var(--accent);
+	margin-left: 1px;
+}

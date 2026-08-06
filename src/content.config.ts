@@ -15,7 +15,14 @@ const projects = defineCollection({
     order: z.number(),
     role: z.string(),
     timeline: z.string(),
-    team: z.string(),
+    // Either a plain description ("Solo", "2 Designers") or a list of names —
+    // the latter renders stacked on the project page, like skills. A name can
+    // also be an object with an href, which renders as a link (e.g. linking
+    // out to a team's own page).
+    team: z.union([
+      z.string(),
+      z.array(z.union([z.string(), z.object({ name: z.string(), href: z.string().url() })])),
+    ]),
     skills: z.array(z.string()),
     // Optional looping video thumbnail (path under /public) — replaces the gradient tile
     video: z.string().optional(),
@@ -25,12 +32,29 @@ const projects = defineCollection({
     thumbImage: z.string().optional(),
     // Optional thumbnail aspect ratio, e.g. "16 / 9" or "4 / 3" (falls back to a cycling default)
     ratio: z.string().optional(),
+    // Optional object-fit override for the hero media, e.g. "contain" (default "cover")
+    fit: z.enum(['cover', 'contain']).optional(),
+    // Optional zoom multiplier for the hero media (CSS scale)
+    zoom: z.number().optional(),
+    // Optional letterbox color behind a contain-fit hero, sampled from the image's own background
+    matte: z.string().optional(),
+    // Optional loading-placeholder color for the hero media — same pale pastel
+    // used behind this project's homepage thumbnail, so the hero frame matches
+    // it while the video/image loads (see index.astro's hardcoded `bg`)
+    bg: z.string().optional(),
+    // Optional object-position override for the hero media, e.g. "50% 15%"
+    position: z.string().optional(),
     // Optional px to crop off the top+bottom of the thumbnail media (e.g. to hide letterboxing)
     cropY: z.number().optional(),
     // Optional px to crop off just the top (overrides cropY's top side)
     cropTop: z.number().optional(),
     // Optional px to crop off just the bottom (overrides cropY's bottom side)
     cropBottom: z.number().optional(),
+    // When true, the hero is the scripted <Terminal /> demo instead of a
+    // video/image. It has to be a flag read by [slug].astro rather than
+    // something the MDX body places, because the hero sits above the meta row
+    // and MDX content only reaches the .prose column below it.
+    heroTerminal: z.boolean().optional(),
     // Optional pair id — projects sharing a value render side-by-side as two small tiles
     pair: z.string().optional(),
     // Optional external link — when set, the homepage links out instead of to /projects/<slug>

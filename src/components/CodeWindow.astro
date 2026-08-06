@@ -1,0 +1,247 @@
+---
+// Static (non-animated) sibling of Terminal.astro — same chrome (dots,
+// titlebar, dark screen), but just a frame around a plain fenced code block
+// passed in as a child. No script, no font-fit, no character grid.
+//
+// variant="plain" swaps that terminal chrome for a plain grey card with no
+// titlebar and no syntax-highlight colors — for a snippet shown as reference
+// code rather than as a simulated terminal/file.
+//
+// variant="light" is the same grey card but keeps syntax-highlight colors —
+// remapped from the site's single dark Shiki theme (github-dark, see
+// astro.config.mjs) to a light-theme-equivalent palette via attribute
+// selectors on Shiki's inline per-span color, since the project doesn't run
+// a second (light) Shiki theme. That makes the mapping specific to the
+// token colors github-dark actually emits for TS — fine for the one
+// hand-picked snippet this variant is built for, not a general solution.
+interface Props {
+  title?: string;
+  variant?: 'terminal' | 'plain' | 'light';
+  fit?: boolean;
+  compact?: boolean;
+}
+const { title = 'zsh', variant = 'terminal', fit = false, compact = false } = Astro.props;
+---
+
+<div class={`code-window ${variant !== 'terminal' ? variant : ''} ${fit ? 'fit' : ''} ${compact ? 'compact' : ''}`}>
+  {
+    variant === 'terminal' && (
+      <div class="code-window-bar">
+        <div class="code-window-dots" aria-hidden="true">
+          <span class="code-window-dot" />
+          <span class="code-window-dot" />
+          <span class="code-window-dot" />
+        </div>
+        <p class="code-window-title">{title}</p>
+        <div class="code-window-spacer" aria-hidden="true" />
+      </div>
+    )
+  }
+  <div class="code-window-screen">
+    <slot />
+  </div>
+</div>
+
+<style>
+  /* fit: size the window to its content (e.g. a short ASCII table) instead
+     of stretching to the prose column's full width, and center it there. */
+  .code-window.fit {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  /* opt-in compact variant — scaled-down chrome and type to match
+     ResponseToggle's compact mode, for sitting inside a .media-row beside
+     a caption instead of owning the prose column's full width. */
+  .code-window.compact .code-window-bar {
+    height: 36px;
+    padding: 4px 12px;
+  }
+  .code-window.compact .code-window-dot {
+    width: 7px;
+    height: 7px;
+  }
+  .code-window.compact .code-window-title {
+    font-size: 12px;
+  }
+  .code-window.compact .code-window-spacer {
+    /* mirrors the compact dots' width (3 × 7px + 2 × 8px gaps), same
+       balancing trick as the default size above */
+    width: 37px;
+  }
+  .code-window.compact .code-window-screen {
+    padding: 16px;
+  }
+  .code-window.compact .code-window-screen :global(pre.astro-code),
+  .code-window.compact .code-window-screen :global(pre.term-plain) {
+    font-size: 11px;
+  }
+
+  .code-window {
+    --prey-300: hsl(263 7% 76%);
+    --prey-500: hsl(0 0% 36%);
+    --prey-600: hsl(267 6% 29%);
+    --prey-700: hsl(266 13% 21%);
+    --prey-750: hsl(264 12% 16%);
+    --prey-900: hsl(266 14% 10%);
+
+    margin-block: 24px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--prey-750);
+  }
+
+  .code-window-bar {
+    position: relative;
+    display: flex;
+    height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--prey-700);
+    padding: 4px 16px;
+  }
+
+  .code-window-dots {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .code-window-dot {
+    width: 8.8px;
+    height: 8.8px;
+    border-radius: 9999px;
+    background: var(--prey-600);
+  }
+
+  /* .code-window-bar-qualified selector, not just .code-window-title: the
+     site's global `.prose p { color: var(--muted); margin-bottom: 20px }`
+     rule (in [slug].astro) has higher specificity than a single class and
+     was silently winning on color. The stray margin doesn't visibly break
+     centering here (the transform below keys off the border-box, not the
+     margin-box), but it's zeroed anyway rather than relied on by accident. */
+  .code-window-bar .code-window-title {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: -0.14px;
+    color: var(--prey-300);
+  }
+
+  /* mirrors the dots' width so justify-between stays balanced with the
+     absolutely-centered title, same trick as Terminal.astro's titlebar */
+  .code-window-spacer {
+    width: 42.4px;
+  }
+
+  .code-window-screen {
+    background: var(--prey-900);
+    padding: 24px 24px;
+    overflow-x: auto;
+  }
+
+  /* the slotted content is a Shiki <pre class="astro-code"> — strip the
+     site's default light card styling (see [slug].astro) so it sits flush
+     in the dark screen instead of floating a second card inside it */
+  .code-window-screen :global(pre.astro-code) {
+    background: transparent !important;
+    border: none;
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+    overflow-x: visible;
+    font-size: 13px;
+    /* tight, terminal-like ratio (real ttys run ~1.2-1.4x) rather than the
+       looser line-height prose text uses — keeps a "blank line" gap
+       elsewhere on the page from reading as more space than it is */
+    line-height: 1.3;
+  }
+
+  /* Hand-authored alternative to a fenced ```text block, for the rare
+     transcript that needs a few inline colors Shiki can't give plain text —
+     same font-size/line-height as pre.astro-code above, and the same
+     default foreground Shiki's github-dark theme renders (#E1E4E8) so it
+     matches the other, unhighlighted CodeWindow examples on the page. */
+  .code-window-screen :global(pre.term-plain) {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.3;
+    color: #e1e4e8;
+    white-space: pre;
+  }
+  /* Same blue as Terminal.astro's --wapo-blue, reused here so an inline
+     highlight in a transcript reads as the same "blue" everywhere on the page. */
+  .code-window-screen :global(pre.term-plain .t-blue) {
+    color: #6b8afd;
+  }
+  /* Same status hues as the spec-row.dark exhibit (success green / warning
+     amber / error red), reused here for an inline shell-prompt transcript
+     (git branch, dirty marker, ✔ checks) so the palette stays one system. */
+  .code-window-screen :global(pre.term-plain .t-green) {
+    color: #4ade80;
+  }
+  .code-window-screen :global(pre.term-plain .t-red) {
+    color: #f87171;
+  }
+  .code-window-screen :global(pre.term-plain .t-dim) {
+    color: var(--prey-500);
+  }
+
+  /* Plain variant: a light grey reference-code card, no titlebar, no
+     syntax-highlight colors — Shiki emits an inline color style per
+     token, so every span needs its own override to force monochrome. */
+  .code-window.plain {
+    background: #f2f3f5;
+  }
+  .code-window.plain .code-window-screen {
+    background: transparent;
+    padding: 24px;
+  }
+  .code-window.plain .code-window-screen :global(pre.astro-code) {
+    color: #3f3f46 !important;
+  }
+  .code-window.plain .code-window-screen :global(pre.astro-code span) {
+    color: inherit !important;
+  }
+
+  /* Light variant: same grey card as .plain, but syntax colors survive —
+     remapped from github-dark's exact per-token hex (read off the compiled
+     output) to a github-light-equivalent hue, so it reads correctly on a
+     light card instead of the dark-theme colors bleeding through. */
+  .code-window.light {
+    background: #f2f3f5;
+  }
+  .code-window.light .code-window-screen {
+    background: transparent;
+    padding: 24px;
+  }
+  .code-window.light .code-window-screen :global(pre.astro-code) {
+    color: #24292e !important;
+  }
+  /* keywords: function, const, return, if, extends, =>, ... */
+  .code-window.light .code-window-screen :global(pre.astro-code span[style*='#F97583']) {
+    color: #d73a49 !important;
+  }
+  /* function / generic type names */
+  .code-window.light .code-window-screen :global(pre.astro-code span[style*='#B392F0']) {
+    color: #6f42c1 !important;
+  }
+  /* built-in types and literals: object, string, JSON, null, numbers */
+  .code-window.light .code-window-screen :global(pre.astro-code span[style*='#79B8FF']) {
+    color: #005cc5 !important;
+  }
+  /* parameter names */
+  .code-window.light .code-window-screen :global(pre.astro-code span[style*='#FFAB70']) {
+    color: #e36209 !important;
+  }
+  /* default punctuation / identifiers */
+  .code-window.light .code-window-screen :global(pre.astro-code span[style*='#E1E4E8']) {
+    color: #24292e !important;
+  }
+</style>

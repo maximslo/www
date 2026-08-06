@@ -1,0 +1,585 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Nav from "../components/Nav.astro";
+
+const teams = [
+	{ label: "New York Times", href: "https://www.nytimes.com/" },
+	{ label: "Washington Post", href: "https://www.washingtonpost.com/" },
+	{ label: "Astro", href: "https://astro.build/" },
+	{ label: "Wayfair", href: "https://www.wayfair.com/" },
+	{ label: "NPR", href: "https://apps.npr.org/primary-election-results-2026/" },
+];
+
+const links = [
+	{ label: "GitHub", href: "https://github.com/maximslo" },
+	{ label: "LinkedIn", href: "https://www.linkedin.com/in/maximslo/" },
+	{ label: "Resume", href: "/resume.pdf" },
+	{ label: "Email", href: "mailto:maximsloe@gmail.com" },
+];
+
+// Placeholder project tiles — no real content wired up yet.
+// DOM order is the natural 1–8, used by the 3-up desktop grid. The 2-up tablet
+// grid rearranges these via CSS `order` into rows (1,2) (4,5) (7,8) (6,3), and
+// the 1-up mobile grid stacks them column-major: first column (1,4,7,6) then
+// second column (2,5,8,3). See the media queries below.
+const projects = [
+	{ title: "The Future of AI & News", subtitle: "OPENAI X WASHINGTON POST", video: "/projects/project-one.mp4", bg: "#d8e3f9", href: "/openai" },
+	{ title: "Designing a CLI", subtitle: "THE WASHINGTON POST", image: "/projects/clihero.png", bg: "#d1eef9", href: "/cli" },
+	{ title: "Ask The Post", subtitle: "THE WASHINGTON POST", video: "/projects/newaskthepost.mp4", bg: "#dcdde0", href: "/openai" },
+	{ title: "Interactive Guide to Your Kitchen", subtitle: "NYT COOKING", video: "/projects/goal.mp4", bg: "#f8dede", href: "/nytcooking" },
+	{
+		title: "Open-Source Harness Framework",
+		subtitle: "ASTRO + FLUE · 2026",
+		image: "/projects/flue2.png",
+		fit: "contain",
+		zoom: 1.3,
+		bg: "#ebdcef",
+		// Exact color sampled from flue2.png's own background — used for the
+		// letterbox matte (not the loading overlay, which stays the paler `bg`
+		// above) so the contain-fit gaps blend seamlessly into the image.
+		matte: "#dec4e5",
+		href: "/astro",
+	},
+	{
+		title: "Olympics Medal Tracker",
+		subtitle: "THE WASHINGTON POST",
+		image: "/projects/wapo11.png",
+		position: "50% 15%",
+		bg: "#c8e3ff",
+		href: "/olympics",
+	},
+	{ title: "10,000 Beers", subtitle: "Drinkbot", video: "/projects/drinkv33.mp4", bg: "#d7d6db", href: "https://drinks.maximslo.com/", external: true },
+	{ title: "Newsroom Developer Tools", subtitle: "The New York Times", image: "/projects/live.png", bg: "#bad4fe", href: "/elections" },
+];
+---
+
+<BaseLayout>
+	<Nav />
+	<main class="wrap">
+		<section class="hero grid nav-aligned-grid">
+			<div class="about-col">
+				<p class="caption">About</p>
+				<p class="about-text">
+					I'm a 23-year-old crafting multimodal interfaces & design
+					systems for news. I believe journalism helps us discover
+					and engage more deeply with the world. I hold a B.A. in
+					Computer Science from <a class="link" target="_blank" rel="noreferrer" href="https://www.bu.edu/cds-faculty/explore/">Boston
+						University</a><sup class="arrow">↗</sup>, where I taught accessible web
+					design and algorithm bias. If you have an interesting idea, <a class="link" href="mailto:maximsloe@gmail.com">get in touch</a><sup
+						class="arrow">↗</sup
+					>.
+				</p>
+			</div>
+			<div class="side-group">
+				<div class="teams-col">
+					<p class="caption">Teams</p>
+					<div class="list">
+						{
+							teams.map((t, i) => (
+								<p>
+									<a class="link" target="_blank" rel="noreferrer" href={t.href}>
+										{t.label}
+									</a>
+									<sup class="arrow-mono">{i + 1}</sup>
+								</p>
+							))
+						}
+					</div>
+				</div>
+				<div class="links-col">
+					<p class="caption">Links</p>
+					<div class="list">
+						{
+							links.map((l) => (
+								<p>
+									<a class="link" target="_blank" rel="noreferrer" href={l.href}>
+										{l.label}
+									</a>
+									<sup class="arrow">↗</sup>
+								</p>
+							))
+						}
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<section class="work">
+			<div class="work-grid">
+				{
+					projects.map((p) => {
+						const Tag = p.href ? "a" : "div";
+						return (
+							<Tag
+									class="project-card"
+									{...(p.href ? { href: p.href } : {})}
+									{...(p.external ? { target: "_blank", rel: "noreferrer" } : {})}
+								>
+								<div class="project-thumb" style={(p.matte || p.bg) && `--thumb-bg: ${p.matte || p.bg};`}>
+									{p.video && (
+										<video
+											src={p.video}
+											class="project-thumb-img"
+											autoplay
+											loop
+											muted
+											playsinline
+										/>
+									)}
+									{p.image && (
+										<img
+											src={p.image}
+											alt={p.title}
+											class="project-thumb-img"
+											style={`${p.fit ? `object-fit: ${p.fit};` : ""}${p.zoom ? `--zoom: ${p.zoom};` : ""}${p.position ? `object-position: ${p.position};` : ""}`}
+										/>
+									)}
+									<div class="project-thumb-overlay" style={`--card-bg: ${p.bg};`} />
+								</div>
+								<p class="project-title">{p.title}</p>
+								<p class="project-subtitle">{p.subtitle}</p>
+							</Tag>
+						);
+					})
+				}
+			</div>
+		</section>
+	</main>
+</BaseLayout>
+
+<style>
+	.hero {
+		padding: 2rem 0 .75rem;
+	}
+
+	.about-col {
+		grid-column: span 12;
+	}
+
+	.side-group {
+		grid-column: span 12;
+		display: grid;
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+		gap: 0.75rem;
+	}
+
+	.teams-col,
+	.links-col {
+		grid-column: span 6;
+	}
+
+	.hero {
+		row-gap: 1.75rem;
+	}
+
+	.list p {
+		margin: 0;
+	}
+
+	/* Team names ("Washington Post", "New York Times") must never wrap. */
+	.teams-col .list p {
+		white-space: nowrap;
+	}
+
+	.arrow-mono {
+		font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		font-size: 12px;
+		line-height: 0;
+		vertical-align: super;
+		position: relative;
+		top: 0.15em;
+		color: var(--accent);
+		margin-left: 1px;
+	}
+
+	/*
+	 * Hero stacks (Teams/Links below About) below 630px rather than 768px. At
+	 * ~630px the side-by-side hero height and the stacked height are nearly
+	 * equal, so this reflow barely changes height. Keeping it off the 768px grid
+	 * breakpoint means the hero stays put during the 2-up → 1-up thumbnail
+	 * animation, so the thumbnails no longer get shoved down.
+	 */
+	@media (min-width: 630px) {
+		.about-col {
+			grid-column: 1 / 7;
+			padding-right: clamp(6rem, 10vw, 10rem);
+		}
+
+		/*
+		 * `display: contents` drops .side-group's own box, so its children
+		 * become direct items of the .hero grid — letting Teams/Links sit at
+		 * fixed column lines (7/9, 9/13) instead of a flexible gap. These are
+		 * the same column lines the footer uses for its 3 zones (see
+		 * Footer.astro's .footer-links / .cta-col), so Links lines up with
+		 * that same "3rd column" start, matching joseph.cv's alignment.
+		 */
+		.side-group {
+			display: contents;
+		}
+
+		.teams-col {
+			grid-column: 7 / 9;
+			/*
+			 * Extra inset so Teams' text keeps a comfortable, guaranteed gap
+			 * before Links' fixed line-9 start, on top of the column's own floor.
+			 * Links stays exactly aligned with the footer's 3rd column.
+			 */
+			padding-right: 1.5rem;
+		}
+
+		.links-col {
+			grid-column: 9 / 13;
+		}
+	}
+
+	.work {
+		margin-top: 3rem;
+		padding-bottom: 3rem;
+	}
+
+	.work-grid {
+		display: grid;
+		grid-template-columns: repeat(12, minmax(0, 1fr));
+		column-gap: 0.75rem;
+		row-gap: 2rem;
+		margin-top: 1rem;
+	}
+
+	.project-card {
+		grid-column: span 12;
+	}
+
+	.project-thumb {
+		position: relative;
+		aspect-ratio: 16 / 9;
+		/*
+		 * Sits behind the overlay, so this only ever shows through where a
+		 * contain-fit thumbnail letterboxes — hence --thumb-bg is the project's
+		 * `matte` when it has one, so the bars blend into the image itself. It
+		 * stays the project's own color on dark too: a matte is matched to the
+		 * artwork, not to the page. Only the loading overlay in front of it goes
+		 * theme-neutral.
+		 */
+		background: var(--thumb-bg, var(--thumb-placeholder));
+		overflow: hidden;
+		width: 100%;
+	}
+
+	/*
+	 * When the viewport narrows across a grid breakpoint (3-up → 2-up, or
+	 * 2-up → 1-up), JS adds `.expanding` to each card so the thumbnail grows
+	 * from ~its previous (narrower) column width out to its new full column
+	 * width, pushing the title/subtitle down as it expands. `--expand-from` is
+	 * the start width the JS sets per transition (66% for 3→2, 50% for 2→1).
+	 * Loading directly at any width never adds the class, so there's no
+	 * animation on initial load.
+	 */
+	@keyframes thumb-expand {
+		from {
+			width: var(--expand-from, 50%);
+		}
+		to {
+			width: 100%;
+		}
+	}
+
+	.project-card.expanding .project-thumb {
+		animation: thumb-expand 320ms cubic-bezier(0.3, 0, 0.15, 1) both;
+	}
+
+	/*
+	 * The title/subtitle need no animation here — the thumbnail's width grows via
+	 * layout, so the reflow naturally rides them down at full opacity and size.
+	 */
+
+	/*
+	 * 3-up → 2-up crossing: the 2-up row's thumbnails grow from the row's left
+	 * edge as one block. Each thumbnail animates its WIDTH (66% → 100%), so the
+	 * layout reflows and the rows below shift down naturally — no vertical jump.
+	 * Column 2 additionally slides in horizontally (`--slide`, set by JS) so the
+	 * pair reads as one block growing from the left. The title/subtitle ride the
+	 * thumbnail's bottom-left corner: vertically via the same reflow, and
+	 * horizontally via the same `--slide`.
+	 */
+	@keyframes row-thumb-expand {
+		from {
+			width: 66%;
+			transform: translateX(var(--slide, 0px));
+		}
+		to {
+			width: 100%;
+			transform: translateX(0);
+		}
+	}
+
+	.project-card.row-expanding .project-thumb {
+		animation: row-thumb-expand 320ms cubic-bezier(0.3, 0, 0.15, 1) both;
+	}
+
+	@keyframes row-text-slide {
+		from {
+			transform: translateX(var(--slide, 0px));
+		}
+		to {
+			transform: translateX(0);
+		}
+	}
+
+	.project-card.row-expanding .project-title,
+	.project-card.row-expanding .project-subtitle {
+		animation: row-text-slide 320ms cubic-bezier(0.3, 0, 0.15, 1) both;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.project-card.expanding .project-thumb,
+		.project-card.row-expanding .project-thumb,
+		.project-card.row-expanding .project-title,
+		.project-card.row-expanding .project-subtitle {
+			animation: none;
+		}
+	}
+
+	.project-thumb-img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+		/*
+		 * Default zoom is a hair over 1, not exactly 1: video elements can lag a
+		 * paint frame behind the container during the width-driven resize
+		 * animations above (aspect-ratio recomputes the box's height every
+		 * layout frame, but the video's own compositor texture doesn't always
+		 * rescale in perfect lockstep), which otherwise flashes a sliver of
+		 * --thumb-bg at the trailing edge mid-animation. A small permanent
+		 * overscan keeps the video bleeding past every edge so that gap has
+		 * nothing to reveal, at a crop so slight it reads as full-bleed.
+		 */
+		transform: scale(var(--zoom, 1.02));
+	}
+
+	/*
+	 * rachelchen.tech's approach, swapped in for the blur-up version: instead
+	 * of blurring the asset itself while it loads (which needed real overscale
+	 * to hide the filter's edge fringe — fiddly, and inconsistent across
+	 * thumbnails with different --zoom values), the media renders at full
+	 * clarity immediately and a solid color card sits on top, covering it
+	 * completely. Once the asset actually finishes loading, the card just
+	 * fades out. No filter, no edge artifacts, and it's visible on every
+	 * refresh by construction — it always starts opaque, so there's nothing
+	 * to race against a cached/instant load.
+	 */
+	.project-thumb-overlay {
+		position: absolute;
+		inset: 0;
+		opacity: 1;
+		background: var(--card-bg);
+	}
+
+	/*
+	 * Each project's `bg` is a pale pastel picked against the light theme. On
+	 * dark those read as near-white cards flashing over a #111 page — the
+	 * thumbnail fades OUT of white rather than up out of the page. Dark mode
+	 * uses the same grey .project-thumb already falls back to, one step above
+	 * the page background so the card still reads as a placeholder block
+	 * rather than a hole.
+	 *
+	 * This is why the per-project color arrives as --card-bg rather than an
+	 * inline `background`: nothing in a stylesheet can override an inline
+	 * declaration, so the color has to be a variable for the theme to have any
+	 * say in it. :global() keeps Astro from scoping the :root half of the
+	 * selector onto an element that doesn't belong to this component.
+	 */
+	:global(:root[data-theme="dark"]) .project-thumb-overlay {
+		background: var(--thumb-placeholder);
+	}
+
+	.project-thumb-overlay.is-loaded {
+		opacity: 0;
+		transition: opacity 550ms ease;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.project-thumb-overlay {
+			animation: none;
+			opacity: 0;
+		}
+	}
+
+	.project-title {
+		margin-top: 0.75rem;
+		font-weight: 400;
+		color: var(--fg);
+		transition: color 0.2s ease;
+	}
+
+	a.project-card:hover .project-title {
+		color: var(--accent);
+	}
+
+	.project-subtitle {
+		font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		font-size: 12px;
+		font-weight: 300;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--muted);
+		margin-top: 0.25rem;
+	}
+
+	/* Tablet: 2-up */
+	@media (min-width: 768px) {
+		.project-card {
+			grid-column: span 6;
+		}
+	}
+
+	/*
+	 * Tablet only (2-up): rearrange the natural 1–8 DOM order into the rows
+	 * (1,2) (4,5) (7,8) (6,3) via `order`. Desktop (3-up) keeps the natural order.
+	 */
+	@media (min-width: 768px) and (max-width: 1119px) {
+		.work-grid .project-card:nth-child(1) { order: 1; }
+		.work-grid .project-card:nth-child(2) { order: 2; }
+		.work-grid .project-card:nth-child(4) { order: 3; }
+		.work-grid .project-card:nth-child(5) { order: 4; }
+		.work-grid .project-card:nth-child(7) { order: 5; }
+		.work-grid .project-card:nth-child(8) { order: 6; }
+		.work-grid .project-card:nth-child(6) { order: 7; }
+		.work-grid .project-card:nth-child(3) { order: 8; }
+	}
+
+	/*
+	 * Mobile only (1-up): stack column-major — the 2-up first column (1,4,7,6)
+	 * first, then the second column (2,5,8,3).
+	 */
+	@media (max-width: 767px) {
+		.work-grid .project-card:nth-child(1) { order: 1; } /* Project One */
+		.work-grid .project-card:nth-child(4) { order: 2; } /* kitchen guide */
+		.work-grid .project-card:nth-child(7) { order: 3; } /* Project Seven */
+		.work-grid .project-card:nth-child(6) { order: 4; } /* Olympics */
+		.work-grid .project-card:nth-child(2) { order: 5; } /* Project Two */
+		.work-grid .project-card:nth-child(5) { order: 6; } /* agent harness */
+		.work-grid .project-card:nth-child(8) { order: 7; } /* Project Eight */
+		.work-grid .project-card:nth-child(3) { order: 8; } /* Ask The Post */
+	}
+
+	/* Desktop: 3-up */
+	@media (min-width: 1120px) {
+		.project-card {
+			grid-column: span 4;
+		}
+	}
+</style>
+
+<script>
+	// Play the thumbnail "expand" animation only when the viewport NARROWS
+	// across a grid breakpoint (3-up → 2-up, or 2-up → 1-up): the thumbnails
+	// grow into their new, wider column. Widening (fewer → more columns) is
+	// intentionally NOT animated — thumbnails just snap to their new, smaller
+	// column. Loading directly at any width never animates either — matchMedia's
+	// change event never fires on load.
+	//
+	// Breakpoints: 1-up < 768px ≤ 2-up < 1120px ≤ 3-up. `--expand-from` is the
+	// start width as a fraction of the NEW column, i.e. old-thumb ÷ new-card:
+	//   3→2: (W/3)/(W/2) ≈ 66%   2→1: (W/2)/W = 50%   3→1: (W/3)/W ≈ 33%
+	const tabletMax = 1119;
+	const desktopMin = 1120;
+	const mobileMax = 767;
+
+	function tierOf(w: number) {
+		if (w >= desktopMin) return 3;
+		if (w > mobileMax) return 2;
+		return 1;
+	}
+
+	const fromWidth: Record<string, string> = {
+		"2->1": "50%",
+		"3->1": "33%",
+	};
+
+	let tier = tierOf(window.innerWidth);
+
+	function clearAll() {
+		document
+			.querySelectorAll(".project-card")
+			.forEach((card) => card.classList.remove("expanding", "row-expanding"));
+	}
+
+	function replayThumb(from: string) {
+		document.querySelectorAll<HTMLElement>(".project-card").forEach((card) => {
+			card.style.setProperty("--expand-from", from);
+			card.classList.remove("expanding");
+			// Force a reflow so re-adding the class restarts the animation.
+			void card.offsetWidth;
+			card.classList.add("expanding");
+		});
+	}
+
+	// 3→2: every 2-up row's thumbnails grow from that row's left edge as one
+	// block. IMPORTANT: measure all rows FIRST — adding the class shrinks the
+	// thumbnails and reflows, which would change later cards' offsetTop and break
+	// the row grouping mid-loop (that's why only the first row used to animate).
+	function replayRow() {
+		const cards = [...document.querySelectorAll<HTMLElement>(".project-card")];
+		// Pass 1 — measure (layout still stable, no classes applied yet).
+		const byRow = new Map<number, HTMLElement[]>();
+		cards.forEach((c) => {
+			const top = c.offsetTop;
+			(byRow.get(top) ?? byRow.set(top, []).get(top)!).push(c);
+		});
+		const startWidth = 0.66; // matches the row-thumb-expand keyframe
+		// `--slide` is how far this card's left edge sits from its row's left edge,
+		// scaled by (1 − startWidth): 0 for the left card, negative for the right,
+		// so the row's thumbnails (and their text) grow from the left as one block.
+		const slides = cards.map((card) => {
+			const rowLeft = Math.min(...byRow.get(card.offsetTop)!.map((c) => c.offsetLeft));
+			return (1 - startWidth) * (rowLeft - card.offsetLeft);
+		});
+		// Pass 2 — apply to every card, then restart with a single reflow.
+		cards.forEach((card, i) => {
+			card.style.setProperty("--slide", `${slides[i]}px`);
+			card.classList.remove("row-expanding");
+		});
+		void document.body.offsetWidth;
+		cards.forEach((card) => card.classList.add("row-expanding"));
+	}
+
+	function onChange() {
+		const next = tierOf(window.innerWidth);
+		if (next === tier) return;
+		if (next < tier) {
+			// Narrowed → fewer columns → thumbnails grow into their wider cell.
+			clearAll();
+			if (tier === 3 && next === 2) replayRow();
+			else replayThumb(fromWidth[`${tier}->${next}`] || "50%");
+		}
+		// Widened → more columns → no animation, thumbnails just snap to size.
+		tier = next;
+	}
+
+	// Fire on both breakpoints so every crossing is caught.
+	window.matchMedia(`(max-width: ${mobileMax}px)`).addEventListener("change", onChange);
+	window.matchMedia(`(max-width: ${tabletMax}px)`).addEventListener("change", onChange);
+
+	// Color-card reveal for project thumbnails: the overlay starts opaque and
+	// fades out once its image/video has actually decoded a frame. It's always
+	// painted opaque for at least one frame — even on a cached/instant load —
+	// so no double-rAF trick is needed here (unlike a fade-IN, there's nothing
+	// to race).
+	document.querySelectorAll<HTMLElement>(".project-thumb").forEach((thumb) => {
+		const media = thumb.querySelector<HTMLImageElement | HTMLVideoElement>(".project-thumb-img");
+		const overlay = thumb.querySelector<HTMLElement>(".project-thumb-overlay");
+		if (!media || !overlay) return;
+
+		const reveal = () => overlay.classList.add("is-loaded");
+
+		if (media instanceof HTMLImageElement) {
+			if (media.complete && media.naturalWidth > 0) reveal();
+			else media.addEventListener("load", reveal, { once: true });
+		} else if (media.readyState >= 2) {
+			reveal();
+		} else {
+			media.addEventListener("loadeddata", reveal, { once: true });
+		}
+	});
+</script>
