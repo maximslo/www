@@ -25,7 +25,7 @@ const links = [
 const projects = [
 	{ title: "The Future of AI & News", subtitle: "OPENAI X WASHINGTON POST", video: "/projects/project-one.mp4", bg: "#d8e3f9", href: "/openai" },
 	{ title: "Designing a CLI", subtitle: "THE WASHINGTON POST", image: "/projects/clihero.png", bg: "#d1eef9", href: "/cli" },
-	{ title: "Ask The Post", subtitle: "THE WASHINGTON POST", video: "/projects/newaskthepost.mp4", bg: "#dcdde0", href: "/openai" },
+	{ title: "Ask The Post", subtitle: "THE WASHINGTON POST", video: "/projects/atp_newest_trimmed.mp4", bg: "#dcdde0", href: "/openai" },
 	{ title: "Interactive Guide to Your Kitchen", subtitle: "NYT COOKING", video: "/projects/goal.mp4", bg: "#f8dede", href: "/nytcooking" },
 	{
 		title: "Open-Source Harness Framework",
@@ -48,7 +48,7 @@ const projects = [
 		bg: "#c8e3ff",
 		href: "/olympics",
 	},
-	{ title: "10,000 Beers", subtitle: "Drinkbot", video: "/projects/drinkv33.mp4", bg: "#d7d6db", href: "https://drinks.maximslo.com/", external: true },
+	{ title: "10,000 Beers", subtitle: "Drinkbot", video: "/projects/DRINKV3_8th_crop4.mp4", bg: "#d7d6db", href: "https://drinks.maximslo.com/", external: true },
 	{ title: "Election Developer Tools", subtitle: "The New York Times", image: "/projects/live.png", bg: "#bad4fe", href: "/elections" },
 ];
 ---
@@ -124,6 +124,7 @@ const projects = [
 											loop
 											muted
 											playsinline
+											style={`${p.fit ? `object-fit: ${p.fit};` : ""}${p.zoom ? `--zoom: ${p.zoom};` : ""}${p.position ? `object-position: ${p.position};` : ""}`}
 										/>
 									)}
 									{p.image && (
