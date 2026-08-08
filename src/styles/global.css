@@ -105,6 +105,20 @@ body {
 	overflow-anchor: none;
 }
 
+/*
+ * Overscroll/rubber-band past the edge of the page (Mac trackpad bounce,
+ * iOS Safari) paints html/body's own background — there's no CSS selector
+ * for "which edge is overscrolling", so Footer.astro's scroll listener
+ * toggles this class once the footer is fully revealed. That swaps the
+ * bottom overscroll to the footer's own shade, so it reads as a
+ * continuation of the footer rather than a jump back to the page color.
+ * Top overscroll is untouched — still plain --bg.
+ */
+html.at-bottom,
+html.at-bottom body {
+	background: var(--footer-bg);
+}
+
 body {
 	font-family: var(--font-sans);
 	font-weight: 400;

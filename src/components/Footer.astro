@@ -199,4 +199,16 @@ const updated = "August 2026";
 	);
 
 	sync();
+
+	// See the .at-bottom rule in global.css: overscrolling past the bottom of
+	// the page paints html/body's background, so this toggles it to match the
+	// footer's own shade once the footer is fully in view.
+	function syncAtBottom() {
+		const atBottom =
+			window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1;
+		root.classList.toggle("at-bottom", atBottom);
+	}
+	window.addEventListener("scroll", syncAtBottom, { passive: true });
+	window.addEventListener("resize", syncAtBottom);
+	syncAtBottom();
 </script>

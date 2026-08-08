@@ -49,7 +49,7 @@ const projects = [
 		href: "/olympics",
 	},
 	{ title: "10,000 Beers", subtitle: "Drinkbot", video: "/projects/drinkv33.mp4", bg: "#d7d6db", href: "https://drinks.maximslo.com/", external: true },
-	{ title: "Newsroom Developer Tools", subtitle: "The New York Times", image: "/projects/live.png", bg: "#bad4fe", href: "/elections" },
+	{ title: "Election Developer Tools", subtitle: "The New York Times", image: "/projects/live.png", bg: "#bad4fe", href: "/elections" },
 ];
 ---
 
@@ -60,11 +60,11 @@ const projects = [
 			<div class="about-col">
 				<p class="caption">About</p>
 				<p class="about-text">
-					I'm a 23-year-old crafting multimodal interfaces & design
+					I craft multimodal interfaces & design
 					systems for news. I believe journalism helps us discover
-					and engage more deeply with the world. I hold a B.A. in
-					Computer Science from <a class="link" target="_blank" rel="noreferrer" href="https://www.bu.edu/cds-faculty/explore/">Boston
-						University</a><sup class="arrow">↗</sup>, where I taught accessible web
+					and engage more deeply with the world. While at
+					<a class="link" target="_blank" rel="noreferrer" href="https://www.bu.edu/cds-faculty/explore/">Boston
+						University</a><sup class="arrow">↗</sup>, I taught accessible web
 					design and algorithm bias. If you have an interesting idea, <a class="link" href="mailto:maximsloe@gmail.com">get in touch</a><sup
 						class="arrow">↗</sup
 					>.
@@ -405,6 +405,25 @@ const projects = [
 		}
 	}
 
+	/*
+	 * joseph.cv-style hover darkening: a plain black scrim over the thumbnail,
+	 * faded in on hover. Lives as the thumb's own ::after (painted last, so it
+	 * sits above both the media and the loading .project-thumb-overlay) rather
+	 * than a sibling element, since it needs no markup of its own.
+	 */
+	.project-thumb::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.2);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	a.project-card:hover .project-thumb::after {
+		opacity: 1;
+	}
+
 	.project-title {
 		margin-top: 0.75rem;
 		font-weight: 400;
@@ -423,7 +442,7 @@ const projects = [
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		color: var(--muted);
-		margin-top: 0.25rem;
+		margin-top: 0.1rem;
 	}
 
 	/* Tablet: 2-up */

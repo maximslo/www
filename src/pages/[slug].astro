@@ -403,7 +403,7 @@ const meta = [
 
 	.meta-item dd {
 		margin: 0;
-		color: var(--fg);
+		color: var(--muted);
 	}
 
 	.meta-item dd p {
@@ -476,6 +476,9 @@ const meta = [
 	}
 	.prose :global(.cols h4) {
 		margin-top: 0;
+	}
+	.prose :global(.cols img + h4) {
+		margin-top: 0.75rem;
 	}
 	.prose :global(.cols p) {
 		margin-bottom: 0;

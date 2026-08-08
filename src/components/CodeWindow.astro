@@ -244,4 +244,47 @@ const { title = 'zsh', variant = 'terminal', fit = false, compact = false } = As
   .code-window.light .code-window-screen :global(pre.astro-code span[style*='#E1E4E8']) {
     color: #24292e !important;
   }
+
+  /* Dark theme: .plain/.light are the only variants that diverge from the
+     terminal's dark chrome (they're forced to a light grey card so the
+     "reference code" and "light-remap" use cases read on a light page).
+     On the dark theme there's no reason for them to differ from the
+     default terminal screen, so fold both back into the same dark card
+     and let Shiki's original github-dark span colors show through
+     unmodified — same one-dark-theme premise the terminal variant already
+     relies on (see the astro.config.mjs Shiki config note). `:root` with
+     no `data-theme` is dark (global.css sets it as the default), so both
+     that and the explicit attribute need covering. */
+  :global(:root:not([data-theme='light'])) .code-window.plain,
+  :global(:root:not([data-theme='light'])) .code-window.light {
+    background: var(--prey-750);
+  }
+  :global(:root:not([data-theme='light'])) .code-window.plain .code-window-screen,
+  :global(:root:not([data-theme='light'])) .code-window.light .code-window-screen {
+    background: transparent;
+  }
+  :global(:root:not([data-theme='light'])) .code-window.plain .code-window-screen :global(pre.astro-code) {
+    color: #e1e4e8 !important;
+  }
+  :global(:root:not([data-theme='light'])) .code-window.light .code-window-screen :global(pre.astro-code) {
+    color: #e1e4e8 !important;
+  }
+  :global(:root:not([data-theme='light'])) .code-window.light .code-window-screen :global(pre.astro-code span[style*='#F97583']) {
+    color: #f97583 !important;
+  }
+  :global(:root:not([data-theme='light'])) .code-window.light .code-window-screen :global(pre.astro-code span[style*='#B392F0']) {
+    color: #b392f0 !important;
+  }
+  :global(:root:not([data-theme='light'])) .code-window.light .code-window-screen :global(pre.astro-code span[style*='#79B8FF']) {
+    color: #79b8ff !important;
+  }
+  :global(:root:not([data-theme='light'])) .code-window.light .code-window-screen :global(pre.astro-code span[style*='#FFAB70']) {
+    color: #ffab70 !important;
+  }
+  /* default punctuation / identifiers — the light variant's own remap
+     (below) sends this to near-black #24292e for the light card; left
+     uncountered here it's near-invisible against the dark card. */
+  :global(:root:not([data-theme='light'])) .code-window.light .code-window-screen :global(pre.astro-code span[style*='#E1E4E8']) {
+    color: #e1e4e8 !important;
+  }
 </style>
