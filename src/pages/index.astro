@@ -48,7 +48,7 @@ const projects = [
 		bg: "#c8e3ff",
 		href: "/olympics",
 	},
-	{ title: "10,000 Beers", subtitle: "Drinkbot", video: "/projects/DRINKV3_8th_crop4.mp4", bg: "#d7d6db", href: "https://drinks.maximslo.com/", external: true },
+	{ title: "10,000 Beers", subtitle: "Drinkbot", video: "/projects/drinkv33.mp4", bg: "#d7d6db", href: "https://drinks.maximslo.com/", external: true },
 	{ title: "Election Developer Tools", subtitle: "The New York Times", image: "/projects/live.png", bg: "#bad4fe", href: "/elections" },
 ];
 ---
@@ -105,13 +105,22 @@ const projects = [
 		</section>
 
 		<section class="work">
-			<div class="work-grid">
+			<!--
+				Thumbnails and captions render as two separate grids sharing the same
+				column template/order rules (see .project-card below), rather than each
+				caption living inside its own thumbnail's card. That lets the thumbnail
+				grid's row-gap stay tight — a seamless image mosaic — instead of being
+				interrupted by each row's title/subtitle. Captions list below, still
+				column-aligned to their thumbnail via the same DOM order + `data-idx`.
+			-->
+			<div class="work-grid work-thumbs">
 				{
-					projects.map((p) => {
+					projects.map((p, i) => {
 						const Tag = p.href ? "a" : "div";
 						return (
 							<Tag
-									class="project-card"
+									class="project-card project-thumb-tile"
+									data-idx={i}
 									{...(p.href ? { href: p.href } : {})}
 									{...(p.external ? { target: "_blank", rel: "noreferrer" } : {})}
 								>
@@ -137,6 +146,22 @@ const projects = [
 									)}
 									<div class="project-thumb-overlay" style={`--card-bg: ${p.bg};`} />
 								</div>
+							</Tag>
+						);
+					})
+				}
+			</div>
+			<div class="work-grid work-captions">
+				{
+					projects.map((p, i) => {
+						const Tag = p.href ? "a" : "div";
+						return (
+							<Tag
+									class="project-card project-caption-tile"
+									data-idx={i}
+									{...(p.href ? { href: p.href } : {})}
+									{...(p.external ? { target: "_blank", rel: "noreferrer" } : {})}
+								>
 								<p class="project-title">{p.title}</p>
 								<p class="project-subtitle">{p.subtitle}</p>
 							</Tag>
@@ -242,8 +267,19 @@ const projects = [
 		display: grid;
 		grid-template-columns: repeat(12, minmax(0, 1fr));
 		column-gap: 0.75rem;
-		row-gap: 2rem;
+	}
+
+	/* Tight, uniform row-gap — thumbnails read as one seamless mosaic. */
+	.work-thumbs {
 		margin-top: 1rem;
+		row-gap: 0.75rem;
+	}
+
+	/* Captions sit below the whole mosaic, still column-aligned via the same
+	   .project-card span/order rules as the thumbnails. */
+	.work-captions {
+		margin-top: 1.5rem;
+		row-gap: 1.5rem;
 	}
 
 	.project-card {
@@ -263,17 +299,18 @@ const projects = [
 		 */
 		background: var(--thumb-bg, var(--thumb-placeholder));
 		overflow: hidden;
+		border-radius: 8px;
 		width: 100%;
 	}
 
 	/*
 	 * When the viewport narrows across a grid breakpoint (3-up → 2-up, or
-	 * 2-up → 1-up), JS adds `.expanding` to each card so the thumbnail grows
+	 * 2-up → 1-up), JS adds `.expanding` to each thumbnail tile so it grows
 	 * from ~its previous (narrower) column width out to its new full column
-	 * width, pushing the title/subtitle down as it expands. `--expand-from` is
-	 * the start width the JS sets per transition (66% for 3→2, 50% for 2→1).
-	 * Loading directly at any width never adds the class, so there's no
-	 * animation on initial load.
+	 * width. `--expand-from` is the start width the JS sets per transition
+	 * (66% for 3→2, 50% for 2→1). Loading directly at any width never adds the
+	 * class, so there's no animation on initial load. Captions live in their
+	 * own grid below and just reflow with no animation of their own.
 	 */
 	@keyframes thumb-expand {
 		from {
@@ -289,18 +326,11 @@ const projects = [
 	}
 
 	/*
-	 * The title/subtitle need no animation here — the thumbnail's width grows via
-	 * layout, so the reflow naturally rides them down at full opacity and size.
-	 */
-
-	/*
 	 * 3-up → 2-up crossing: the 2-up row's thumbnails grow from the row's left
 	 * edge as one block. Each thumbnail animates its WIDTH (66% → 100%), so the
 	 * layout reflows and the rows below shift down naturally — no vertical jump.
 	 * Column 2 additionally slides in horizontally (`--slide`, set by JS) so the
-	 * pair reads as one block growing from the left. The title/subtitle ride the
-	 * thumbnail's bottom-left corner: vertically via the same reflow, and
-	 * horizontally via the same `--slide`.
+	 * pair reads as one block growing from the left.
 	 */
 	@keyframes row-thumb-expand {
 		from {
@@ -317,25 +347,9 @@ const projects = [
 		animation: row-thumb-expand 320ms cubic-bezier(0.3, 0, 0.15, 1) both;
 	}
 
-	@keyframes row-text-slide {
-		from {
-			transform: translateX(var(--slide, 0px));
-		}
-		to {
-			transform: translateX(0);
-		}
-	}
-
-	.project-card.row-expanding .project-title,
-	.project-card.row-expanding .project-subtitle {
-		animation: row-text-slide 320ms cubic-bezier(0.3, 0, 0.15, 1) both;
-	}
-
 	@media (prefers-reduced-motion: reduce) {
 		.project-card.expanding .project-thumb,
-		.project-card.row-expanding .project-thumb,
-		.project-card.row-expanding .project-title,
-		.project-card.row-expanding .project-subtitle {
+		.project-card.row-expanding .project-thumb {
 			animation: none;
 		}
 	}
@@ -421,18 +435,27 @@ const projects = [
 		pointer-events: none;
 	}
 
-	a.project-card:hover .project-thumb::after {
+	/*
+	 * The thumbnail and its caption are now separate tiles in separate grids
+	 * (see the markup above), so a plain :hover combinator can't reach across
+	 * from one to the other. JS pairs them up by `data-idx` and toggles
+	 * `.is-active` on both on hover of either, so hovering a thumbnail still
+	 * highlights its caption below and vice versa.
+	 */
+	a.project-thumb-tile:hover .project-thumb::after,
+	.project-thumb-tile.is-active .project-thumb::after {
 		opacity: 1;
 	}
 
 	.project-title {
-		margin-top: 0.75rem;
+		margin-top: 0;
 		font-weight: 400;
 		color: var(--fg);
 		transition: color 0.2s ease;
 	}
 
-	a.project-card:hover .project-title {
+	a.project-caption-tile:hover .project-title,
+	.project-caption-tile.is-active .project-title {
 		color: var(--accent);
 	}
 
@@ -521,12 +544,12 @@ const projects = [
 
 	function clearAll() {
 		document
-			.querySelectorAll(".project-card")
+			.querySelectorAll(".project-thumb-tile")
 			.forEach((card) => card.classList.remove("expanding", "row-expanding"));
 	}
 
 	function replayThumb(from: string) {
-		document.querySelectorAll<HTMLElement>(".project-card").forEach((card) => {
+		document.querySelectorAll<HTMLElement>(".project-thumb-tile").forEach((card) => {
 			card.style.setProperty("--expand-from", from);
 			card.classList.remove("expanding");
 			// Force a reflow so re-adding the class restarts the animation.
@@ -540,7 +563,7 @@ const projects = [
 	// thumbnails and reflows, which would change later cards' offsetTop and break
 	// the row grouping mid-loop (that's why only the first row used to animate).
 	function replayRow() {
-		const cards = [...document.querySelectorAll<HTMLElement>(".project-card")];
+		const cards = [...document.querySelectorAll<HTMLElement>(".project-thumb-tile")];
 		// Pass 1 — measure (layout still stable, no classes applied yet).
 		const byRow = new Map<number, HTMLElement[]>();
 		cards.forEach((c) => {
@@ -580,6 +603,23 @@ const projects = [
 	// Fire on both breakpoints so every crossing is caught.
 	window.matchMedia(`(max-width: ${mobileMax}px)`).addEventListener("change", onChange);
 	window.matchMedia(`(max-width: ${tabletMax}px)`).addEventListener("change", onChange);
+
+	// The thumbnail and its caption are separate tiles in separate grids now
+	// (see the markup comment above the .work section), so hovering one can't
+	// reach the other via CSS alone. Pair them up by `data-idx` and toggle
+	// `.is-active` on both together, so the hover feels like one card again.
+	const tilesByIdx = new Map<string, HTMLElement[]>();
+	document.querySelectorAll<HTMLElement>(".project-thumb-tile, .project-caption-tile").forEach((tile) => {
+		const idx = tile.dataset.idx;
+		if (!idx) return;
+		(tilesByIdx.get(idx) ?? tilesByIdx.set(idx, []).get(idx)!).push(tile);
+	});
+	tilesByIdx.forEach((tiles) => {
+		tiles.forEach((tile) => {
+			tile.addEventListener("mouseenter", () => tiles.forEach((t) => t.classList.add("is-active")));
+			tile.addEventListener("mouseleave", () => tiles.forEach((t) => t.classList.remove("is-active")));
+		});
+	});
 
 	// Color-card reveal for project thumbnails: the overlay starts opaque and
 	// fades out once its image/video has actually decoded a frame. It's always
