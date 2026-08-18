@@ -42,10 +42,14 @@ const columns = [
 </section>
 
 <style>
+	/* Column gap holds at --grid-gutter from 768px up, then widens fluidly as
+	   the viewport narrows, capping at 40px by 320px — so tight phones get
+	   breathing room between Teams and Links with no hard snap at any one
+	   breakpoint. The vw term is the line through those two anchors. */
 	.intro-directory {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--stacked-column-gap) var(--grid-gutter);
+		gap: var(--stacked-column-gap) clamp(var(--grid-gutter), 57.14px - 5.357vw, 40px);
 		margin-top: var(--section-gap);
 	}
 
