@@ -1,15 +1,14 @@
 ---
-const title = 'maximslo';
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PageGrid from "../components/PageGrid.astro";
+import SiteIntro from "../components/SiteIntro.astro";
+import { INTRO_NAME } from "../config/intro";
+
+const description = `Portfolio by ${INTRO_NAME}.`;
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<title>{title}</title>
-	</head>
-	<body>
-		<main></main>
-	</body>
-</html>
+<BaseLayout title={INTRO_NAME} description={description}>
+	<PageGrid>
+		<SiteIntro />
+	</PageGrid>
+</BaseLayout>

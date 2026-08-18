@@ -1,0 +1,83 @@
+---
+import { EXTERNAL_LINK_ARROW, LINKS, LINKS_LABEL, TEAMS, TEAMS_LABEL } from "../config/intro";
+
+const MARKER_CLASS = { index: "marker-index", arrow: "marker-arrow" } as const;
+
+// Teams are numbered, links are arrowed — the two superscript markers v3 used.
+const columns = [
+	{ label: TEAMS_LABEL, entries: TEAMS, marker: "index" as const },
+	{ label: LINKS_LABEL, entries: LINKS, marker: "arrow" as const },
+].map((column) => ({
+	label: column.label,
+	markerClass: MARKER_CLASS[column.marker],
+	entries: column.entries.map((entry, entryIndex) => ({
+		...entry,
+		markerText: column.marker === "index" ? String(entryIndex + 1) : EXTERNAL_LINK_ARROW,
+		opensInNewTab: !entry.href.startsWith("mailto:"),
+	})),
+}));
+---
+
+<section class="intro-directory">
+	{
+		columns.map((column) => (
+			<div class="directory-column">
+				<p class="directory-label">{column.label}</p>
+				<ul class="directory-list">
+					{column.entries.map((entry) => (
+						<li>
+							{/* The anchor and its marker must stay whitespace-free neighbours:
+							    a space between them is a line-break opportunity, which strands
+							    the marker alone on the next line in a narrow column. The gap
+							    you see is the marker's own margin. Marker sits outside the
+							    anchor so the dotted underline tracks the label only, as in v3. */}
+							{/* prettier-ignore */}
+							<a class="link" href={entry.href} target={entry.opensInNewTab ? "_blank" : undefined} rel={entry.opensInNewTab ? "noopener noreferrer" : undefined}>{entry.label}</a><sup class={column.markerClass}>{entry.markerText}</sup>
+						</li>
+					))}
+				</ul>
+			</div>
+		))
+	}
+</section>
+
+<style>
+	.intro-directory {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--stacked-column-gap) var(--grid-gutter);
+		margin-top: 64px;
+	}
+
+	/* Equal halves whenever both fit. `min-width: max-content` is what keeps a
+	   team name off two lines: the column refuses to shrink past its longest
+	   entry, so instead of the text wrapping, the pair stops fitting and Links
+	   wraps onto its own row. Deriving the threshold from the content this way
+	   beats a hardcoded breakpoint — at 17px the widest entry is 137.5px, which
+	   clears a 390px phone by half a pixel and fails a 375px one. */
+	.directory-column {
+		flex: 1 1 0;
+		min-width: max-content;
+	}
+
+	.directory-label {
+		color: var(--color-text-secondary);
+		margin-bottom: var(--label-to-content-gap);
+	}
+
+	.directory-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.directory-list li {
+		white-space: nowrap;
+	}
+
+	@media (width >= 768px) {
+		.intro-directory {
+			margin-top: 80px;
+		}
+	}
+</style>

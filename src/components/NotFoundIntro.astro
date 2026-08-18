@@ -1,0 +1,72 @@
+---
+import { INTRO_NAME, INTRO_ROLE_LINES } from "../config/intro";
+---
+
+<div class="site-intro">
+	<header class="intro-header">
+		<p>{INTRO_NAME}</p>
+		<p class="intro-role">{INTRO_ROLE_LINES.join(" ")}</p>
+	</header>
+
+	{/* Sits where .intro-about sits on the home page — same container, same
+	    margin-top steps — so the 404 mark lands at the same height the bio
+	    copy would, rather than needing its own spacing scale. */}
+	<p class="not-found-mark">404</p>
+</div>
+
+<style>
+	.site-intro {
+		display: flex;
+		flex-direction: column;
+		/* Establishes a query container so .not-found-mark's cqw unit below is
+		   relative to this element's own width, not the viewport's. */
+		container-type: inline-size;
+	}
+
+	.intro-header {
+		padding-top: 80px;
+	}
+
+	.intro-role {
+		color: var(--color-text-secondary);
+	}
+
+	/* font-weight 1 rather than the named "Thin" (100): SF Pro is a variable
+	   font under the hood, so the system font stack keeps responding below
+	   100 too — measured, not assumed, since most named weights would clamp.
+	   1 is the actual thinnest render this stack produces.
+
+	   font-size is in cqw rather than a fixed px per breakpoint, so the mark
+	   always spans the full width of .site-intro at any viewport instead of
+	   needing separate tuning per breakpoint. The multiplier is measured
+	   against this weight specifically, since a thinner weight has slightly
+	   narrower glyphs: font-size needs to be 100cqw (the container's full
+	   width) × 0.5865 ≈ 58.7cqw. */
+	.not-found-mark {
+		margin-top: 40px;
+		font-size: 58.7cqw;
+		font-weight: 1;
+		line-height: 1;
+	}
+
+	@media (width >= 768px) {
+		.intro-header {
+			padding-top: 120px;
+		}
+
+		.not-found-mark {
+			margin-top: 48px;
+		}
+	}
+
+	@media (width >= 1024px) {
+		.site-intro {
+			grid-column: 6 / 12;
+			grid-row-start: 1;
+		}
+
+		.not-found-mark {
+			margin-top: 65px;
+		}
+	}
+</style>

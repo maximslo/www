@@ -1,0 +1,87 @@
+---
+import {
+	EXTERNAL_LINK_ARROW,
+	INTRO_LINKS,
+	INTRO_NAME,
+	INTRO_PARAGRAPHS,
+	INTRO_ROLE_LINES,
+} from "../config/intro";
+import { toLinkSegments } from "../lib/link-segments";
+import IntroDirectory from "./IntroDirectory.astro";
+
+const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph, INTRO_LINKS));
+---
+
+<div class="site-intro">
+	<header class="intro-header">
+		<p>{INTRO_NAME}</p>
+		<p class="intro-role">{INTRO_ROLE_LINES.join(" ")}</p>
+	</header>
+
+	<section class="intro-about">
+		{
+			paragraphs.map((segments) => (
+				<p>
+					{/* Anchor, marker and the following punctuation are kept on one line:
+					    a newline between them becomes a rendered space, which would
+					    underline a gap and push the arrow and the sentence's period away
+					    from the link text. */}
+					{segments.map((segment) =>
+						// prettier-ignore
+						segment.href ? <><a class="link" href={segment.href} target="_blank" rel="noopener noreferrer">{segment.text}</a><sup class="marker-arrow">{EXTERNAL_LINK_ARROW}</sup></> : segment.text
+					)}
+				</p>
+			))
+		}
+	</section>
+
+	<IntroDirectory />
+</div>
+
+<style>
+	.site-intro {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.intro-header {
+		padding-top: 80px;
+	}
+
+	.intro-role {
+		color: var(--color-text-secondary);
+	}
+
+	.intro-about {
+		margin-top: 40px;
+	}
+
+	.intro-about p + p {
+		margin-top: 20px;
+	}
+
+	@media (width >= 768px) {
+		.intro-header {
+			padding-top: 120px;
+		}
+
+		.intro-about {
+			margin-top: 48px;
+		}
+
+		.intro-about p + p {
+			margin-top: 24px;
+		}
+	}
+
+	@media (width >= 1024px) {
+		.site-intro {
+			grid-column: 6 / 12;
+			grid-row-start: 1;
+		}
+
+		.intro-about {
+			margin-top: 65px;
+		}
+	}
+</style>
