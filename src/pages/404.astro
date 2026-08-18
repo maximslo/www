@@ -1,0 +1,15 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import PageGrid from "../components/PageGrid.astro";
+import NotFoundIntro from "../components/NotFoundIntro.astro";
+import { INTRO_NAME } from "../config/intro";
+
+const title = `404 — ${INTRO_NAME}`;
+const description = "That page doesn't exist.";
+---
+
+<BaseLayout title={title} description={description}>
+	<PageGrid>
+		<NotFoundIntro />
+	</PageGrid>
+</BaseLayout>

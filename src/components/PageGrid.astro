@@ -1,0 +1,35 @@
+---
+---
+
+<main class="site-main">
+	<slot />
+</main>
+
+<style>
+	.site-main {
+		width: 100%;
+		max-width: 564px;
+		margin-inline: auto;
+		padding: 0 49px 96px;
+	}
+
+	@media (width >= 768px) {
+		.site-main {
+			padding: 0 32px 112px;
+		}
+	}
+
+	/* The desktop layout is a fixed 16 × 71px grid with 16px gutters — 1376px
+	   total — centered rather than fluid, so column positions stay identical at
+	   every width above the breakpoint. */
+	@media (width >= 1024px) {
+		.site-main {
+			display: grid;
+			grid-template-columns: repeat(16, 71px);
+			gap: 0 var(--grid-gutter);
+			justify-content: center;
+			max-width: none;
+			padding: 0 0 132px;
+		}
+	}
+</style>

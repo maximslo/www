@@ -1,76 +1,144 @@
 :root {
-	--bg: #fbfbf9;
-	--fg: #1a1a1a;
-	--muted: #6b6b6b;
-	--accent: #2563eb;
-	--border: #e5e5e0;
-	--max-width: 640px;
-	--font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-		Arial, sans-serif;
-	--mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+	--font-sans: "SF Pro Display", "SF Pro", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+	--color-text-primary: #333;
+	--color-text-secondary: #b9b9b9;
+	--color-bg-page: #fff;
+
+	/* Carried over from v3, where the accent is what makes the superscript
+	   markers read as annotation rather than stray characters. It appears only
+	   on those markers and on link hover, so the page at rest stays monochrome. */
+	--color-accent: #0903ff;
+	--color-link-line: rgba(0, 0, 0, 0.3);
+	--color-link-hover-bg: rgba(9, 3, 255, 0.1);
+
+	--grid-gutter: 16px;
+	--label-to-content-gap: 12px;
+	--stacked-column-gap: 32px;
+
+	--page-fade-duration: 3s;
+	--page-fade-easing: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-	:root {
-		--bg: #131313;
-		--fg: #e8e8e6;
-		--muted: #909090;
-		--accent: #6ea8fe;
-		--border: #2a2a2a;
-	}
-}
-
-* {
+*,
+*::before,
+*::after {
 	box-sizing: border-box;
 }
 
 html {
+	min-height: 100%;
+	background-color: var(--color-bg-page);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 	-webkit-text-size-adjust: 100%;
+	/* The desktop grid is 16 fixed 71px columns (1376px wide) and stays centered
+	   rather than shrinking, so between 1024px and 1376px its outer columns run
+	   past the viewport. Nothing is rendered in them — clip instead of scroll. */
+	overflow-x: clip;
 }
 
 body {
 	margin: 0;
-	background: var(--bg);
-	color: var(--fg);
-	font-family: var(--font);
-	font-size: 16px;
-	line-height: 1.6;
-	-webkit-font-smoothing: antialiased;
+	min-height: 100lvh;
+	font-family: var(--font-sans);
+	font-size: 18px;
+	line-height: 1.4;
+	letter-spacing: 0;
+	color: var(--color-text-primary);
+	background-color: var(--color-bg-page);
+	text-wrap: pretty;
+	overflow-x: clip;
 }
 
-.container {
-	max-width: var(--max-width);
-	margin: 0 auto;
-	padding: 2.5rem 1.25rem 6rem;
-}
-
-a {
-	color: var(--accent);
-	text-decoration: none;
-}
-
-a:hover {
-	text-decoration: underline;
-}
-
+p,
 h1,
 h2,
 h3 {
-	line-height: 1.25;
-	font-weight: 600;
+	margin: 0;
+	font-size: inherit;
+	font-weight: inherit;
+	line-height: inherit;
 }
 
-img {
-	max-width: 100%;
-	height: auto;
-	border-radius: 6px;
+/* v3's selection: the text itself recolours to the accent and no highlight box
+   is painted, so a selection reads as the page's own emphasis rather than the
+   browser's blue slab. */
+::selection {
+	color: var(--color-accent);
+	background: transparent;
 }
 
-code {
-	font-family: var(--mono);
-	font-size: 0.9em;
+@media (width <= 768px) {
+	body {
+		font-size: 17px;
+	}
 }
 
-.muted {
-	color: var(--muted);
+/* v3's link, with its vertical padding tightened. The 1px bottom padding is what
+   sets the dotted rule below the descenders; the top padding only ever sized the
+   hover wash, and v3's 0.35em made the padded box ~29px tall inside a 25px row,
+   so every link's highlight and focus ring reached 4px up over the rule of the
+   row above. Keep both sides at 1px and the box stays within its own row.
+   Hover is deliberately untransitioned — v3 animates only theme switches, so
+   links snap between states rather than fading. */
+.link {
+	color: var(--color-text-primary);
+	text-decoration: none;
+	border-bottom: 1px dotted var(--color-link-line);
+	padding: 1px 0;
+}
+
+.link:hover,
+.link:focus-visible {
+	color: var(--color-accent);
+	border-color: var(--color-accent);
+	background-color: var(--color-link-hover-bg);
+}
+
+/* Keyboard focus only — mouse hover keeps the plain wash above. The ring gets
+   its own breathing room via outline-offset rather than the shared padding,
+   so it doesn't shift the dotted rule under the other states; offset is kept
+   small enough to still clear the row above (see note above .link). */
+.link:focus-visible {
+	outline: 1px solid var(--color-accent);
+	outline-offset: 1px;
+	border-radius: 3px;
+}
+
+/* Superscript markers annotating a link: an index in the Teams column, an arrow
+   on every outbound link elsewhere. Each sits outside its anchor, so the dotted
+   rule tracks the label alone. */
+.marker-index,
+.marker-arrow {
+	color: var(--color-accent);
+	line-height: 0;
+	vertical-align: super;
+	margin-left: 2px;
+}
+
+.marker-index {
+	font-family: var(--font-mono);
+	font-size: 12px;
+	position: relative;
+	top: 0.15em;
+}
+
+.marker-arrow {
+	font-size: 10px;
+}
+
+@keyframes site-fade-in {
+	to {
+		opacity: 1;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	body {
+		opacity: 0;
+		animation: site-fade-in var(--page-fade-duration) var(--page-fade-easing) forwards;
+	}
 }

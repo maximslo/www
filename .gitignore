@@ -25,3 +25,6 @@ pnpm-debug.log*
 
 # raw video/image masters (optimized versions live in public/)
 videos-src/
+
+# python venv for scripts/subset-fonts.sh (fonttools + brotli)
+.venv/
