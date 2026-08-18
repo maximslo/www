@@ -42,10 +42,9 @@ const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph,
 	.site-intro {
 		display: flex;
 		flex-direction: column;
-	}
-
-	.intro-header {
-		padding-top: 80px;
+		/* Shared by .intro-about and .intro-directory (in IntroDirectory.astro)
+		   so the two gaps between the three sections always match. */
+		--section-gap: 32px;
 	}
 
 	.intro-role {
@@ -53,7 +52,7 @@ const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph,
 	}
 
 	.intro-about {
-		margin-top: 40px;
+		margin-top: var(--section-gap);
 	}
 
 	.intro-about p + p {
@@ -61,12 +60,8 @@ const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph,
 	}
 
 	@media (width >= 768px) {
-		.intro-header {
-			padding-top: 120px;
-		}
-
-		.intro-about {
-			margin-top: 48px;
+		.site-intro {
+			--section-gap: 40px;
 		}
 
 		.intro-about p + p {
@@ -78,10 +73,7 @@ const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph,
 		.site-intro {
 			grid-column: 6 / 12;
 			grid-row-start: 1;
-		}
-
-		.intro-about {
-			margin-top: 65px;
+			--section-gap: 56px;
 		}
 	}
 </style>

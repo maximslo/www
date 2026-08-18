@@ -38,6 +38,17 @@ const ogImageUrl = new URL("/og-image.png", Astro.site);
 		<meta name="twitter:title" content={title} />
 		<meta name="twitter:description" content={description} />
 		<meta name="twitter:image" content={ogImageUrl} />
+
+		<script async src="https://plausible.io/js/pa-7S32kUOaXXAwP92XAjsL0.js"></script>
+		<script is:inline>
+			window.plausible =
+				window.plausible ||
+				function () {
+					(plausible.q = plausible.q || []).push(arguments);
+				};
+			plausible.init = plausible.init || function (i) { plausible.o = i || {}; };
+			plausible.init();
+		</script>
 	</head>
 	<body>
 		<slot />
