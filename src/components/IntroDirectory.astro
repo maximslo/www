@@ -46,7 +46,7 @@ const columns = [
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--stacked-column-gap) var(--grid-gutter);
-		margin-top: 64px;
+		margin-top: var(--section-gap);
 	}
 
 	/* Equal halves whenever both fit. `min-width: max-content` is what keeps a
@@ -73,11 +73,5 @@ const columns = [
 
 	.directory-list li {
 		white-space: nowrap;
-	}
-
-	@media (width >= 768px) {
-		.intro-directory {
-			margin-top: 80px;
-		}
 	}
 </style>

@@ -9,13 +9,14 @@ export const META_DESCRIPTION =
 
 export const INTRO_PARAGRAPHS = [
 	"I craft interfaces for news.",
-	"In 2024, I redesigned NYT Cooking and built the first newsroom agents creating live election maps.",
-	"Before that, I taught design and algorithmic fairness at Boston University.",
+	"In 2024, I redesigned NYT Cooking and built the first agents to generate live election maps.",
+	"Previously, I taught design and algorithmic fairness at Boston University.",
 ];
 
 // Any of these phrases appearing in an intro paragraph is rendered as a link.
 export const INTRO_LINKS: Record<string, string> = {
 	"NYT Cooking": "https://cooking.nytimes.com/",
+	"first agents": "https://github.com/newsdev/about-int",
 	"Boston University": "https://www.bu.edu/cds-faculty/explore/",
 };
 
