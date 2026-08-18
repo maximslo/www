@@ -2,6 +2,11 @@ export const INTRO_NAME = "Maxim Slobodchikov";
 
 export const INTRO_ROLE_LINES = ["Web Engineer and Designer"];
 
+// Used as the <meta name="description"> and the og:/twitter: description —
+// what a link preview or search result shows, not copy rendered on the page.
+export const META_DESCRIPTION =
+	"Maxim is a 23-year-old engineer and designer making visual things on and off the web. Previously at the New York Times and the Washington Post.";
+
 export const INTRO_PARAGRAPHS = [
 	"I craft interfaces for news.",
 	"In 2024, I redesigned NYT Cooking and built the first newsroom agents creating live election maps.",
