@@ -10,6 +10,13 @@ import { toLinkSegments } from "../lib/link-segments";
 import IntroDirectory from "./IntroDirectory.astro";
 
 const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph, INTRO_LINKS));
+
+// A literal "\n" in intro copy is a deliberate hard break — e.g. inside the
+// "first agents" link — rather than a natural wrap, which shifts with width.
+// It's suppressed below 768px (see .intro-break in <style>): the narrow column
+// already wraps there on its own, and forcing the break too strands "first"
+// alone on its line instead of matching the wider layout's intent.
+const splitLines = (text: string) => text.split("\n");
 ---
 
 <div class="site-intro">
@@ -28,7 +35,7 @@ const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph,
 					    from the link text. */}
 					{segments.map((segment) =>
 						// prettier-ignore
-						segment.href ? <><a class="link" href={segment.href} target="_blank" rel="noopener noreferrer">{segment.text}</a><sup class="marker-arrow">{EXTERNAL_LINK_ARROW}</sup></> : segment.text
+						segment.href ? <><a class="link" href={segment.href} target="_blank" rel="noopener noreferrer">{splitLines(segment.text).map((line, index) => (index === 0 ? line : <><br class="intro-break" />{line}</>))}</a><sup class="marker-arrow">{EXTERNAL_LINK_ARROW}</sup></> : splitLines(segment.text).map((line, index) => (index === 0 ? line : <><br class="intro-break" />{line}</>))
 					)}
 				</p>
 			))
@@ -59,6 +66,10 @@ const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph,
 		margin-top: 20px;
 	}
 
+	.intro-break {
+		display: none;
+	}
+
 	@media (width >= 768px) {
 		.site-intro {
 			--section-gap: 40px;
@@ -66,6 +77,10 @@ const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph,
 
 		.intro-about p + p {
 			margin-top: 24px;
+		}
+
+		.intro-break {
+			display: inline;
 		}
 	}
 
