@@ -2,12 +2,10 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import PageGrid from "../components/PageGrid.astro";
 import SiteIntro from "../components/SiteIntro.astro";
-import { INTRO_NAME } from "../config/intro";
-
-const description = `Portfolio by ${INTRO_NAME}.`;
+import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 ---
 
-<BaseLayout title={INTRO_NAME} description={description}>
+<BaseLayout title={INTRO_NAME} description={META_DESCRIPTION}>
 	<PageGrid>
 		<SiteIntro />
 	</PageGrid>
