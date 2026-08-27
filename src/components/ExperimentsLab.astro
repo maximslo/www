@@ -299,8 +299,11 @@ const tileStyle = (tile: LabTile) => {
 		background: transparent;
 		overflow: hidden;
 		/* Stops a trackpad or touch fling that starts on the lightbox from
-		   chaining through to the page underneath. */
+		   chaining through to the page underneath. The dialog is what's under the
+		   finger for the whole open → shrink cycle, so refusing touch panning here
+		   is what actually holds the page still on iOS. */
 		overscroll-behavior: contain;
+		touch-action: none;
 	}
 
 	/* Left clear — .lightbox-veil does the dimming and blurring so it can be

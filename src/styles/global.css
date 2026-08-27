@@ -128,6 +128,12 @@ body {
    send the media home to the wrong place. */
 html.is-lightbox-open {
 	overflow: hidden;
+	/* overflow: hidden alone doesn't stop touch panning in iOS Safari — the
+	   native scroller ignores it — so touches are refused outright for the whole
+	   lock, and the rubber-band bounce with them. lab-lightbox.ts backs this up
+	   by cancelling touchmove for older WebKit that ignores touch-action here. */
+	touch-action: none;
+	overscroll-behavior: none;
 	/* Replaces the width the removed scrollbar was occupying, so the page doesn't
 	   jump sideways as the lightbox opens. Zero where scrollbars overlay. */
 	padding-right: var(--scrollbar-gap, 0px);
