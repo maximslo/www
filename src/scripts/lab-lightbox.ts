@@ -62,6 +62,27 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		root.style.removeProperty("--scrollbar-gap");
 	};
 
+	/**
+	 * Every video in the grid keeps decoding while the lightbox is up — behind the
+	 * blur, where none of it can be seen. That's several simultaneous decodes
+	 * competing with the animation for the same GPU, which is what makes the
+	 * enlarge stutter on a phone. They're frozen for the whole cycle and the ones
+	 * that were actually running are resumed at the end.
+	 */
+	let frozen: HTMLVideoElement[] = [];
+
+	const freezeGrid = () => {
+		frozen = [...document.querySelectorAll<HTMLVideoElement>("video.lab-tile-media-el")].filter(
+			(video) => !video.paused,
+		);
+		frozen.forEach((video) => video.pause());
+	};
+
+	const thawGrid = () => {
+		frozen.forEach((video) => video.play().catch(() => {}));
+		frozen = [];
+	};
+
 	const setText = (el: HTMLElement, value: string | undefined) => {
 		el.textContent = value ?? "";
 		el.hidden = !value;
@@ -84,6 +105,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		// Before measuring: locking changes the layout width where a scrollbar is
 		// taking up space, and the FLIP's start rect has to be read after that.
 		lockScroll();
+		freezeGrid();
 
 		// A clone, so the tile stays in the grid — the page behind is blurred but
 		// still visible, and a gap where the tile was would show through it.
@@ -94,9 +116,14 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 			clone.muted = true;
 			clone.loop = true;
 			clone.playsInline = true;
-			clone.autoplay = true;
+			// Deliberately not autoplay: it stays on a still frame until the
+			// enlarge has finished, so the compositor is scaling one static texture
+			// instead of a surface being re-decoded 24 times a second. Started in
+			// `startClone` once the motion is over.
+			clone.autoplay = false;
 			// Pick up where the tile's copy is rather than restarting.
 			clone.currentTime = (media as HTMLVideoElement).currentTime || 0;
+			clone.pause();
 		}
 		stage.replaceChildren(clone);
 
@@ -140,7 +167,19 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		const sx = from.width / to.width;
 		const sy = from.height / to.height;
 
-		if (reducedMotion.matches) return;
+		// Guarded on `dialog.open` because a fast close can land before the enlarge
+		// finishes, and starting playback into a closed lightbox would leave a
+		// video decoding with nothing on screen.
+		const startClone = () => {
+			if (!dialog.open) return;
+			const video = stage.querySelector("video");
+			video?.play().catch(() => {});
+		};
+
+		if (reducedMotion.matches) {
+			startClone();
+			return;
+		}
 
 		// The close animations hold their end state with fill: forwards. Left in
 		// place they'd reassert opacity 0 the moment this open's animation stops
@@ -172,7 +211,12 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		// compositor layer per lightbox, which is its own memory cost on mobile.
 		stage.style.willChange = "transform";
 		const grow = stage.animate([from0, to0], { duration: DURATION, easing: EASING });
-		grow.finished.then(() => (stage.style.willChange = "")).catch(() => {});
+		grow.finished
+			.then(() => {
+				stage.style.willChange = "";
+				startClone();
+			})
+			.catch(() => {});
 
 		// Held back until the media is most of the way out, so the caption arrives
 		// on a settled frame rather than sliding around underneath it.
@@ -190,6 +234,9 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		if (closing || !dialog.open) return;
 		closing = true;
 
+		// Back to a still frame for the shrink, for the same reason as the enlarge.
+		stage.querySelector("video")?.pause();
+
 		const to = origin?.getBoundingClientRect();
 		const from = stage.getBoundingClientRect();
 
@@ -203,6 +250,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 			stage.style.willChange = "";
 			// Released only here — the shrink is still running until this point.
 			unlockScroll();
+			thawGrid();
 			// Return focus to the tile that opened it, or the tab order restarts
 			// from the top of the document.
 			origin?.focus({ preventScroll: true });
