@@ -21,6 +21,13 @@ const CLOSE_SCALE = 0.7;
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+// Phones and tablets. Counter-scaling the corner radius means repainting the
+// stage — a decoded video at full size — on every frame, which a mobile GPU
+// feels far more than a desktop one. The mismatch it corrects is also smaller
+// there, since a tile is a bigger fraction of the screen and the scale factor is
+// nearer 1, so the trade goes the other way and the radius is left alone.
+const compact = window.matchMedia("(max-width: 900px), (pointer: coarse)");
+
 // Leaves room for the caption under the media and air around it.
 const MAX_WIDTH = 0.86;
 const MAX_HEIGHT = 0.78;
@@ -153,17 +160,19 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		// Countering it by 1/scale keeps the rendered corner constant, so the
 		// clone's corners match the tile's at the frame they trade places.
 		const radius = parseFloat(getComputedStyle(stage).borderTopLeftRadius) || 0;
+		const from0 = { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` };
+		const to0 = { transform: "translate(0, 0) scale(1, 1)" };
 
-		stage.animate(
-			[
-				{
-					transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`,
-					borderRadius: `${radius / sx}px`,
-				},
-				{ transform: "translate(0, 0) scale(1, 1)", borderRadius: `${radius}px` },
-			],
-			{ duration: DURATION, easing: EASING },
-		);
+		if (!compact.matches) {
+			Object.assign(from0, { borderRadius: `${radius / sx}px` });
+			Object.assign(to0, { borderRadius: `${radius}px` });
+		}
+
+		// Promoted for the duration only. Left on permanently it would pin a
+		// compositor layer per lightbox, which is its own memory cost on mobile.
+		stage.style.willChange = "transform";
+		const grow = stage.animate([from0, to0], { duration: DURATION, easing: EASING });
+		grow.finished.then(() => (stage.style.willChange = "")).catch(() => {});
 
 		// Held back until the media is most of the way out, so the caption arrives
 		// on a settled frame rather than sliding around underneath it.
@@ -191,6 +200,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 			// Refilled only once the clone has finished travelling home, so the two
 			// never overlap.
 			origin?.classList.remove("is-lifted");
+			stage.style.willChange = "";
 			// Released only here — the shrink is still running until this point.
 			unlockScroll();
 			// Return focus to the tile that opened it, or the tab order restarts
@@ -220,16 +230,18 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		const scaleDown = to.width / from.width;
 		const radius = parseFloat(getComputedStyle(stage).borderTopLeftRadius) || 0;
 
-		const shrink = stage.animate(
-			[
-				{ transform: "translate(0, 0) scale(1, 1)", borderRadius: `${radius}px` },
-				{
-					transform: `translate(${dx}px, ${dy}px) scale(${scaleDown}, ${to.height / from.height})`,
-					borderRadius: `${radius / scaleDown}px`,
-				},
-			],
-			{ duration, easing: EASING },
-		);
+		const shrinkFrom = { transform: "translate(0, 0) scale(1, 1)" };
+		const shrinkTo = {
+			transform: `translate(${dx}px, ${dy}px) scale(${scaleDown}, ${to.height / from.height})`,
+		};
+
+		if (!compact.matches) {
+			Object.assign(shrinkFrom, { borderRadius: `${radius}px` });
+			Object.assign(shrinkTo, { borderRadius: `${radius / scaleDown}px` });
+		}
+
+		stage.style.willChange = "transform";
+		const shrink = stage.animate([shrinkFrom, shrinkTo], { duration, easing: EASING });
 		caption.animate([{ opacity: 1 }, { opacity: 0 }], {
 			duration: duration * 0.4,
 			fill: "forwards",
