@@ -135,7 +135,10 @@ const tileStyle = (tile: LabTile) => {
 	    from script — as a real element its opacity can be ramped, so the grid
 	    goes gradually out of focus instead of snapping. */}
 	<div class="lightbox-veil"></div>
-	<figure class="lightbox-figure">
+	{/* showModal() focuses the first focusable descendant, which would be the
+	    "Visit project" link — landing a focus ring on it every time a tile is
+	    enlarged. `autofocus` on this unfocusable wrapper claims it instead. */}
+	<figure class="lightbox-figure" tabindex="-1" autofocus>
 		<div class="lightbox-stage"></div>
 		<figcaption class="lightbox-caption">
 			<span class="lightbox-title"></span>
@@ -196,11 +199,24 @@ const tileStyle = (tile: LabTile) => {
 		display: block;
 		width: 100%;
 		cursor: pointer;
+		/* Kills the grey flash iOS/Android paint over a tapped element. */
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	/* Keyboard focus only. Closing the lightbox returns focus to the tile it came
+	   from, and without this that programmatic focus would leave a ring sitting on
+	   the thumbnail after a tap. */
+	button.lab-tile:focus {
+		outline: none;
 	}
 
 	button.lab-tile:focus-visible {
 		outline: 2px solid #fff;
 		outline-offset: 3px;
+	}
+
+	.lightbox-figure:focus {
+		outline: none;
 	}
 
 	/* While a tile's content is enlarged, the tile itself reads as an empty slot.
@@ -302,9 +318,22 @@ const tileStyle = (tile: LabTile) => {
 		position: fixed;
 		inset: 0;
 		background: rgba(5, 5, 5, 0.82);
-		backdrop-filter: blur(24px);
-		-webkit-backdrop-filter: blur(24px);
+		backdrop-filter: blur(var(--lightbox-blur, 24px));
+		-webkit-backdrop-filter: blur(var(--lightbox-blur, 24px));
 		pointer-events: none;
+		will-change: opacity;
+		/* Nothing inside affects layout elsewhere, so the compositor can treat it
+		   as a self-contained layer instead of re-checking the page each frame. */
+		contain: strict;
+	}
+
+	/* Blur cost scales with radius, and it's sampling the whole viewport every
+	   frame while the opacity ramps — by far the most expensive part of this on a
+	   phone GPU. A smaller radius reads the same at that screen size. */
+	@media (max-width: 900px), (pointer: coarse) {
+		.lightbox-veil {
+			--lightbox-blur: 12px;
+		}
 	}
 
 	.lightbox-figure {
