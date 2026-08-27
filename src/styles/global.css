@@ -7,6 +7,22 @@
 	--color-text-secondary: #b9b9b9;
 	--color-bg-page: #fff;
 
+	/* Near-black rather than #000: at this size the section is a full surface,
+	   and a true black reads as a hole punched in the page. */
+	--color-bg-reveal: #050505;
+
+	/* Text sitting on that dark surface. The page's own --color-text-* are tuned
+	   against white and invert badly here: #333 would vanish, and #b9b9b9 reads
+	   brighter than the primary it's meant to sit behind. */
+	--color-text-on-reveal: #ededed;
+	--color-text-on-reveal-dim: #6f6f78;
+	--color-link-line-on-reveal: rgba(255, 255, 255, 0.32);
+
+	/* What the browser paints outside the document — overscroll rubber-banding
+	   at the top and bottom. It follows whichever surface you're currently on
+	   (see [data-site-surface] below) so a bounce never flashes the other one. */
+	--site-browser-bg: var(--color-bg-page);
+
 	/* Carried over from v3, where the accent is what makes the superscript
 	   markers read as annotation rather than stray characters. It appears only
 	   on those markers and on link hover, so the page at rest stays monochrome. */
@@ -17,6 +33,15 @@
 	--grid-gutter: 16px;
 	--label-to-content-gap: 12px;
 	--stacked-column-gap: 32px;
+
+	/* The lab rail is a 12-column span of the same 16 × 71px grid the intro sits
+	   on: 12 × 71 + 11 × 16. That's exactly two intro columns (grid-column 6/12 =
+	   506px) plus one gutter, so each masonry column is the width of the intro
+	   block and the rail is double the home container. The white canvas narrows
+	   to this same number on scroll, which is what makes its edges land flush
+	   with the thumbnails. */
+	--lab-rail: 1028px;
+	--lab-tile-radius: 12px;
 
 	--page-fade-duration: 3s;
 	--page-fade-easing: cubic-bezier(0.16, 1, 0.3, 1);
@@ -30,7 +55,7 @@
 
 html {
 	min-height: 100%;
-	background-color: var(--color-bg-page);
+	background-color: var(--site-browser-bg);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	-webkit-text-size-adjust: 100%;
@@ -40,20 +65,76 @@ html {
 	overflow-x: clip;
 }
 
+/* The page scrolls, so height and vertical centring live on .site-canvas — the
+   white sheet — rather than here. */
 body {
 	margin: 0;
-	height: 100dvh;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
 	font-family: var(--font-sans);
 	font-size: 18px;
 	line-height: 1.4;
 	letter-spacing: 0;
 	color: var(--color-text-primary);
-	background-color: var(--color-bg-page);
+	background-color: var(--site-browser-bg);
 	text-wrap: pretty;
+}
+
+/* Carries the two properties the scroll driver animates (canvas-reveal.ts).
+   They're declared here rather than on .site-canvas so the element the script
+   writes to and the element that reads them can differ. */
+.site-page {
+	--canvas-inset: 0px;
+	--canvas-radius: 0px;
+	position: relative;
+}
+
+/* The dark surface the canvas is lifted off. It sits behind the white sheet for
+   the sheet's whole height, so what the narrowing clip reveals at the sides is
+   already painted — nothing slides in. */
+.site-reveal {
+	min-height: 100lvh;
+	background-color: var(--color-bg-reveal);
+}
+
+/* The white sheet. `lvh` — largest viewport height — not `dvh`: it keeps the
+   sheet covering the screen even once mobile browser chrome retracts and the
+   viewport grows, which is what guarantees no dark pixel on the first screen.
+
+   The narrowing is a clip-path, not a width or margin. The sheet's layout box
+   never changes, so the intro text stays put while the painted edges eat inward;
+   animating width instead would re-centre the grid inside it and drag the text
+   sideways. border-radius is set alongside the clip's own `round` so the
+   element's backdrop and any focus rings follow the same corners. */
+.site-canvas {
+	min-height: 100lvh;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	position: relative;
+	z-index: 1;
+	background-color: var(--color-bg-page);
+	border-radius: 0 0 var(--canvas-radius) var(--canvas-radius);
+	clip-path: inset(
+		0 var(--canvas-inset) 0 var(--canvas-inset) round 0 0 var(--canvas-radius) var(--canvas-radius)
+	);
+	isolation: isolate;
 	overflow: hidden;
+	backface-visibility: hidden;
+}
+
+/* Set by canvas-reveal.ts once the dark section owns the viewport. Pairs with
+   the <meta name="theme-color"> swap it does at the same moment. */
+/* Held for the whole enlarge → open → shrink cycle by lab-lightbox.ts. The FLIP
+   measures the tile's viewport rect on the way out, so a scroll mid-flight would
+   send the media home to the wrong place. */
+html.is-lightbox-open {
+	overflow: hidden;
+	/* Replaces the width the removed scrollbar was occupying, so the page doesn't
+	   jump sideways as the lightbox opens. Zero where scrollbars overlay. */
+	padding-right: var(--scrollbar-gap, 0px);
+}
+
+html[data-site-surface="reveal"] {
+	--site-browser-bg: var(--color-bg-reveal);
 }
 
 p,

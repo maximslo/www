@@ -1,0 +1,96 @@
+{
+  "columns": [
+    [
+      {
+        "aspect": "1920 / 1080",
+        "video": "/videos/project-one.mp4",
+        "poster": "/videos/project-one.jpg",
+        "placeholder": "#9b9bed",
+        "title": "The Future of AI & News",
+        "detail": "OpenAI × Washington Post"
+      },
+      {
+        "aspect": "1200 / 1210",
+        "image": "/images/cooking.jpg",
+        "placeholder": "#c4b8a8",
+        "href": "https://cooking.nytimes.com",
+        "action": "Visit project"
+      },
+      {
+        "aspect": "1200 / 674",
+        "image": "/images/clihero.jpg",
+        "placeholder": "#dde1de",
+        "title": "Designing a CLI",
+        "detail": "The Washington Post"
+      },
+      {
+        "aspect": "1200 / 928",
+        "image": "/images/flue2.jpg",
+        "placeholder": "#cfc0e9",
+        "title": "Open-Source Harness Framework",
+        "detail": "Astro + Flue"
+      },
+      {
+        "aspect": "1200 / 676",
+        "video": "/videos/new-project.mp4",
+        "poster": "/videos/new-project.jpg",
+        "placeholder": "#343b40",
+        "href": "https://drinks.maximslo.com",
+        "action": "Visit project"
+      },
+      {
+        "aspect": "1078 / 688",
+        "video": "/videos/maxim-elections-map-but-make-it-clean-atk6sw.mp4",
+        "poster": "/videos/maxim-elections-map-but-make-it-clean-atk6sw.jpg",
+        "placeholder": "#f1ebf1"
+      }
+    ],
+    [
+      {
+        "aspect": "1551 / 1503",
+        "image": "/images/cookmap.jpg",
+        "placeholder": "#e5e0d3",
+        "href": "https://sandwiches.maximslo.com",
+        "action": "Visit project"
+      },
+      {
+        "aspect": "1012 / 609",
+        "image": "/images/live.jpg",
+        "fit": "contain",
+        "bg": "#3a85fc",
+        "placeholder": "#8bb0f0",
+        "title": "Election Developer Tools",
+        "detail": "The New York Times"
+      },
+      {
+        "aspect": "1200 / 900",
+        "image": "/images/wapo11-2.jpg",
+        "placeholder": "#c2ceda",
+        "title": "Olympics Medal Tracker",
+        "detail": "The Washington Post"
+      },
+      {
+        "aspect": "1200 / 702",
+        "video": "/videos/atp-newest-trimmed.mp4",
+        "poster": "/videos/atp-newest-trimmed.jpg",
+        "placeholder": "#171917",
+        "title": "Ask The Post",
+        "detail": "The Washington Post"
+      },
+      {
+        "aspect": "1200 / 900",
+        "video": "/videos/goal-2.mp4",
+        "poster": "/videos/goal-2.jpg",
+        "placeholder": "#eec8c5"
+      },
+      {
+        "aspect": "1200 / 542",
+        "video": "/videos/goal3.mp4",
+        "poster": "/videos/goal3.jpg",
+        "placeholder": "#af998f",
+        "href": "https://drinks.maximslo.com",
+        "action": "Visit project"
+      }
+    ]
+  ]
+}

@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "astro dev",
+    "lab": "node scripts/lab-editor.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro"

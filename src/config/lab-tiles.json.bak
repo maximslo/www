@@ -1,0 +1,30 @@
+{
+  "columns": [
+    [
+      {
+        "aspect": "1920 / 1080",
+        "video": "/videos/project-one.mp4",
+        "poster": "/videos/project-one.jpg"
+      },
+      { "aspect": "4 / 5" },
+      { "aspect": "4 / 5" },
+      { "aspect": "1 / 1" },
+      { "aspect": "5 / 4" },
+      { "aspect": "4 / 5" },
+      { "aspect": "16 / 10" },
+      { "aspect": "4 / 5" },
+      { "aspect": "3 / 4" }
+    ],
+    [
+      { "aspect": "1551 / 1503", "image": "/images/cookmap.jpg" },
+      { "aspect": "2396 / 2415", "image": "/images/cooking.jpg" },
+      { "aspect": "5 / 4" },
+      { "aspect": "4 / 5" },
+      { "aspect": "4 / 5" },
+      { "aspect": "16 / 10" },
+      { "aspect": "4 / 5" },
+      { "aspect": "5 / 4" },
+      { "aspect": "731 / 1000" }
+    ]
+  ]
+}

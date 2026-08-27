@@ -51,6 +51,20 @@ const ogImageUrl = new URL("/og-image.png", Astro.site);
 		</script>
 	</head>
 	<body>
-		<slot />
+		{/* The white sheet and the dark surface it sits on. Pages that pass nothing
+		    to `reveal` (404) get the sheet alone — a single centred screen, exactly
+		    as before — and canvas-reveal.ts stands down when it finds no section. */}
+		<div class="site-page">
+			<div class="site-reveal">
+				<div class="site-canvas">
+					<slot />
+				</div>
+				<slot name="reveal" />
+			</div>
+		</div>
+
+		<script>
+			import "../scripts/canvas-reveal";
+		</script>
 	</body>
 </html>
