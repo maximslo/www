@@ -52,16 +52,24 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 	 * Locked from the first frame of the enlarge to the last frame of the shrink.
 	 * A modal <dialog> doesn't stop the page behind it scrolling on its own.
 	 */
+	// iOS Safari scrolls the page on touch regardless of overflow: hidden. The CSS
+	// touch-action: none covers current WebKit; this catches the versions that
+	// don't honour it on the root, by refusing the move itself. Non-passive on
+	// purpose — a passive listener can't cancel anything.
+	const refuseTouchPan = (event: TouchEvent) => event.preventDefault();
+
 	const lockScroll = () => {
 		// Measured before overflow is hidden, while the scrollbar still exists.
 		const gap = window.innerWidth - root.clientWidth;
 		root.style.setProperty("--scrollbar-gap", `${gap}px`);
 		root.classList.add("is-lightbox-open");
+		document.addEventListener("touchmove", refuseTouchPan, { passive: false });
 	};
 
 	const unlockScroll = () => {
 		root.classList.remove("is-lightbox-open");
 		root.style.removeProperty("--scrollbar-gap");
+		document.removeEventListener("touchmove", refuseTouchPan);
 	};
 
 	/**
