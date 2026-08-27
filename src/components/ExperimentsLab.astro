@@ -1,0 +1,398 @@
+---
+// The grid's contents live in lab-tiles.json rather than here, because they're
+// written by the drag-and-drop editor (`npm run lab`) rather than by hand. Each
+// tile's `aspect` is the exact pixel dimensions of the asset it holds, so the
+// box hugs its media instead of cropping it — the editor sets that from the
+// file it just encoded, which is why the numbers are dimensions and not tidy
+// ratios. Empty tiles keep a hand-picked ratio and are what the stagger between
+// the two columns is made of.
+//
+// Every tile is exactly its declared ratio — nothing stretches to make the two
+// columns end level. That's what the editor's "Balance" action is for: it tunes
+// the last empty tile's ratio until the columns match, so they bottom out flush
+// because the numbers say so rather than because a tile was deformed to cover
+// the difference.
+//
+// The columns are written out rather than left to `column-count` so a tile stays
+// where it was put; auto-balancing would reshuffle which tiles land in which
+// column the moment any ratio changed.
+import labTiles from "../config/lab-tiles.json";
+
+// `fit` and `bg` are for the one case where a tile deliberately isn't its
+// asset's shape: given a taller box than the media, `fit: "contain"` shows the
+// whole frame and `bg` fills the leftover, so the tile can be sized to line up
+// with something in the other column without cropping or stretching what's in
+// it. Pick `bg` to match the asset's own edges and the matte reads as part of
+// the image rather than as letterboxing.
+// `placeholder` is the asset's own average colour, written by the editor when it
+// encodes the file. It's what the tile shows until the media has actually
+// decoded a frame, so a tile resolves out of its own tone instead of appearing
+// as a hole in the section — see .lab-tile-cover.
+// `title`/`detail` caption the enlarged view; `href` + `action` add the outbound
+// link under it ("Visit project", "Read case study"). All optional — a tile with
+// none still enlarges, just without a caption.
+type LabTile = {
+	aspect: string;
+	video?: string;
+	poster?: string;
+	image?: string;
+	fit?: string;
+	bg?: string;
+	placeholder?: string;
+	title?: string;
+	detail?: string;
+	href?: string;
+	action?: string;
+};
+
+const COLUMNS: LabTile[][] = labTiles.columns;
+
+const tileStyle = (tile: LabTile) => {
+	const parts = [`--lab-tile-aspect: ${tile.aspect}`];
+	if (tile.fit) parts.push(`--lab-tile-fit: ${tile.fit}`);
+	if (tile.placeholder) parts.push(`--lab-tile-placeholder: ${tile.placeholder}`);
+	// Inline rather than a custom property with a fallback: it has to beat
+	// .lab-tile's placeholder gradient, which would otherwise show through the
+	// matte on a `contain` tile.
+	if (tile.bg) parts.push(`background: ${tile.bg}`);
+	return parts.join("; ");
+};
+---
+
+<section class="lab-section">
+	{/* Filled tiles are buttons that open the enlarged view, so this can no
+	    longer be aria-hidden — that would bury focusable controls from assistive
+	    tech while leaving them in the tab order. The still-empty tiles stay
+	    hidden individually instead. */}
+	<div class="lab-grid">
+		{
+			COLUMNS.map((tiles) => (
+				<div class="lab-column">
+					{tiles.map((tile) => {
+						const style = tileStyle(tile);
+
+						// Everything the enlarged view needs, read off the button by
+						// lab-lightbox.ts rather than kept in a parallel JS copy of the
+						// grid that could drift from the markup.
+						const meta = {
+							"data-title": tile.title,
+							"data-detail": tile.detail,
+							"data-href": tile.href,
+							"data-action": tile.action,
+							"aria-label": tile.title ? `${tile.title} — enlarge` : "Enlarge",
+						};
+
+						if (tile.video) {
+							return (
+								<button type="button" class="lab-tile lab-tile-media" style={style} {...meta}>
+									{/* Loop and mute as v3/v4 did — the clip's first and last
+									    frames match, so native `loop` hides its own seam. But no
+									    `autoplay` and `preload="none"`: with a dozen tiles that
+									    would fetch and decode every clip on load, far below the
+									    fold. lab-media.ts starts each one as it comes into view.
+									    `data-src` rather than `src` for the same reason. */}
+									<video
+										class="lab-tile-media-el"
+										data-src={tile.video}
+										poster={tile.poster}
+										preload="none"
+										loop
+										muted
+										playsinline
+									/>
+									<div class="lab-tile-cover" />
+								</button>
+							);
+						}
+
+						if (tile.image) {
+							return (
+								<button type="button" class="lab-tile lab-tile-media" style={style} {...meta}>
+									<img
+										class="lab-tile-media-el"
+										src={tile.image}
+										alt={tile.title ?? ""}
+										loading="lazy"
+									/>
+									<div class="lab-tile-cover" />
+								</button>
+							);
+						}
+
+						return <div class="lab-tile" style={style} aria-hidden="true" />;
+					})}
+				</div>
+			))
+		}
+	</div>
+</section>
+
+{/* One dialog reused by every tile — the clicked tile's media is cloned into it.
+    <dialog> rather than a bare div so focus trapping, Esc-to-close and top-layer
+    stacking come from the platform instead of being reimplemented. */}
+<dialog class="lab-lightbox" aria-label="Enlarged view">
+	{/* The blur lives on this rather than on ::backdrop, which can't be animated
+	    from script — as a real element its opacity can be ramped, so the grid
+	    goes gradually out of focus instead of snapping. */}
+	<div class="lightbox-veil"></div>
+	<figure class="lightbox-figure">
+		<div class="lightbox-stage"></div>
+		<figcaption class="lightbox-caption">
+			<span class="lightbox-title"></span>
+			<a class="lightbox-action" target="_blank" rel="noopener noreferrer"></a>
+			<span class="lightbox-detail"></span>
+		</figcaption>
+	</figure>
+</dialog>
+
+<script>
+	import "../scripts/lab-media";
+	import "../scripts/lab-lightbox";
+</script>
+
+<style>
+	/* One viewport tall at minimum: the canvas narrows over exactly the distance
+	   this section takes to travel from the bottom of the screen to the top, so
+	   anything shorter than a viewport ends the page before the effect finishes.
+	   Only binds on short, narrow screens — elsewhere the tiles overshoot it. */
+	.lab-section {
+		min-height: 100lvh;
+		padding-block: clamp(48px, 5.6vw, 112px) 106px;
+		padding-inline: 42px;
+	}
+
+	/* Both columns stretch to the height of the taller one — that shared height is
+	   what the last tile in each column then fills against. */
+	.lab-grid {
+		width: min(var(--lab-rail), 100%);
+		margin-inline: auto;
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 9px;
+	}
+
+	.lab-column {
+		display: flex;
+		flex-direction: column;
+		gap: 9px;
+	}
+
+	.lab-tile {
+		aspect-ratio: var(--lab-tile-aspect, 4 / 5);
+		border-radius: var(--lab-tile-radius);
+		background: linear-gradient(145deg, #fff, #f1f1f1);
+		box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+	}
+
+	/* Filled tiles are <button>, so the UA's own button chrome has to go before
+	   they can look like tiles again. */
+	button.lab-tile {
+		appearance: none;
+		border: 0;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: inherit;
+		display: block;
+		width: 100%;
+		cursor: pointer;
+	}
+
+	button.lab-tile:focus-visible {
+		outline: 2px solid #fff;
+		outline-offset: 3px;
+	}
+
+	/* While a tile's content is enlarged, the tile itself reads as an empty slot.
+	   Painted as an overlay rather than by swapping the background, because a
+	   contain-fit tile sets its matte inline and inline wins over a class. Clipped
+	   to the tile's radius by the existing overflow: hidden. */
+	.lab-tile.is-lifted::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		z-index: 2;
+		background: #000;
+	}
+
+	.lab-tile-media {
+		position: relative;
+		overflow: hidden;
+		/* Drops .lab-tile's white placeholder gradient, which a media tile never
+		   shows anyway — except along the rounded corners, where the tile's own
+		   antialiased arc and the clipped media's don't coincide exactly and a
+		   pixel of white bleeds between them. Against this near-black section
+		   that reads as a bright hairline tracing each corner. A tile that means
+		   to show a background (fit: contain) sets one inline, which still wins. */
+		background: transparent;
+	}
+
+	.lab-tile-media-el {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		/* `cover` everywhere except the tiles that opt into `contain` to be sized
+		   taller than their media — see `fit`/`bg` in lab-tiles.json. */
+		object-fit: var(--lab-tile-fit, cover);
+		display: block;
+	}
+
+	/*
+	 * v3/v4's reveal, carried over: a solid colour card sits over the media and
+	 * simply fades out once the asset has decoded a frame, rather than blurring
+	 * the asset itself while it loads. It always starts opaque, so there's
+	 * nothing to race against a cached load.
+	 *
+	 * The colour is the asset's own average (written by the editor) instead of
+	 * v3's hand-picked pastels: those were chosen against a white page and would
+	 * flash bright on this near-black section — which is why v3 swapped them for
+	 * a flat grey in dark mode. Averaging gets the same "image resolving out of
+	 * its own tone" effect without a second palette to maintain.
+	 */
+	.lab-tile-cover {
+		position: absolute;
+		inset: 0;
+		opacity: 1;
+		background: var(--lab-tile-placeholder, var(--color-bg-reveal));
+		pointer-events: none;
+	}
+
+	.lab-tile-cover.is-loaded {
+		opacity: 0;
+		transition: opacity 550ms ease;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.lab-tile-cover {
+			opacity: 0;
+			transition: none;
+		}
+	}
+
+	/* ---------------------------------------------------------- enlarged view */
+
+	.lab-lightbox {
+		border: 0;
+		padding: 0;
+		margin: auto;
+		max-width: 100vw;
+		max-height: 100dvh;
+		width: 100%;
+		height: 100%;
+		background: transparent;
+		overflow: hidden;
+		/* Stops a trackpad or touch fling that starts on the lightbox from
+		   chaining through to the page underneath. */
+		overscroll-behavior: contain;
+	}
+
+	/* Left clear — .lightbox-veil does the dimming and blurring so it can be
+	   animated. A backdrop that painted anything would snap in at full strength
+	   the moment the dialog opens, which is the thing being avoided. */
+	.lab-lightbox::backdrop {
+		background: transparent;
+	}
+
+	/* The blur is the effect: the grid stays visible behind, just pushed out of
+	   focus, rather than being covered by a flat scrim. Ramping this element's
+	   opacity cross-fades the blurred backdrop over the sharp one, so the page
+	   goes progressively soft rather than cutting straight to full blur. */
+	.lightbox-veil {
+		position: fixed;
+		inset: 0;
+		background: rgba(5, 5, 5, 0.82);
+		backdrop-filter: blur(24px);
+		-webkit-backdrop-filter: blur(24px);
+		pointer-events: none;
+	}
+
+	.lightbox-figure {
+		margin: 0;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 14px;
+		padding: 32px;
+		/* Clicks land on the backdrop to dismiss; only the media and the link
+		   itself take pointer events back. */
+		pointer-events: none;
+	}
+
+	/* Sized by the script to the media's own ratio, capped so a tall asset can't
+	   run past the viewport. */
+	.lightbox-stage {
+		position: relative;
+		border-radius: var(--lab-tile-radius);
+		overflow: hidden;
+		background: var(--lightbox-bg, transparent);
+		pointer-events: auto;
+		cursor: pointer;
+	}
+
+	.lightbox-stage :global(img),
+	.lightbox-stage :global(video) {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: var(--lightbox-fit, cover);
+	}
+
+	.lightbox-caption {
+		display: flex;
+		align-items: baseline;
+		gap: 12px;
+		width: 100%;
+		max-width: var(--lightbox-width, 100%);
+		font-size: 15px;
+		color: var(--color-text-on-reveal-dim);
+	}
+
+	.lightbox-title {
+		color: var(--color-text-on-reveal);
+	}
+
+	/* Pushed to the right of the row, mirroring the reference layout: name on the
+	   left, the one actionable thing on the right. */
+	.lightbox-action {
+		margin-left: auto;
+		pointer-events: auto;
+		color: var(--color-text-on-reveal);
+		text-decoration: none;
+		border-bottom: 1px dotted var(--color-link-line-on-reveal);
+	}
+
+	.lightbox-action:hover,
+	.lightbox-action:focus-visible {
+		color: #fff;
+		border-color: #fff;
+	}
+
+	/* Only one of action/detail occupies the right-hand slot — whichever the tile
+	   has. The script hides the unused one. */
+	.lightbox-detail[hidden],
+	.lightbox-action[hidden],
+	.lightbox-title[hidden] {
+		display: none;
+	}
+
+	.lightbox-detail {
+		margin-left: auto;
+	}
+
+	@media (width >= 768px) {
+		.lab-section {
+			padding-block: clamp(48px, 5.6vw, 112px) 122px;
+			padding-inline: 32px;
+		}
+
+		/* Matches the page grid's gutter from here up, which is what makes each
+		   column exactly one intro column wide once the rail is at its full 1028px. */
+		.lab-grid,
+		.lab-column {
+			gap: var(--grid-gutter);
+		}
+	}
+</style>
