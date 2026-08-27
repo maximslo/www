@@ -42,6 +42,8 @@ const detailEl = dialog?.querySelector<HTMLElement>(".lightbox-detail");
 
 if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 	let origin: HTMLElement | null = null;
+	// The tile's media element while it's out on loan to the stage.
+	let lifted: HTMLElement | null = null;
 	let closing = false;
 
 	const root = document.documentElement;
@@ -71,11 +73,28 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 	 */
 	let frozen: HTMLVideoElement[] = [];
 
-	const freezeGrid = () => {
+	// `except` is the one being enlarged — it keeps playing throughout, so the
+	// enlarge scales a live surface that never has to be restarted.
+	const freezeGrid = (except: HTMLElement) => {
 		frozen = [...document.querySelectorAll<HTMLVideoElement>("video.lab-tile-media-el")].filter(
-			(video) => !video.paused,
+			(video) => video !== except && !video.paused,
 		);
 		frozen.forEach((video) => video.pause());
+	};
+
+	/**
+	 * Moves a node without disturbing it. `moveBefore` is the atomic move: a
+	 * <video> keeps its decoder, playback position and current frame across the
+	 * move, which is the whole point — the enlarged copy is the tile's own
+	 * element, not a fresh one that has to load, seek and swap in its first frame
+	 * (that swap was the flash). The fallback is a synchronous remove-and-insert,
+	 * which per spec also doesn't pause a media element, since it's back in the
+	 * document before the pause steps get to run.
+	 */
+	const relocate = (node: Element, parent: Element, before: Node | null) => {
+		const p = parent as Element & { moveBefore?: (n: Node, ref: Node | null) => void };
+		if (typeof p.moveBefore === "function") p.moveBefore(node, before);
+		else parent.insertBefore(node, before);
 	};
 
 	const thawGrid = () => {
@@ -105,32 +124,24 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		// Before measuring: locking changes the layout width where a scrollbar is
 		// taking up space, and the FLIP's start rect has to be read after that.
 		lockScroll();
-		freezeGrid();
+		freezeGrid(media);
 
-		// A clone, so the tile stays in the grid — the page behind is blurred but
-		// still visible, and a gap where the tile was would show through it.
-		const clone = media.cloneNode(true) as HTMLElement;
-		clone.removeAttribute("data-src");
-		if (clone instanceof HTMLVideoElement) {
-			clone.src = (media as HTMLVideoElement).currentSrc || (media as HTMLVideoElement).src;
-			clone.muted = true;
-			clone.loop = true;
-			clone.playsInline = true;
-			// Deliberately not autoplay: it stays on a still frame until the
-			// enlarge has finished, so the compositor is scaling one static texture
-			// instead of a surface being re-decoded 24 times a second. Started in
-			// `startClone` once the motion is over.
-			clone.autoplay = false;
-			// Pick up where the tile's copy is rather than restarting.
-			clone.currentTime = (media as HTMLVideoElement).currentTime || 0;
-			clone.pause();
-		}
-		stage.replaceChildren(clone);
+		// The tile's own element, moved rather than copied — the same decoded
+		// surface keeps playing through the whole enlarge, exactly as it was in
+		// the grid. A copy would be a new <video> that has to load, seek and swap
+		// in its first frame, and that swap is visible wherever it lands: mid-
+		// animation as a glitch, or at the end as a flash. The tile is blacked out
+		// meanwhile (.is-lifted), so nothing shows through the blur where it was.
+		lifted = media;
+		stage.replaceChildren();
+		relocate(media, stage, null);
 
 		// A contain-fit tile carries a matte colour; the enlarged copy needs it
 		// too or the letterboxed area goes transparent over the blur.
 		const tileStyle = getComputedStyle(tile);
-		stage.style.setProperty("--lightbox-fit", tileStyle.getPropertyValue("--lab-tile-fit") || "cover");
+		const fit = tileStyle.getPropertyValue("--lab-tile-fit") || "cover";
+		stage.style.setProperty("--lightbox-fit", fit);
+		stage.style.setProperty("--lab-tile-fit", fit);
 		stage.style.setProperty("--lightbox-bg", tileStyle.backgroundColor);
 
 		setText(titleEl, tile.dataset.title);
@@ -167,19 +178,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		const sx = from.width / to.width;
 		const sy = from.height / to.height;
 
-		// Guarded on `dialog.open` because a fast close can land before the enlarge
-		// finishes, and starting playback into a closed lightbox would leave a
-		// video decoding with nothing on screen.
-		const startClone = () => {
-			if (!dialog.open) return;
-			const video = stage.querySelector("video");
-			video?.play().catch(() => {});
-		};
-
-		if (reducedMotion.matches) {
-			startClone();
-			return;
-		}
+		if (reducedMotion.matches) return;
 
 		// The close animations hold their end state with fill: forwards. Left in
 		// place they'd reassert opacity 0 the moment this open's animation stops
@@ -197,7 +196,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		// A scaled corner radius renders scaled too: at sx ≈ 0.42 the stage's 12px
 		// would draw as 5px while the tile it's growing out of draws a full 12px.
 		// Countering it by 1/scale keeps the rendered corner constant, so the
-		// clone's corners match the tile's at the frame they trade places.
+		// stage's corners match the tile's at the frame they trade places.
 		const radius = parseFloat(getComputedStyle(stage).borderTopLeftRadius) || 0;
 		const from0 = { transform: `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})` };
 		const to0 = { transform: "translate(0, 0) scale(1, 1)" };
@@ -211,12 +210,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		// compositor layer per lightbox, which is its own memory cost on mobile.
 		stage.style.willChange = "transform";
 		const grow = stage.animate([from0, to0], { duration: DURATION, easing: EASING });
-		grow.finished
-			.then(() => {
-				stage.style.willChange = "";
-				startClone();
-			})
-			.catch(() => {});
+		grow.finished.then(() => (stage.style.willChange = "")).catch(() => {});
 
 		// Held back until the media is most of the way out, so the caption arrives
 		// on a settled frame rather than sliding around underneath it.
@@ -234,18 +228,21 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		if (closing || !dialog.open) return;
 		closing = true;
 
-		// Back to a still frame for the shrink, for the same reason as the enlarge.
-		stage.querySelector("video")?.pause();
-
 		const to = origin?.getBoundingClientRect();
 		const from = stage.getBoundingClientRect();
 
 		const done = () => {
 			dialog.close();
+			// Home again, ahead of the tile's cover so the DOM order is as built.
+			// Same atomic move as on the way out: still playing, same frame.
+			if (origin && lifted) {
+				relocate(lifted, origin, origin.querySelector(".lab-tile-cover"));
+			}
+			lifted = null;
 			stage.replaceChildren();
 			closing = false;
-			// Refilled only once the clone has finished travelling home, so the two
-			// never overlap.
+			// Refilled only once the media has finished travelling home, so the tile
+			// and the stage never both show it.
 			origin?.classList.remove("is-lifted");
 			stage.style.willChange = "";
 			// Released only here — the shrink is still running until this point.
@@ -272,9 +269,9 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 			fill: "forwards",
 		});
 
-		// No opacity here: fading the clone out as it shrinks means it lands
+		// No opacity here: fading the stage out as it shrinks means it lands
 		// part-transparent and then jumps to full when the tile is refilled. Kept
-		// solid, the swap happens between two identical opaque frames.
+		// solid, the handover happens between two identical opaque frames.
 		const scaleDown = to.width / from.width;
 		const radius = parseFloat(getComputedStyle(stage).borderTopLeftRadius) || 0;
 
