@@ -141,22 +141,44 @@ if (page && reveal && rail) {
 	new ResizeObserver(schedule).observe(rail);
 
 	/**
-	 * Browser chrome and overscroll follow whichever surface fills the viewport, so
-	 * a rubber-band bounce at the bottom of the dark section doesn't flash white.
+	 * Two things follow the dark section, and they need different triggers.
+	 *
+	 * The browser chrome (theme-color) follows whichever surface fills the
+	 * viewport, so a phone's bars match what's under them.
+	 *
+	 * The canvas — what the browser paints outside the document during a
+	 * rubber-band overscroll — is only ever seen at the two ends of the page. It
+	 * has to be dark for a bounce at the bottom and white for a bounce at the top,
+	 * and the switch between the two has to happen well away from either end:
+	 * the compositor scrolls a frame or more ahead of the main thread, so a switch
+	 * timed to the edge itself lands a frame late and the first bounce frame paints
+	 * in the wrong colour. Tying it to "covered" did exactly that on wide screens —
+	 * the sheet is one viewport tall, so the section is "covered" from the first
+	 * pixel of scroll and the canvas only went white at scrollY 0, the same frame
+	 * the top bounce starts.
+	 *
+	 * Since the canvas is invisible everywhere except those two ends, what's on
+	 * screen mid-page doesn't constrain the switch at all — so it sits at the
+	 * midpoint of the scroll range, which gives the largest possible margin at
+	 * both ends at once. On a phone, where the whole page is under three screens,
+	 * that's still half a page of travel before either bounce.
 	 */
 	const root = document.documentElement;
 	const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
 	const pageThemeColor = themeColor?.content;
-	let surface: string | undefined;
+	let chrome: string | undefined;
+	let canvas: string | undefined;
 
-	const applySurface = (next: string) => {
-		if (surface === next) return;
-		surface = next;
+	const applyChrome = (next: string) => {
+		if (chrome === next || !themeColor || pageThemeColor === undefined) return;
+		chrome = next;
+		themeColor.content = next === "reveal" ? "#050505" : pageThemeColor;
+	};
+
+	const applyCanvas = (next: string) => {
+		if (canvas === next) return;
+		canvas = next;
 		root.dataset.siteSurface = next;
-
-		if (themeColor && pageThemeColor !== undefined) {
-			themeColor.content = next === "reveal" ? "#050505" : pageThemeColor;
-		}
 	};
 
 	let surfaceFrame = 0;
@@ -169,6 +191,7 @@ if (page && reveal && rail) {
 		const scroller = document.scrollingElement || root;
 		const maxScroll = Math.max(scroller.scrollHeight - height, 0);
 		const atBottom = window.scrollY >= maxScroll - 2;
+		const lowerHalf = window.scrollY > maxScroll / 2;
 
 		// Narrow viewports switch only once the section has reached the top of the
 		// screen — on a phone the chrome sits against that edge, so matching it any
@@ -176,7 +199,8 @@ if (page && reveal && rail) {
 		const covered =
 			window.innerWidth < WIDE_BREAKPOINT ? rect.top <= 0 : rect.top < height && rect.bottom > 0;
 
-		applySurface(covered || atBottom ? "reveal" : "page");
+		applyChrome(covered || atBottom ? "reveal" : "page");
+		applyCanvas(lowerHalf ? "reveal" : "page");
 	};
 
 	const scheduleSurface = () => {
