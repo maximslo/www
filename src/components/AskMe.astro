@@ -96,7 +96,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		gap: 2px;
 		width: fit-content;
 		color: var(--color-text-secondary);
-		margin-bottom: var(--label-to-content-gap);
+		/* Teams/Links get the same gap, but their first entry is text, whose ink
+		   starts ~6px into its line box (half-leading plus the room above cap
+		   height). A bubble's edge is solid from its first pixel, so it gets
+		   that 6px as margin to sit the same visual distance below its label. */
+		margin-bottom: calc(var(--label-to-content-gap) + 6px);
 		cursor: pointer;
 	}
 
