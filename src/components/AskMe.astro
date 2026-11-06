@@ -158,9 +158,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		initial-value: 0px;
 	}
 
-	.ask-log,
 	.ask-chips {
-		--fade-dir: to bottom;
 		mask-image: linear-gradient(
 			var(--fade-dir),
 			transparent,
@@ -215,8 +213,32 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		display: none;
 	}
 
-	.ask-log[data-fade-start] {
-		--fade-start: 32px;
+	/* A fixed fade along the thread's top edge, there whether or not it's
+	   scrolled. Like alexsafayan.com's, it's a page-coloured overlay rather
+	   than a mask, so it can stop short of the scrollbar and leave it crisp. */
+	.ask-thread {
+		--top-fade: 24px;
+		/* Starts the fade a little under the label; the first bubble sits
+		   just below the fade, about where it always has. */
+		margin-top: -6px;
+	}
+
+	.ask-thread::before {
+		content: "";
+		position: absolute;
+		z-index: 1;
+		top: 0;
+		left: 0;
+		/* Stops at the scrollbar, measured by the script (0 where scrollbars
+		   overlay the content, like macOS by default). */
+		right: var(--scrollbar-width, 0px);
+		height: var(--top-fade);
+		background: linear-gradient(var(--color-bg-page), transparent);
+		pointer-events: none;
+	}
+
+	.ask-log {
+		padding-top: var(--top-fade);
 	}
 
 	/* No bottom fade on the thread: messages run on under the frosted compose
@@ -480,8 +502,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	.ask-form {
 		position: absolute;
 		z-index: 2;
-		left: 0;
-		right: 0;
+		/* Wider than the thread, so its rounded ends fully cover the edges of
+		   bubbles scrolling under it (the reference insets its messages 16px
+		   from the input the same way). */
+		left: -14px;
+		right: -14px;
 		bottom: 0;
 		height: var(--form-height);
 		box-sizing: border-box;
@@ -569,7 +594,10 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	// Motion values from alexsafayan.com's chat (Framer Motion springs).
 	const MAIN = springEasing({ duration: 1, bounce: 0.2 });
-	const QUICK = springEasing({ duration: 0.3, bounce: 0.1 });
+	const QUICK = springEasing({ duration: 0.3, bounce: 0 });
+	// Sent bubbles land without overshooting: past their spot they'd poke out
+	// of the thread's right edge and get clipped.
+	const FLIGHT = springEasing({ duration: 0.8, bounce: 0 });
 	const LAYOUT = springEasing({ stiffness: 300, damping: 30 });
 	const PULSE = { duration: 500, easing: "cubic-bezier(0.2, 0, 0.2, 1)" };
 	const CHIPS_OFFSET = 104;
@@ -637,6 +665,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	trackEdges(chips, "x");
 	const updateLogEdges = trackEdges(log, "y");
+
+	// How wide the thread's scrollbar is, so the top fade can stop short of it.
+	new ResizeObserver(() => {
+		log.parentElement!.style.setProperty("--scrollbar-width", `${log.offsetWidth - log.clientWidth}px`);
+	}).observe(log);
 
 	const isAtBottom = () => log.scrollTop >= log.scrollHeight - log.clientHeight - 4;
 
@@ -902,9 +935,10 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			...PULSE,
 			composite: "add",
 		});
-		tail.animate([{ transform: "translate(-20px, -13px)" }, { transform: "translate(0, 0)" }], {
-			duration: MAIN.duration,
-			easing: MAIN.easing,
+		// `translate`, not `transform`: the tail's own transform is its mirror.
+		tail.animate([{ translate: "-20px -13px" }, { translate: "0 0" }], {
+			duration: FLIGHT.duration,
+			easing: FLIGHT.easing,
 		});
 	}
 
@@ -953,10 +987,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			{ duration: LAYOUT.duration, easing: LAYOUT.easing },
 		);
 		textEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 60, easing: "ease", fill: "backwards" });
-		part(msg, ".ask-tail").animate([{ transform: "translate(20px, -13px)" }, { transform: "translate(0, 0)" }], {
-			duration: MAIN.duration,
-			easing: MAIN.easing,
-		});
 	}
 
 	function setBusy(next: boolean) {
@@ -1037,7 +1067,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		setChips(false, "fade");
 		// Used suggestions don't come back.
 		chip.closest("li")!.remove();
-		void ask(chip.textContent ?? "", { rect, inset, spring: MAIN });
+		void ask(chip.textContent ?? "", { rect, inset, spring: FLIGHT });
 	});
 
 	chips.style.transform = "none";
