@@ -15,7 +15,13 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 ---
 
 <section class="ask-me" aria-labelledby="ask-me-label">
-	<p class="ask-label" id="ask-me-label">Ask me anything</p>
+	<!-- Clicking the label focuses the input, so the hover nudge points somewhere real. -->
+	<label class="ask-label" id="ask-me-label" for="ask-input">
+		Chat
+		<svg class="ask-label-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="m9 18 6-6-6-6" />
+		</svg>
+	</label>
 
 	<ol class="ask-log" aria-live="polite" data-ask-log>
 		{
@@ -85,8 +91,32 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	.ask-label {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		width: fit-content;
 		color: var(--color-text-secondary);
 		margin-bottom: var(--label-to-content-gap);
+		cursor: pointer;
+	}
+
+	.ask-label-arrow {
+		width: 1.1em;
+		height: 1.1em;
+		/* Sits low against the label's x-height rather than its full line box. */
+		position: relative;
+		top: 0.1em;
+		transition: transform 200ms ease;
+	}
+
+	.ask-label:hover .ask-label-arrow {
+		transform: translateX(0.2em);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ask-label-arrow {
+			transition: none;
+		}
 	}
 
 	.ask-log {
