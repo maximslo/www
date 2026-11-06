@@ -1,5 +1,5 @@
 ---
-import { CONTACT_EMAIL } from "../chat/system-prompt";
+import { CONTACT_EMAIL, GREETING } from "../chat/system-prompt";
 
 const SUGGESTIONS = [
 	"what are you building right now?",
@@ -12,7 +12,9 @@ const SUGGESTIONS = [
 <section class="ask-me" aria-labelledby="ask-me-label">
 	<p class="ask-label" id="ask-me-label">Ask me anything</p>
 
-	<ol class="ask-log" aria-live="polite" data-ask-log></ol>
+	<ol class="ask-log" aria-live="polite" data-ask-log>
+		{GREETING.map((line) => <li class="ask-msg" data-role="assistant">{line}</li>)}
+	</ol>
 
 	<ul class="ask-chips" data-ask-chips>
 		{
@@ -66,7 +68,12 @@ const SUGGESTIONS = [
 		gap: 12px;
 	}
 
-	.ask-log:not(:empty) {
+	/* The greeting lines read as one burst, tighter than separate turns. */
+	.ask-log :global(.ask-msg[data-role="assistant"] + .ask-msg[data-role="assistant"]) {
+		margin-top: -8px;
+	}
+
+	.ask-log {
 		margin-bottom: 20px;
 	}
 

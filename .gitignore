@@ -32,3 +32,6 @@ videos-src/
 # vercel build output
 .vercel/
 .playwright-mcp/
+
+# private chat profile (production reads CHAT_PROFILE from Vercel env)
+src/chat/profile.md
