@@ -28,3 +28,7 @@ videos-src/
 
 # python venv for scripts/subset-fonts.sh (fonttools + brotli)
 .venv/
+
+# vercel build output
+.vercel/
+.playwright-mcp/
