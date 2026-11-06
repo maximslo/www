@@ -55,6 +55,10 @@ const splitLines = (text: string) => text.split("\n");
 		/* Shared by .intro-about and .intro-directory (in IntroDirectory.astro)
 		   so the two gaps between the three sections always match. */
 		--section-gap: 32px;
+		/* The sheet only centres its content while it fits a screen; with the
+		   chat it's taller, so this keeps the name off the sheet's top edge and
+		   the chat off the dark section, at the same rhythm as the sections. */
+		padding-block: var(--section-gap);
 	}
 
 	.intro-role {
