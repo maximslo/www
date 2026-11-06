@@ -1,20 +1,47 @@
 ---
 import { CONTACT_EMAIL, GREETING } from "../chat/system-prompt";
 
+// Questions the profile can actually answer, so the first tap lands well.
 const SUGGESTIONS = [
-	"what are you building right now?",
 	"what did you do at the times?",
-	"how did the election map agents work?",
-	"what's your design process like?",
+	"why journalism?",
+	"what's the tech stack here?",
+	"tell me a fun fact",
 ];
+
+// iMessage bubble tail, from beerwar.app's montage caption. Drawn for the
+// "sent" (right) side; the "received" side mirrors it in CSS.
+const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336 13.2978 25.924 16.6489Z";
 ---
 
 <section class="ask-me" aria-labelledby="ask-me-label">
 	<p class="ask-label" id="ask-me-label">Ask me anything</p>
 
 	<ol class="ask-log" aria-live="polite" data-ask-log>
-		{GREETING.map((line) => <li class="ask-msg" data-role="assistant">{line}</li>)}
+		{
+			GREETING.map((line) => (
+				<li class="ask-msg" data-role="assistant">
+					<div class="ask-bubble">
+						<span class="ask-text">{line}</span>
+					</div>
+					<svg class="ask-tail" viewBox="0 0 27 18" preserveAspectRatio="none" aria-hidden="true">
+						<path d={TAIL_PATH} />
+					</svg>
+				</li>
+			))
+		}
 	</ol>
+
+	<template data-ask-template>
+		<li class="ask-msg">
+			<div class="ask-bubble">
+				<span class="ask-text"></span>
+			</div>
+			<svg class="ask-tail" viewBox="0 0 27 18" preserveAspectRatio="none" aria-hidden="true">
+				<path d={TAIL_PATH} />
+			</svg>
+		</li>
+	</template>
 
 	<ul class="ask-chips" data-ask-chips>
 		{
@@ -37,11 +64,15 @@ const SUGGESTIONS = [
 			type="text"
 			autocomplete="off"
 			maxlength="500"
-			placeholder="ask about my work…"
+			placeholder="Message"
 			required
 			data-ask-input
 		/>
-		<button type="submit" class="ask-send" data-ask-send>Send</button>
+		<button type="submit" class="ask-send" aria-label="Send" data-ask-send>
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" />
+			</svg>
+		</button>
 	</form>
 
 	<p class="ask-note">
@@ -52,6 +83,8 @@ const SUGGESTIONS = [
 <style>
 	.ask-me {
 		margin-top: var(--section-gap);
+		--imsg-blue: #0092ff;
+		--imsg-gray: #e9e9eb;
 	}
 
 	.ask-label {
@@ -61,55 +94,129 @@ const SUGGESTIONS = [
 
 	.ask-log {
 		list-style: none;
-		margin: 0;
+		margin: 0 0 20px;
 		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 12px;
 	}
 
-	/* The greeting lines read as one burst, tighter than separate turns. */
-	.ask-log :global(.ask-msg[data-role="assistant"] + .ask-msg[data-role="assistant"]) {
-		margin-top: -8px;
-	}
-
-	.ask-log {
-		margin-bottom: 20px;
-	}
-
+	/* iMessage spacing: consecutive messages from one side sit tight, a change
+	   of speaker gets a real gap. */
 	.ask-log :global(.ask-msg) {
-		white-space: pre-wrap;
-		overflow-wrap: anywhere;
+		position: relative;
+		/* contains the tail's negative z-index instead of letting it escape */
+		isolation: isolate;
+		width: fit-content;
+		max-width: 80%;
+		margin-top: 12px;
+	}
+
+	.ask-log :global(.ask-msg:first-child) {
+		margin-top: 0;
+	}
+
+	.ask-log :global(.ask-msg[data-role="user"] + .ask-msg[data-role="user"]),
+	.ask-log :global(.ask-msg:not([data-role="user"]) + .ask-msg:not([data-role="user"])) {
+		margin-top: 3px;
 	}
 
 	.ask-log :global(.ask-msg[data-role="user"]) {
-		color: var(--color-text-secondary);
+		align-self: flex-end;
+		--bubble-bg: var(--imsg-blue);
+		--bubble-fg: #fff;
+	}
+
+	.ask-log :global(.ask-msg:not([data-role="user"])) {
+		align-self: flex-start;
+		--bubble-bg: var(--imsg-gray);
+		--bubble-fg: #000;
 	}
 
 	.ask-log :global(.ask-msg[data-role="error"]) {
-		color: var(--color-accent);
+		--bubble-fg: var(--color-accent);
 	}
 
-	/* Instant "typing" state before the first token lands. */
-	.ask-log :global(.ask-msg[data-pending]::after) {
-		content: "…";
-		color: var(--color-text-secondary);
-		animation: ask-blink 1s steps(2, start) infinite;
+	.ask-log :global(.ask-bubble) {
+		padding: 8px 16px;
+		background: var(--bubble-bg);
+		color: var(--bubble-fg);
+		font-size: 15px;
+		font-weight: 500;
+		line-height: 1.35;
+		text-align: left;
+		border-radius: 20px;
+		overflow: hidden;
+		overflow-wrap: break-word;
 	}
 
-	@keyframes ask-blink {
-		to {
-			visibility: hidden;
+	/* pre-wrap on the text only: on the bubble it would also render the markup's
+	   own indentation around the span as visible space. */
+	.ask-log :global(.ask-text) {
+		white-space: pre-wrap;
+	}
+
+	/* The tail hangs below the bubble, tucked 8px in from its edge. It sits
+	   behind the body (z-index -1) in the same fill, so its flat top disappears
+	   under the bubble and the two read as one shape.
+	   preserveAspectRatio="none" on the svg is load-bearing: the default scales
+	   the 27x18 viewBox uniformly into this 15x13 box, leaving a notch. */
+	.ask-log :global(.ask-tail) {
+		position: absolute;
+		right: 8px;
+		bottom: -9.5px;
+		z-index: -1;
+		width: 15px;
+		height: 13px;
+		fill: var(--bubble-bg);
+		pointer-events: none;
+	}
+
+	.ask-log :global(.ask-msg:not([data-role="user"]) .ask-tail) {
+		right: auto;
+		left: 8px;
+		transform: scaleX(-1);
+	}
+
+	/* Like iMessage, only the last bubble in a run from one side gets a tail. */
+	.ask-log :global(.ask-msg[data-role="user"]:has(+ .ask-msg[data-role="user"]) .ask-tail),
+	.ask-log :global(.ask-msg:not([data-role="user"]):has(+ .ask-msg:not([data-role="user"])) .ask-tail) {
+		display: none;
+	}
+
+	/* Typing state: an empty gray bubble with a pulsing ellipsis, shown the
+	   instant the visitor sends, until the first token lands. */
+	.ask-log :global(.ask-msg[data-pending] .ask-text::after) {
+		content: "•••";
+		letter-spacing: 2px;
+		color: #8e8e93;
+		animation: ask-pulse 1.2s ease-in-out infinite;
+	}
+
+	@keyframes ask-pulse {
+		50% {
+			opacity: 0.35;
 		}
 	}
 
+	/* Suggestions: dashed blue pills in one row that scrolls sideways
+	   instead of wrapping. */
 	.ask-chips {
 		list-style: none;
-		margin: 0 0 16px;
-		padding: 0;
+		margin: 0 0 10px;
+		padding: 2px 0;
 		display: flex;
-		flex-wrap: wrap;
 		gap: 8px;
+		overflow-x: auto;
+		scrollbar-width: none;
+		-webkit-overflow-scrolling: touch;
+	}
+
+	.ask-chips::-webkit-scrollbar {
+		display: none;
+	}
+
+	.ask-chips li {
+		flex-shrink: 0;
 	}
 
 	.ask-chips[hidden] {
@@ -119,39 +226,54 @@ const SUGGESTIONS = [
 	.ask-chip {
 		font: inherit;
 		font-size: 15px;
-		color: var(--color-text-primary);
-		background: none;
-		border: 1px dotted var(--color-link-line);
+		line-height: 1.35;
+		white-space: nowrap;
+		color: var(--imsg-blue);
+		background: #fff;
+		border: 2px dashed rgba(0, 146, 255, 0.55);
 		border-radius: 999px;
-		padding: 4px 12px;
+		padding: 6px 14px;
 		cursor: pointer;
 	}
 
-	.ask-chip:hover,
-	.ask-chip:focus-visible {
-		color: var(--color-accent);
-		border-color: var(--color-accent);
-		background-color: var(--color-link-hover-bg);
-		outline: none;
+	.ask-chip:hover {
+		background: rgba(0, 146, 255, 0.08);
 	}
 
+	.ask-chip:focus-visible {
+		outline: 2px solid var(--imsg-blue);
+		outline-offset: 2px;
+	}
+
+	/* iMessage-style compose field: a white pill floating on a soft shadow,
+	   with a round blue send button tucked inside on the right. */
 	.ask-form {
 		display: flex;
-		gap: 12px;
-		align-items: baseline;
-		border-bottom: 1px dotted var(--color-link-line);
-		padding-bottom: 4px;
+		align-items: center;
+		gap: 8px;
+		padding: 3px 3px 3px 16px;
+		background: #fff;
+		border: 1px solid transparent;
+		border-radius: 999px;
+		box-shadow:
+			0 1px 2px rgba(0, 0, 0, 0.06),
+			0 4px 16px rgba(0, 0, 0, 0.08);
 	}
 
 	.ask-form:focus-within {
-		border-color: var(--color-accent);
+		border-color: rgba(0, 146, 255, 0.35);
 	}
 
 	.ask-input {
 		flex: 1;
 		min-width: 0;
 		font: inherit;
-		color: var(--color-text-primary);
+		/* 16px minimum: anything smaller makes iOS Safari zoom the page on focus. */
+		font-size: 16px;
+		/* Same height as the send button, so the pill hugs it. */
+		height: 30px;
+		line-height: 30px;
+		color: #000;
 		background: none;
 		border: 0;
 		padding: 0;
@@ -159,22 +281,47 @@ const SUGGESTIONS = [
 	}
 
 	.ask-input::placeholder {
-		color: var(--color-text-secondary);
+		color: #8e8e93;
 	}
 
 	.ask-send {
-		font: inherit;
-		color: var(--color-accent);
-		background: none;
-		border: 0;
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 30px;
+		height: 30px;
 		padding: 0;
+		background: var(--imsg-blue);
+		border: 0;
+		border-radius: 50%;
 		cursor: pointer;
+		transition: opacity 120ms ease;
 	}
 
-	.ask-send:disabled,
-	.ask-input:disabled {
-		opacity: 0.4;
+	.ask-send svg {
+		width: 18px;
+		height: 18px;
+		fill: none;
+		stroke: #fff;
+		stroke-width: 2.6;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+	}
+
+	.ask-send:focus-visible {
+		outline: 2px solid var(--imsg-blue);
+		outline-offset: 2px;
+	}
+
+	/* Dim the arrow until there's something to send, like iMessage. */
+	.ask-input:placeholder-shown + .ask-send,
+	.ask-send:disabled {
+		opacity: 0.35;
 		cursor: default;
+	}
+
+	.ask-input:disabled {
+		opacity: 0.5;
 	}
 
 	.ask-note {
@@ -205,23 +352,54 @@ const SUGGESTIONS = [
 			return id;
 		} catch {
 			// Storage blocked: a per-page-load session still works.
-			return (window as unknown as { __askSession?: string }).__askSession ??= crypto.randomUUID();
+			return ((window as unknown as { __askSession?: string }).__askSession ??= crypto.randomUUID());
 		}
 	}
 
 	const log = document.querySelector<HTMLOListElement>("[data-ask-log]")!;
+	const template = document.querySelector<HTMLTemplateElement>("[data-ask-template]")!;
 	const chips = document.querySelector<HTMLUListElement>("[data-ask-chips]")!;
 	const form = document.querySelector<HTMLFormElement>("[data-ask-form]")!;
 	const input = document.querySelector<HTMLInputElement>("[data-ask-input]")!;
 	const send = document.querySelector<HTMLButtonElement>("[data-ask-send]")!;
 
-	function addMessage(role: "user" | "assistant" | "error", text = ""): HTMLLIElement {
-		const item = document.createElement("li");
-		item.className = "ask-msg";
-		item.dataset.role = role;
-		item.textContent = text;
-		log.append(item);
-		return item;
+	/**
+	 * Shrink a bubble to its widest rendered line (from beerwar.app's fitBubble).
+	 * A box whose text wraps keeps the full constraining width in CSS, so a
+	 * two-line message would otherwise leave a band of empty bubble beside it.
+	 */
+	function fitBubble(msg: HTMLElement) {
+		const text = msg.querySelector<HTMLElement>(".ask-text");
+		const body = msg.querySelector<HTMLElement>(".ask-bubble");
+		if (!text || !body) return;
+		msg.style.width = "";
+		const range = document.createRange();
+		range.selectNodeContents(text);
+		let widest = 0;
+		for (const rect of range.getClientRects()) widest = Math.max(widest, rect.width);
+		if (widest === 0) return;
+		const cs = getComputedStyle(body);
+		const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+		// +1 so sub-pixel rounding can't make the widest line re-wrap.
+		msg.style.width = `${Math.ceil(widest + pad) + 1}px`;
+	}
+
+	const fitAll = () => log.querySelectorAll<HTMLElement>(".ask-msg").forEach(fitBubble);
+	fitAll();
+	let resizeFrame = 0;
+	window.addEventListener("resize", () => {
+		cancelAnimationFrame(resizeFrame);
+		resizeFrame = requestAnimationFrame(fitAll);
+	});
+
+	function addMessage(role: "user" | "assistant" | "error", text = "") {
+		const msg = template.content.firstElementChild!.cloneNode(true) as HTMLLIElement;
+		msg.dataset.role = role;
+		const textEl = msg.querySelector<HTMLElement>(".ask-text")!;
+		textEl.textContent = text;
+		log.append(msg);
+		if (text) fitBubble(msg);
+		return { msg, textEl };
 	}
 
 	function setBusy(busy: boolean) {
@@ -235,7 +413,7 @@ const SUGGESTIONS = [
 
 		chips.hidden = true;
 		addMessage("user", text);
-		const reply = addMessage("assistant");
+		const { msg: reply, textEl } = addMessage("assistant");
 		reply.dataset.pending = "";
 		setBusy(true);
 
@@ -250,7 +428,7 @@ const SUGGESTIONS = [
 
 			if (!res.ok || !res.body) {
 				reply.dataset.role = "error";
-				reply.textContent = (await res.text()) || "Something went wrong. Try again in a bit.";
+				textEl.textContent = (await res.text()) || "Something went wrong. Try again in a bit.";
 				return;
 			}
 
@@ -260,14 +438,17 @@ const SUGGESTIONS = [
 				const { done, value } = await reader.read();
 				if (done) break;
 				delete reply.dataset.pending;
-				reply.textContent += decoder.decode(value, { stream: true });
+				// Let the bubble grow freely while text streams in; it's re-fitted at the end.
+				reply.style.width = "";
+				textEl.textContent += decoder.decode(value, { stream: true });
 			}
-			reply.textContent += decoder.decode();
+			textEl.textContent += decoder.decode();
 		} catch {
 			reply.dataset.role = "error";
-			reply.textContent = "Couldn't reach the server. Check your connection and try again.";
+			textEl.textContent = "Couldn't reach the server. Check your connection and try again.";
 		} finally {
 			delete reply.dataset.pending;
+			fitBubble(reply);
 			setBusy(false);
 			input.focus();
 		}
