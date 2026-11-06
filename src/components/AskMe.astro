@@ -23,43 +23,60 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		</svg>
 	</label>
 
-	<ol class="ask-log" aria-live="polite" data-ask-log>
-		{
-			GREETING.map((line) => (
-				<li class="ask-msg" data-role="assistant">
-					<div class="ask-bubble">
-						<span class="ask-text">{line}</span>
-					</div>
-					<svg class="ask-tail" viewBox="0 0 27 18" preserveAspectRatio="none" aria-hidden="true">
-						<path d={TAIL_PATH} />
-					</svg>
+	<!-- .ask-msg carries the scroll-settle offset; .ask-body inside it carries
+	     the send/reply animations, so the two transforms never fight. -->
+	<div class="ask-thread">
+		<ol class="ask-log" aria-live="polite" data-ask-log>
+			{
+				GREETING.map((line) => (
+					<li class="ask-msg" data-role="assistant">
+						<div class="ask-body">
+							<div class="ask-bubble">
+								<span class="ask-text">{line}</span>
+							</div>
+							<svg class="ask-tail" viewBox="0 0 27 18" preserveAspectRatio="none" aria-hidden="true">
+								<path d={TAIL_PATH} />
+							</svg>
+						</div>
+					</li>
+				))
+			}
+		</ol>
+
+		<!-- Suggestions float over the bottom of the thread and slide down out of
+		     this clipped strip, so they tuck under the compose field. -->
+		<div class="ask-strip">
+			<ul class="ask-chips" data-ask-chips>
+				{
+					SUGGESTIONS.map((suggestion) => (
+						<li>
+							<button type="button" class="ask-chip" data-ask-chip>
+								{suggestion}
+							</button>
+						</li>
+					))
+				}
+				<li>
+					<button type="button" class="ask-chips-hide" data-ask-chips-hide>
+						Hide suggestions
+					</button>
 				</li>
-			))
-		}
-	</ol>
+			</ul>
+		</div>
+	</div>
 
 	<template data-ask-template>
 		<li class="ask-msg">
-			<div class="ask-bubble">
-				<span class="ask-text"></span>
+			<div class="ask-body">
+				<div class="ask-bubble">
+					<span class="ask-text"></span>
+				</div>
+				<svg class="ask-tail" viewBox="0 0 27 18" preserveAspectRatio="none" aria-hidden="true">
+					<path d={TAIL_PATH} />
+				</svg>
 			</div>
-			<svg class="ask-tail" viewBox="0 0 27 18" preserveAspectRatio="none" aria-hidden="true">
-				<path d={TAIL_PATH} />
-			</svg>
 		</li>
 	</template>
-
-	<ul class="ask-chips" data-ask-chips>
-		{
-			SUGGESTIONS.map((suggestion) => (
-				<li>
-					<button type="button" class="ask-chip" data-ask-chip>
-						{suggestion}
-					</button>
-				</li>
-			))
-		}
-	</ul>
 
 	<form class="ask-form" data-ask-form>
 		<label class="visually-hidden" for="ask-input">Your question</label>
@@ -123,23 +140,92 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		}
 	}
 
+	/* Edge fades for the two scrollers (after alexsafayan.com's chat): content
+	   dissolves into the page where there's more of it to scroll to, and the
+	   edge is hard where there isn't. The script sets data-fade-start/-end from
+	   the scroll position; registered so the fades ease in instead of popping. */
+	@property --fade-start {
+		syntax: "<length>";
+		inherits: false;
+		initial-value: 0px;
+	}
+
+	@property --fade-end {
+		syntax: "<length>";
+		inherits: false;
+		initial-value: 0px;
+	}
+
+	.ask-log,
+	.ask-chips {
+		--fade-dir: to bottom;
+		mask-image: linear-gradient(
+			var(--fade-dir),
+			transparent,
+			#000 var(--fade-start),
+			#000 calc(100% - var(--fade-end)),
+			transparent
+		);
+		transition:
+			--fade-start 160ms ease,
+			--fade-end 160ms ease;
+	}
+
+	.ask-thread {
+		position: relative;
+		margin-bottom: 10px;
+	}
+
+	/* Chat history scrolls inside a fixed-height window, like a phone thread,
+	   instead of pushing the page down with every message. */
 	.ask-log {
+		position: relative;
 		list-style: none;
-		margin: 0 0 20px;
-		padding: 0;
+		max-height: 400px;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scrollbar-width: thin;
+		scrollbar-color: #c7c7cc transparent;
+		/* Room for the last bubble's tail, which hangs 9.5px below it and
+		   would otherwise be clipped by the scroller. */
+		margin: 0;
+		padding: 0 0 10px;
 		display: flex;
 		flex-direction: column;
+	}
+
+	/* Room under the newest message for the suggestions floating over it.
+	   Dropped once they're gone for good. */
+	.ask-log::after {
+		content: "";
+		flex: none;
+		height: 46px;
+	}
+
+	.ask-log[data-chips-off]::after {
+		display: none;
+	}
+
+	.ask-log[data-fade-start] {
+		--fade-start: 32px;
+	}
+
+	.ask-log[data-fade-end] {
+		--fade-end: 24px;
 	}
 
 	/* iMessage spacing: consecutive messages from one side sit tight, a change
 	   of speaker gets a real gap. */
 	.ask-log :global(.ask-msg) {
-		position: relative;
-		/* contains the tail's negative z-index instead of letting it escape */
-		isolation: isolate;
 		width: fit-content;
 		max-width: 80%;
 		margin-top: 12px;
+	}
+
+	.ask-log :global(.ask-body) {
+		position: relative;
+		/* contains the tail's negative z-index instead of letting it escape */
+		isolation: isolate;
 	}
 
 	.ask-log :global(.ask-msg:first-child) {
@@ -214,44 +300,148 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		display: none;
 	}
 
-	/* Typing state: an empty gray bubble with a pulsing ellipsis, shown the
-	   instant the visitor sends, until the first token lands. */
-	.ask-log :global(.ask-msg[data-pending] .ask-text::after) {
-		content: "•••";
-		letter-spacing: 2px;
-		color: #8e8e93;
-		animation: ask-pulse 1.2s ease-in-out infinite;
+	/* Typing state: a gray bubble of three breathing dots, with two small
+	   "thought" circles at its corner in place of the tail. */
+	.ask-log :global(.ask-msg[data-pending] .ask-tail) {
+		display: none;
 	}
 
-	@keyframes ask-pulse {
-		50% {
-			opacity: 0.35;
+	.ask-log :global(.ask-dots) {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		height: 20.25px;
+	}
+
+	.ask-log :global(.ask-dots i) {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: #8e8e93;
+		animation: ask-dot 0.75s ease-in-out infinite;
+	}
+
+	.ask-log :global(.ask-dots i:nth-child(2)) {
+		animation-delay: 0.25s;
+	}
+
+	.ask-log :global(.ask-dots i:nth-child(3)) {
+		animation-delay: 0.5s;
+	}
+
+	@keyframes ask-dot {
+		0%,
+		100% {
+			opacity: 0.4;
 		}
+		50% {
+			opacity: 0.8;
+		}
+	}
+
+	.ask-log :global(.ask-think) {
+		position: absolute;
+		z-index: -1;
+		border-radius: 50%;
+		background: var(--bubble-bg);
+		animation: ask-think 1.2s ease-in-out infinite;
+	}
+
+	.ask-log :global(.ask-think:first-of-type) {
+		/* The reference hangs these a few px further out; the scroller here
+		   clips at the bubble's left edge, so they sit just inside it. */
+		width: 12px;
+		height: 12px;
+		left: 3px;
+		bottom: -3px;
+		animation-delay: 0.1s;
+	}
+
+	.ask-log :global(.ask-think:last-of-type) {
+		width: 6px;
+		height: 6px;
+		left: 0px;
+		bottom: -8px;
+		animation-delay: 0.2s;
+	}
+
+	@keyframes ask-think {
+		0%,
+		100% {
+			transform: scale(0.9);
+		}
+		50% {
+			transform: scale(1);
+		}
+	}
+
+	/* The strip spans the bottom of the thread down to the compose field and
+	   clips the chips as they slide out of it. Only the chips take clicks. */
+	.ask-strip {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: -10px;
+		padding-bottom: 10px;
+		overflow: hidden;
+		pointer-events: none;
 	}
 
 	/* Suggestions: dashed blue pills in one row that scrolls sideways
 	   instead of wrapping. */
 	.ask-chips {
 		list-style: none;
-		margin: 0 0 10px;
+		margin: 0;
 		padding: 2px 0;
 		display: flex;
+		align-items: center;
 		gap: 8px;
 		overflow-x: auto;
 		scrollbar-width: none;
 		-webkit-overflow-scrolling: touch;
+		pointer-events: auto;
+	}
+
+	.ask-chips[inert] {
+		pointer-events: none;
 	}
 
 	.ask-chips::-webkit-scrollbar {
 		display: none;
 	}
 
+	.ask-chips {
+		--fade-dir: to right;
+	}
+
+	.ask-chips[data-fade-start] {
+		--fade-start: 24px;
+	}
+
+	.ask-chips[data-fade-end] {
+		--fade-end: 40px;
+	}
+
 	.ask-chips li {
 		flex-shrink: 0;
 	}
 
-	.ask-chips[hidden] {
-		display: none;
+	.ask-chips-hide {
+		font: inherit;
+		font-size: 15px;
+		font-weight: 500;
+		white-space: nowrap;
+		color: #8e8e93;
+		background: none;
+		border: 0;
+		padding: 6px 8px;
+		cursor: pointer;
+	}
+
+	.ask-chips-hide:focus-visible {
+		outline: 2px solid var(--imsg-blue);
+		outline-offset: 2px;
+		border-radius: 6px;
 	}
 
 	.ask-chip {
@@ -361,6 +551,15 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 </style>
 
 <script>
+	import { createSpring, prefersReducedMotion, springEasing } from "../scripts/spring";
+
+	// Motion values from alexsafayan.com's chat (Framer Motion springs).
+	const MAIN = springEasing({ duration: 1, bounce: 0.2 });
+	const QUICK = springEasing({ duration: 0.3, bounce: 0.1 });
+	const LAYOUT = springEasing({ stiffness: 300, damping: 30 });
+	const PULSE = { duration: 500, easing: "cubic-bezier(0.2, 0, 0.2, 1)" };
+	const CHIPS_OFFSET = 104;
+
 	const SESSION_KEY = "ask-me-session";
 
 	function getSessionId(): string {
@@ -379,6 +578,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	const log = document.querySelector<HTMLOListElement>("[data-ask-log]")!;
 	const template = document.querySelector<HTMLTemplateElement>("[data-ask-template]")!;
 	const chips = document.querySelector<HTMLUListElement>("[data-ask-chips]")!;
+	const hideChips = document.querySelector<HTMLButtonElement>("[data-ask-chips-hide]")!;
 	const form = document.querySelector<HTMLFormElement>("[data-ask-form]")!;
 	const input = document.querySelector<HTMLInputElement>("[data-ask-input]")!;
 	const send = document.querySelector<HTMLButtonElement>("[data-ask-send]")!;
@@ -404,6 +604,147 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		msg.style.width = `${Math.ceil(widest + pad) + 1}px`;
 	}
 
+	/**
+	 * Keep data-fade-start/-end on a scroller in step with whether there's more
+	 * content before or after what's showing (the CSS turns them into fades).
+	 */
+	function trackEdges(el: HTMLElement, axis: "x" | "y") {
+		const update = () => {
+			const pos = axis === "y" ? el.scrollTop : el.scrollLeft;
+			const span = axis === "y" ? el.scrollHeight - el.clientHeight : el.scrollWidth - el.clientWidth;
+			el.toggleAttribute("data-fade-start", pos > 1);
+			el.toggleAttribute("data-fade-end", pos < span - 1);
+		};
+		el.addEventListener("scroll", update, { passive: true });
+		new ResizeObserver(update).observe(el);
+		update();
+		return update;
+	}
+
+	trackEdges(chips, "x");
+	const updateLogEdges = trackEdges(log, "y");
+
+	const isAtBottom = () => log.scrollTop >= log.scrollHeight - log.clientHeight - 4;
+
+	/* ---------- Scroll settle ----------
+	   While the thread scrolls, each bubble lags behind by an amount that grows
+	   with scroll speed and with how far along it sits in the scroll direction,
+	   so the thread stretches, then springs back together as it slows. */
+
+	const scrollSpeed = createSpring({ stiffness: 2000, damping: 200, mass: 1 });
+	let lastScrollTop = log.scrollTop;
+	let lastFrame = 0;
+	let settleFrame = 0;
+
+	function settleOffset(msg: HTMLElement, v: number) {
+		const rel = (msg.offsetTop - log.scrollTop) / log.clientHeight;
+		const d = Math.max(0, Math.sign(v) * (rel - 0.5) * 2) ** 2;
+		return 50 * Math.tanh((v * (0.03 + d * 0.07)) / 100);
+	}
+
+	function settleStep(now: number) {
+		const dt = Math.min((now - lastFrame) / 1000, 0.05) || 1 / 60;
+		lastFrame = now;
+		const top = log.scrollTop;
+		scrollSpeed.target = (top - lastScrollTop) / dt;
+		lastScrollTop = top;
+		scrollSpeed.step(dt);
+
+		const v = scrollSpeed.value;
+		// Under 5px/s the offsets are a twentieth of a pixel: call it still.
+		const resting = scrollSpeed.target === 0 && Math.abs(v) < 5 && Math.abs(scrollSpeed.velocity) < 50;
+		for (const msg of log.querySelectorAll<HTMLElement>(".ask-msg")) {
+			msg.style.transform = resting ? "" : `translateY(${settleOffset(msg, v).toFixed(2)}px)`;
+		}
+		if (resting) {
+			scrollSpeed.value = 0;
+			scrollSpeed.velocity = 0;
+			settleFrame = 0;
+			return;
+		}
+		settleFrame = requestAnimationFrame(settleStep);
+	}
+
+	function startSettle() {
+		if (settleFrame || prefersReducedMotion()) return;
+		lastFrame = performance.now();
+		settleFrame = requestAnimationFrame(settleStep);
+	}
+
+	log.addEventListener("scroll", startSettle, { passive: true });
+
+	/* ---------- Following the conversation ----------
+	   New bubbles and replies glide the thread to the bottom on a soft spring
+	   (use-stick-to-bottom's constants, as the reference uses), unless the
+	   visitor has scrolled up to reread something. */
+
+	let pinnedToEnd = true;
+	let followFrame = 0;
+	let followVelocity = 0;
+	let following = false;
+
+	log.addEventListener(
+		"scroll",
+		() => {
+			if (!following) pinnedToEnd = isAtBottom();
+			updateChips();
+		},
+		{ passive: true },
+	);
+	// A wheel or touch from the visitor always wins over the glide.
+	for (const type of ["wheel", "touchstart"]) {
+		log.addEventListener(type, () => stopFollow(), { passive: true });
+	}
+
+	function stopFollow() {
+		cancelAnimationFrame(followFrame);
+		followFrame = 0;
+		following = false;
+		followVelocity = 0;
+	}
+
+	function followToEnd() {
+		if (prefersReducedMotion()) {
+			log.scrollTop = log.scrollHeight;
+			return;
+		}
+		if (followFrame) return;
+		following = true;
+		let last = performance.now();
+		let expected = log.scrollTop;
+		const tick = (now: number) => {
+			// Anything that moved the thread besides this glide (scrollbar drag,
+			// keyboard, a script) means the visitor wants control back.
+			if (Math.abs(log.scrollTop - expected) > 2) {
+				stopFollow();
+				pinnedToEnd = isAtBottom();
+				updateChips();
+				return;
+			}
+			const frames = Math.min((now - last) / (1000 / 60), 3);
+			last = now;
+			const target = log.scrollHeight - log.clientHeight;
+			const diff = target - log.scrollTop;
+			followVelocity = ((0.7 * followVelocity + 0.05 * diff) / 1.25) * Math.max(frames, 1);
+			if (Math.abs(diff) < 0.5 && Math.abs(followVelocity) < 0.5) {
+				log.scrollTop = target;
+				stopFollow();
+				pinnedToEnd = true;
+				updateChips();
+				return;
+			}
+			log.scrollTop += followVelocity;
+			expected = log.scrollTop;
+			followFrame = requestAnimationFrame(tick);
+		};
+		followFrame = requestAnimationFrame(tick);
+	}
+
+	new MutationObserver(() => {
+		if (pinnedToEnd) followToEnd();
+		updateLogEdges();
+	}).observe(log, { childList: true, subtree: true, characterData: true });
+
 	const fitAll = () => log.querySelectorAll<HTMLElement>(".ask-msg").forEach(fitBubble);
 	fitAll();
 	let resizeFrame = 0;
@@ -411,6 +752,85 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		cancelAnimationFrame(resizeFrame);
 		resizeFrame = requestAnimationFrame(fitAll);
 	});
+
+	/* ---------- Suggestions ----------
+	   Shown only when there's nothing else going on: thread at the bottom,
+	   empty input, no reply on its way, and the assistant spoke last. */
+
+	let busy = false;
+	let chipsDisabled = false;
+	let typedInARow = 0;
+	let chipsShown = true;
+	let chipsAnimation: Animation | null = null;
+
+	const remainingChips = () => chips.querySelectorAll("[data-ask-chip]").length;
+
+	function chipsWanted() {
+		const last = log.lastElementChild as HTMLElement | null;
+		return (
+			!chipsDisabled &&
+			!busy &&
+			input.value === "" &&
+			isAtBottom() &&
+			last?.dataset.role !== "user" &&
+			remainingChips() > 0
+		);
+	}
+
+	function setChips(show: boolean, how: "slide" | "fade" = "slide") {
+		if (show === chipsShown) return;
+		chipsShown = show;
+		chips.inert = !show;
+
+		// Start from wherever an interrupted slide left them.
+		const from = getComputedStyle(chips).transform;
+		const fromOpacity = getComputedStyle(chips).opacity;
+		chipsAnimation?.cancel();
+		const hidden = `translateY(${CHIPS_OFFSET}px)`;
+		const end = show ? "none" : hidden;
+
+		if (prefersReducedMotion()) {
+			chips.style.transform = end;
+			chips.style.opacity = "";
+			return;
+		}
+		if (how === "fade") {
+			// Tapped suggestion: the row fades in place, then parks below unseen.
+			chipsAnimation = chips.animate([{ opacity: fromOpacity }, { opacity: 0 }], { duration: 200, easing: "ease" });
+			chipsAnimation.onfinish = () => {
+				chips.style.transform = hidden;
+				chipsAnimation = null;
+			};
+			chips.style.opacity = "0";
+			chipsAnimation.addEventListener("finish", () => (chips.style.opacity = ""));
+			return;
+		}
+		chips.style.opacity = "";
+		chips.style.transform = end;
+		chipsAnimation = chips.animate([{ transform: from === "none" ? "translateY(0)" : from }, { transform: end === "none" ? "translateY(0)" : end }], {
+			duration: MAIN.duration,
+			easing: MAIN.easing,
+		});
+	}
+
+	function updateChips() {
+		if (!chipsDisabled && remainingChips() === 0) {
+			disableChips();
+			return;
+		}
+		setChips(chipsWanted());
+	}
+
+	function disableChips() {
+		chipsDisabled = true;
+		setChips(false);
+		log.toggleAttribute("data-chips-off", true);
+	}
+
+	input.addEventListener("input", updateChips);
+	hideChips.addEventListener("click", disableChips);
+
+	/* ---------- Messages ---------- */
 
 	function addMessage(role: "user" | "assistant" | "error", text = "") {
 		const msg = template.content.firstElementChild!.cloneNode(true) as HTMLLIElement;
@@ -422,23 +842,134 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		return { msg, textEl };
 	}
 
-	function setBusy(busy: boolean) {
-		input.disabled = busy;
-		send.disabled = busy;
+	const part = (msg: HTMLElement, selector: string) => msg.querySelector<HTMLElement>(selector)!;
+
+	/** Width of `text` in the input's font, for where the typed words sit. */
+	function textWidth(text: string) {
+		const ctx = document.createElement("canvas").getContext("2d");
+		if (!ctx) return 0;
+		ctx.font = getComputedStyle(input).font;
+		return ctx.measureText(text).width;
 	}
 
-	async function ask(message: string) {
+	/**
+	 * Fly a new bubble in from where its words were (the input or a chip):
+	 * the body moves from there to its place in the thread while the bubble's
+	 * clip opens from that box to its full shape. Then a small squeeze, and
+	 * the tail slides in under it.
+	 */
+	function animateSend(msg: HTMLElement, from: DOMRect, textInset: number, spring: typeof MAIN) {
+		const body = part(msg, ".ask-body");
+		const bubble = part(msg, ".ask-bubble");
+		const tail = part(msg, ".ask-tail");
+		const end = bubble.getBoundingClientRect();
+		const pad = parseFloat(getComputedStyle(bubble).paddingLeft);
+
+		// Line the bubble's text up with the source text, centred vertically.
+		const dx = from.left + textInset - (end.left + pad);
+		const dy = from.top + from.height / 2 - (end.top + end.height / 2);
+		const startWidth = Math.min(from.width, end.width);
+		const startHeight = Math.min(from.height, end.height);
+		const clipTop = (end.height - startHeight) / 2;
+		const startRadius = startHeight / 2;
+		const startClip = `inset(${clipTop}px ${end.width - startWidth}px ${clipTop}px 0px round ${startRadius}px)`;
+
+		body.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }], {
+			duration: spring.duration,
+			easing: spring.easing,
+		});
+		bubble.animate([{ clipPath: startClip }, { clipPath: "inset(0px 0px 0px 0px round 20px)" }], {
+			duration: spring.duration,
+			easing: spring.easing,
+		});
+		// The squeeze adds on top of the move instead of replacing it.
+		body.style.transformOrigin = "100% 100%";
+		body.animate([{ transform: "scale(1)" }, { transform: "scale(0.9)" }, { transform: "scale(1)" }], {
+			...PULSE,
+			composite: "add",
+		});
+		tail.animate([{ transform: "translate(-20px, -13px)" }, { transform: "translate(0, 0)" }], {
+			duration: MAIN.duration,
+			easing: MAIN.easing,
+		});
+	}
+
+	function addTyping() {
+		const { msg, textEl } = addMessage("assistant");
+		msg.dataset.pending = "";
+		textEl.innerHTML = '<span class="ask-dots" aria-label="typing"><i></i><i></i><i></i></span>';
+		const body = part(msg, ".ask-body");
+		for (let i = 0; i < 2; i++) {
+			const dot = document.createElement("span");
+			dot.className = "ask-think";
+			body.append(dot);
+		}
+		if (!prefersReducedMotion()) {
+			body.style.transformOrigin = "0% 100%";
+			body.animate(
+				[
+					{ transform: "scale(0.5)", opacity: 0 },
+					{ transform: "scale(1)", opacity: 1 },
+				],
+				PULSE,
+			);
+		}
+		return { msg, textEl };
+	}
+
+	/** Turn the typing bubble into the reply, opening from its bottom-left corner. */
+	function revealReply(msg: HTMLElement, textEl: HTMLElement, text: string, role: "assistant" | "error") {
+		const bubble = part(msg, ".ask-bubble");
+		const before = bubble.getBoundingClientRect();
+		msg.querySelectorAll(".ask-think").forEach((el) => el.remove());
+		delete msg.dataset.pending;
+		msg.dataset.role = role;
+		textEl.textContent = text;
+		fitBubble(msg);
+		if (prefersReducedMotion()) return;
+
+		const after = bubble.getBoundingClientRect();
+		const right = Math.max(0, after.width - before.width);
+		const top = Math.max(0, after.height - before.height);
+		bubble.animate(
+			[
+				{ clipPath: `inset(${top}px ${right}px 0px 0px round 20px)`, transform: `translateY(${-top}px)` },
+				{ clipPath: "inset(0px 0px 0px 0px round 20px)", transform: "translateY(0)" },
+			],
+			{ duration: LAYOUT.duration, easing: LAYOUT.easing },
+		);
+		textEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 60, easing: "ease", fill: "backwards" });
+		part(msg, ".ask-tail").animate([{ transform: "translate(20px, -13px)" }, { transform: "translate(0, 0)" }], {
+			duration: MAIN.duration,
+			easing: MAIN.easing,
+		});
+	}
+
+	function setBusy(next: boolean) {
+		busy = next;
+		input.disabled = next;
+		send.disabled = next;
+		updateChips();
+	}
+
+	type Source = { rect: DOMRect; inset: number; spring: typeof MAIN };
+
+	async function ask(message: string, source: Source) {
 		const text = message.trim();
 		if (!text) return;
 
-		chips.hidden = true;
-		addMessage("user", text);
-		const { msg: reply, textEl } = addMessage("assistant");
-		reply.dataset.pending = "";
+		// Sending always brings the thread back to its newest message.
+		pinnedToEnd = true;
+		const { msg } = addMessage("user", text);
+		if (!prefersReducedMotion()) animateSend(msg, source.rect, source.inset, source.spring);
+		const { msg: reply, textEl } = addTyping();
 		setBusy(true);
 
 		(window as unknown as { plausible?: (event: string) => void }).plausible?.("chat_message");
 
+		// The whole reply is collected behind the typing dots, then shown at once.
+		let answer = "";
+		let role: "assistant" | "error" = "assistant";
 		try {
 			const res = await fetch("/api/chat", {
 				method: "POST",
@@ -447,42 +978,53 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			});
 
 			if (!res.ok || !res.body) {
-				reply.dataset.role = "error";
-				textEl.textContent = (await res.text()) || "Something went wrong. Try again in a bit.";
-				return;
+				role = "error";
+				answer = (await res.text()) || "Something went wrong. Try again in a bit.";
+			} else {
+				const reader = res.body.getReader();
+				const decoder = new TextDecoder();
+				for (;;) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					answer += decoder.decode(value, { stream: true });
+				}
+				answer += decoder.decode();
 			}
-
-			const reader = res.body.getReader();
-			const decoder = new TextDecoder();
-			for (;;) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				delete reply.dataset.pending;
-				// Let the bubble grow freely while text streams in; it's re-fitted at the end.
-				reply.style.width = "";
-				textEl.textContent += decoder.decode(value, { stream: true });
-			}
-			textEl.textContent += decoder.decode();
 		} catch {
-			reply.dataset.role = "error";
-			textEl.textContent = "Couldn't reach the server. Check your connection and try again.";
-		} finally {
-			delete reply.dataset.pending;
-			fitBubble(reply);
-			setBusy(false);
-			input.focus();
+			role = "error";
+			answer = "Couldn't reach the server. Check your connection and try again.";
 		}
+
+		revealReply(reply, textEl, answer.trim() || "Something went wrong. Try again in a bit.", role);
+		setBusy(false);
+		input.focus();
 	}
 
 	form.addEventListener("submit", (event) => {
 		event.preventDefault();
 		const value = input.value;
+		if (!value.trim()) return;
+		// Where the typed words sit: the input's left edge, as wide as the text.
+		const box = input.getBoundingClientRect();
+		const rect = new DOMRect(box.left, box.top, textWidth(value.trim()) + 32, box.height);
 		input.value = "";
-		void ask(value);
+		typedInARow += 1;
+		if (typedInARow >= 2) disableChips();
+		void ask(value, { rect, inset: 0, spring: QUICK });
 	});
 
 	chips.addEventListener("click", (event) => {
 		const chip = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-ask-chip]");
-		if (chip) void ask(chip.textContent ?? "");
+		if (!chip || busy) return;
+		const rect = chip.getBoundingClientRect();
+		const inset = parseFloat(getComputedStyle(chip).paddingLeft) + parseFloat(getComputedStyle(chip).borderLeftWidth);
+		typedInARow = 0;
+		setChips(false, "fade");
+		// Used suggestions don't come back.
+		chip.closest("li")!.remove();
+		void ask(chip.textContent ?? "", { rect, inset, spring: MAIN });
 	});
+
+	chips.style.transform = "none";
+	chips.inert = false;
 </script>
