@@ -63,6 +63,27 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 				</li>
 			</ul>
 		</div>
+
+		<!-- Frosted compose field floating over the bottom of the thread, so
+		     messages scroll under the glass (after alexsafayan.com). -->
+		<form class="ask-form" data-ask-form>
+			<label class="visually-hidden" for="ask-input">Your question</label>
+			<input
+				id="ask-input"
+				class="ask-input"
+				name="message"
+				type="text"
+				autocomplete="off"
+				maxlength="500"
+				placeholder="Message"
+				data-ask-input
+			/>
+			<button type="submit" class="ask-send" aria-label="Send" data-ask-send>
+				<svg viewBox="0 0 20 24" aria-hidden="true">
+					<path d="M10 22V2M2 10l8-8 8 8" />
+				</svg>
+			</button>
+		</form>
 	</div>
 
 	<template data-ask-template>
@@ -78,25 +99,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		</li>
 	</template>
 
-	<form class="ask-form" data-ask-form>
-		<label class="visually-hidden" for="ask-input">Your question</label>
-		<input
-			id="ask-input"
-			class="ask-input"
-			name="message"
-			type="text"
-			autocomplete="off"
-			maxlength="500"
-			placeholder="Message"
-			required
-			data-ask-input
-		/>
-		<button type="submit" class="ask-send" aria-label="Send" data-ask-send>
-			<svg viewBox="0 0 24 24" aria-hidden="true">
-				<path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" />
-			</svg>
-		</button>
-	</form>
 
 </section>
 
@@ -173,7 +175,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	.ask-thread {
 		position: relative;
-		margin-bottom: 10px;
+		--form-height: 40px;
+		--form-gap: 8px;
 	}
 
 	/* Chat history scrolls inside a fixed-height window, like a phone thread,
@@ -183,13 +186,19 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		list-style: none;
 		max-height: 400px;
 		overflow-y: auto;
+		/* Bubbles fly in from the input or a chip and can poke past the side
+		   mid-flight; without this a sideways scrollbar flashes and takes
+		   height from the thread. */
+		overflow-x: hidden;
 		overscroll-behavior: contain;
 		scrollbar-width: thin;
 		scrollbar-color: #c7c7cc transparent;
 		/* Room for the last bubble's tail, which hangs 9.5px below it and
 		   would otherwise be clipped by the scroller. */
 		margin: 0;
-		padding: 0 0 10px;
+		/* The last bubble's tail (hangs 9.5px), then room for the compose field
+		   floating over the bottom of the scroller. */
+		padding: 0 0 calc(10px + var(--form-height) + var(--form-gap));
 		display: flex;
 		flex-direction: column;
 	}
@@ -210,9 +219,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		--fade-start: 32px;
 	}
 
-	.ask-log[data-fade-end] {
-		--fade-end: 24px;
-	}
+	/* No bottom fade on the thread: messages run on under the frosted compose
+	   field, and the blur there already says there's more below. */
 
 	/* iMessage spacing: consecutive messages from one side sit tight, a change
 	   of speaker gets a real gap. */
@@ -379,10 +387,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	   clips the chips as they slide out of it. Only the chips take clicks. */
 	.ask-strip {
 		position: absolute;
+		z-index: 1;
 		left: 0;
 		right: 0;
-		bottom: -10px;
-		padding-bottom: 10px;
+		bottom: 0;
+		padding-bottom: calc(var(--form-height) + var(--form-gap));
 		overflow: hidden;
 		pointer-events: none;
 	}
@@ -466,18 +475,27 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		outline-offset: 2px;
 	}
 
-	/* iMessage-style compose field: a white pill floating on a soft shadow,
-	   with a round blue send button tucked inside on the right. */
+	/* Compose field as frosted glass, from alexsafayan.com: a faint white
+	   tint over a blurred, saturated view of the thread behind it. */
 	.ask-form {
+		position: absolute;
+		z-index: 2;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: var(--form-height);
+		box-sizing: border-box;
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 3px 3px 3px 16px;
-		background: #fff;
-		border-radius: 999px;
+		padding: 4px 4px 4px 16px;
+		background: rgba(255, 255, 255, 0.3);
+		-webkit-backdrop-filter: blur(8px) saturate(300%);
+		backdrop-filter: blur(8px) saturate(300%);
+		border-radius: 20px;
 		box-shadow:
-			0 1px 2px rgba(0, 0, 0, 0.06),
-			0 4px 16px rgba(0, 0, 0, 0.08);
+			0 0 32px rgba(0, 0, 0, 0.12),
+			inset 0 0 3px 1px #fff;
 	}
 
 	.ask-input {
@@ -486,10 +504,12 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		font: inherit;
 		/* 16px minimum: anything smaller makes iOS Safari zoom the page on focus. */
 		font-size: 16px;
+		font-weight: 500;
 		/* Same height as the send button, so the pill hugs it. */
-		height: 30px;
-		line-height: 30px;
+		height: 32px;
+		line-height: 32px;
 		color: #000;
+		caret-color: var(--imsg-blue);
 		background: none;
 		border: 0;
 		padding: 0;
@@ -500,26 +520,31 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		color: #8e8e93;
 	}
 
+	/* Always live, never dimmed: with nothing typed it sends a hello. */
 	.ask-send {
 		flex-shrink: 0;
 		display: grid;
 		place-items: center;
-		width: 30px;
-		height: 30px;
+		width: 40px;
+		height: 32px;
 		padding: 0;
 		background: var(--imsg-blue);
 		border: 0;
-		border-radius: 50%;
+		border-radius: 16px;
 		cursor: pointer;
-		transition: opacity 120ms ease;
+		transition: transform 200ms ease-out;
+	}
+
+	.ask-send:active {
+		transform: scale(0.9);
 	}
 
 	.ask-send svg {
-		width: 18px;
-		height: 18px;
+		width: 16px;
+		height: 16px;
 		fill: none;
 		stroke: #fff;
-		stroke-width: 2.6;
+		stroke-width: 4;
 		stroke-linecap: round;
 		stroke-linejoin: round;
 	}
@@ -527,17 +552,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	.ask-send:focus-visible {
 		outline: 2px solid var(--imsg-blue);
 		outline-offset: 2px;
-	}
-
-	/* Dim the arrow until there's something to send, like iMessage. */
-	.ask-input:placeholder-shown + .ask-send,
-	.ask-send:disabled {
-		opacity: 0.35;
-		cursor: default;
-	}
-
-	.ask-input:disabled {
-		opacity: 0.5;
 	}
 
 	.visually-hidden {
@@ -559,6 +573,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	const LAYOUT = springEasing({ stiffness: 300, damping: 30 });
 	const PULSE = { duration: 500, easing: "cubic-bezier(0.2, 0, 0.2, 1)" };
 	const CHIPS_OFFSET = 104;
+	const HELLOS = ["hi", "sup", "yo"];
 
 	const SESSION_KEY = "ask-me-session";
 
@@ -581,7 +596,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	const hideChips = document.querySelector<HTMLButtonElement>("[data-ask-chips-hide]")!;
 	const form = document.querySelector<HTMLFormElement>("[data-ask-form]")!;
 	const input = document.querySelector<HTMLInputElement>("[data-ask-input]")!;
-	const send = document.querySelector<HTMLButtonElement>("[data-ask-send]")!;
 
 	/**
 	 * Shrink a bubble to its widest rendered line (from beerwar.app's fitBubble).
@@ -947,8 +961,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	function setBusy(next: boolean) {
 		busy = next;
-		input.disabled = next;
-		send.disabled = next;
 		updateChips();
 	}
 
@@ -998,12 +1010,15 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		revealReply(reply, textEl, answer.trim() || "Something went wrong. Try again in a bit.", role);
 		setBusy(false);
 		input.focus();
+		updateChips();
 	}
 
 	form.addEventListener("submit", (event) => {
 		event.preventDefault();
-		const value = input.value;
-		if (!value.trim()) return;
+		// One reply at a time; whatever's typed stays put until it lands.
+		if (busy) return;
+		// Nothing typed: the button still works, as a quick hello.
+		const value = input.value.trim() || HELLOS[Math.floor(Math.random() * HELLOS.length)];
 		// Where the typed words sit: the input's left edge, as wide as the text.
 		const box = input.getBoundingClientRect();
 		const rect = new DOMRect(box.left, box.top, textWidth(value.trim()) + 32, box.height);
