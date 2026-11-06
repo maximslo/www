@@ -15,6 +15,11 @@ create index if not exists messages_session_created_idx
 -- Only the API route, using the service-role key, touches this table.
 alter table messages enable row level security;
 
+-- With "Automatically expose new tables" off, grant access explicitly:
+-- only the service role (used by the API route) may read and insert.
+revoke all on messages from anon, authenticated;
+grant select, insert on messages to service_role;
+
 -- Retention: delete messages older than 90 days, nightly at 04:00 UTC.
 -- (Enable the pg_cron extension under Database → Extensions first.)
 select cron.schedule(

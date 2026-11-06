@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-import { CONTACT_EMAIL, SYSTEM_PROMPT } from "./system-prompt";
+import { CONTACT_EMAIL, getSystemPrompt } from "./system-prompt";
 
 // POST handler for /api/chat. Wired up by src/pages/api/chat.ts, which also
 // opts that route out of prerendering.
@@ -53,11 +53,12 @@ const createSupabase = () =>
 	});
 
 let clients:
-	| { anthropic: Anthropic; supabase: ReturnType<typeof createSupabase>; ratelimit: Ratelimit }
+	| { systemPrompt: string; anthropic: Anthropic; supabase: ReturnType<typeof createSupabase>; ratelimit: Ratelimit }
 	| undefined;
 
 function getClients() {
 	clients ??= {
+		systemPrompt: getSystemPrompt(),
 		anthropic: new Anthropic({ apiKey: env("ANTHROPIC_API_KEY") }),
 		supabase: createSupabase(),
 		ratelimit: new Ratelimit({
@@ -103,7 +104,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 		console.error(error);
 		return text(`The chat isn't set up right now. Email me at ${CONTACT_EMAIL}.`, 503);
 	}
-	const { anthropic, supabase, ratelimit } = services;
+	const { systemPrompt, anthropic, supabase, ratelimit } = services;
 
 	const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || clientAddress || "unknown";
 	const { success } = await ratelimit.limit(ip);
@@ -155,7 +156,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 					// Thinking off: at a 300-token cap it would eat the reply budget.
 					thinking: { type: "disabled" },
 					output_config: { effort: "low" },
-					system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+					system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
 					messages,
 				});
 				stream.on("text", (delta) => {
