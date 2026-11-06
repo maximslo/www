@@ -35,3 +35,5 @@ videos-src/
 
 # private chat profile (production reads CHAT_PROFILE from Vercel env)
 src/chat/profile.md
+.vercel
+.env*

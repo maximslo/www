@@ -1,5 +1,5 @@
 ---
-import { CONTACT_EMAIL, GREETING } from "../chat/system-prompt";
+import { GREETING } from "../chat/system-prompt";
 
 // Questions the profile can actually answer, so the first tap lands well.
 const SUGGESTIONS = [
@@ -75,9 +75,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		</button>
 	</form>
 
-	<p class="ask-note">
-		An AI version of me, so it can be wrong. Messages are stored for 90 days. Want the real me? <a class="link" href={`mailto:${CONTACT_EMAIL}`}>Email</a>.
-	</p>
 </section>
 
 <style>
@@ -253,15 +250,10 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		gap: 8px;
 		padding: 3px 3px 3px 16px;
 		background: #fff;
-		border: 1px solid transparent;
 		border-radius: 999px;
 		box-shadow:
 			0 1px 2px rgba(0, 0, 0, 0.06),
 			0 4px 16px rgba(0, 0, 0, 0.08);
-	}
-
-	.ask-form:focus-within {
-		border-color: rgba(0, 146, 255, 0.35);
 	}
 
 	.ask-input {
@@ -322,12 +314,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	.ask-input:disabled {
 		opacity: 0.5;
-	}
-
-	.ask-note {
-		margin-top: 12px;
-		font-size: 14px;
-		color: var(--color-text-secondary);
 	}
 
 	.visually-hidden {
