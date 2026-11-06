@@ -2,7 +2,8 @@ import type { APIRoute } from "astro";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
+import { env } from "../lib/env";
+import { getRedis } from "../lib/redis";
 import { CONTACT_EMAIL, getSystemPrompt } from "./system-prompt";
 
 // POST handler for /api/chat. Wired up by src/pages/api/chat.ts, which also
@@ -14,13 +15,6 @@ const MAX_TURNS_PER_SESSION = 20;
 const HISTORY_TURNS = 10;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// Server-only secrets: process.env at runtime on Vercel, import.meta.env in `astro dev`.
-function env(name: string): string {
-	const value = process.env[name] ?? import.meta.env[name];
-	if (!value) throw new Error(`Missing env var ${name}`);
-	return value;
-}
 
 type MessageRow = {
 	id: number;
@@ -62,10 +56,7 @@ function getClients() {
 		anthropic: new Anthropic({ apiKey: env("ANTHROPIC_API_KEY") }),
 		supabase: createSupabase(),
 		ratelimit: new Ratelimit({
-			redis: new Redis({
-				url: env("UPSTASH_REDIS_REST_URL"),
-				token: env("UPSTASH_REDIS_REST_TOKEN"),
-			}),
+			redis: getRedis(),
 			limiter: Ratelimit.slidingWindow(20, "10 m"),
 			prefix: "chat",
 		}),
