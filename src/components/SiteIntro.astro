@@ -9,6 +9,7 @@ import {
 import { toLinkSegments } from "../lib/link-segments";
 import IntroDirectory from "./IntroDirectory.astro";
 import AskMe from "./AskMe.astro";
+import { CHAT_ENABLED } from "../config/chat";
 
 const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph, INTRO_LINKS));
 
@@ -45,7 +46,7 @@ const splitLines = (text: string) => text.split("\n");
 
 	<IntroDirectory />
 
-	<AskMe />
+	{CHAT_ENABLED && <AskMe />}
 </div>
 
 <style>
