@@ -8,6 +8,7 @@ import {
 } from "../config/intro";
 import { toLinkSegments } from "../lib/link-segments";
 import IntroDirectory from "./IntroDirectory.astro";
+import AskMe from "./AskMe.astro";
 
 const paragraphs = INTRO_PARAGRAPHS.map((paragraph) => toLinkSegments(paragraph, INTRO_LINKS));
 
@@ -43,6 +44,8 @@ const splitLines = (text: string) => text.split("\n");
 	</section>
 
 	<IntroDirectory />
+
+	<AskMe />
 </div>
 
 <style>
