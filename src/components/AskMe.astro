@@ -28,11 +28,15 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	<div class="ask-thread">
 		<ol class="ask-log" aria-live="polite" data-ask-log>
 			{
-				GREETING.map((line) => (
-					<li class="ask-msg" data-role="assistant">
+				GREETING.map((line, index) => (
+					<li
+						class="ask-msg"
+						data-role={line.role}
+						data-intro={index > GREETING.findLastIndex((m) => m.role === "user") ? "" : undefined}
+					>
 						<div class="ask-body">
 							<div class="ask-bubble">
-								<span class="ask-text">{line}</span>
+								<span class="ask-text">{line.text}</span>
 							</div>
 							<svg class="ask-tail" viewBox="0 0 27 18" preserveAspectRatio="none" aria-hidden="true">
 								<path d={TAIL_PATH} />
@@ -246,6 +250,14 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	/* iMessage spacing: consecutive messages from one side sit tight, a change
 	   of speaker gets a real gap. */
+	/* My opening lines after the visitor's "Hi there" stay hidden from the
+	   first paint until the script either types them in (the intro) or, with
+	   reduced motion, shows them as they are. Otherwise they flash for a
+	   frame before the intro takes them out. */
+	.ask-log:not([data-intro-ready]) .ask-msg[data-intro] {
+		display: none;
+	}
+
 	.ask-log :global(.ask-msg) {
 		width: fit-content;
 		max-width: 80%;
@@ -601,6 +613,9 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	const LAYOUT = springEasing({ stiffness: 300, damping: 30 });
 	const PULSE = { duration: 500, easing: "cubic-bezier(0.2, 0, 0.2, 1)" };
 	const CHIPS_OFFSET = 104;
+	// A beat after the page loads before the intro may start, so its first
+	// typing dots are seen rather than lost in the load.
+	const INTRO_LEAD_MS = 400;
 	const HELLOS = ["hi", "sup", "yo"];
 
 	const SESSION_KEY = "ask-me-session";
@@ -640,6 +655,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		let widest = 0;
 		for (const rect of range.getClientRects()) widest = Math.max(widest, rect.width);
 		if (widest === 0) return;
+		// Measured on screen, so a bubble mid-animation (the typing bubble
+		// still scaling in when its line arrives) reads small. Undo that scale,
+		// or the bubble is fitted too narrow and the text wraps ("hell / o!").
+		const scale = body.getBoundingClientRect().width / body.offsetWidth;
+		if (scale > 0 && Number.isFinite(scale)) widest /= scale;
 		const cs = getComputedStyle(body);
 		const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
 		// +1 so sub-pixel rounding can't make the widest line re-wrap.
@@ -792,6 +812,24 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		updateLogEdges();
 	}).observe(log, { childList: true, subtree: true, characterData: true });
 
+	/* ---------- Intro ----------
+	   Like alexsafayan.com: the thread starts with my first line and the
+	   visitor's canned "Hi there"; my lines after it are "typed" one by one
+	   once the chat is about half on screen. The HTML has every line, so
+	   without JS or with reduced motion they're all simply there. */
+	const introLines: string[] = [];
+	if (!prefersReducedMotion()) {
+		const opener = [...log.querySelectorAll<HTMLElement>(".ask-msg")];
+		const lastUser = opener.findLastIndex((msg) => msg.dataset.role === "user");
+		for (const msg of opener.slice(Math.max(lastUser + 1, 1))) {
+			introLines.push(msg.textContent?.trim() ?? "");
+			msg.remove();
+		}
+	}
+	log.toggleAttribute("data-intro-ready", true);
+	let introRunning = introLines.length > 0;
+	let introCancel: (() => void) | null = null;
+
 	const fitAll = () => log.querySelectorAll<HTMLElement>(".ask-msg").forEach(fitBubble);
 	fitAll();
 	let resizeFrame = 0;
@@ -817,6 +855,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		return (
 			!chipsDisabled &&
 			!busy &&
+			!introRunning &&
 			input.value === "" &&
 			isAtBottom() &&
 			last?.dataset.role !== "user" &&
@@ -965,10 +1004,15 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		return { msg, textEl };
 	}
 
-	/** Turn the typing bubble into the reply, opening from its bottom-left corner. */
+	/**
+	 * Turn the typing bubble into the reply: the bubble itself stretches from
+	 * the dots' size out to the message's (alexsafayan.com's layout spring),
+	 * with the text already in place and uncovered as it grows.
+	 */
 	function revealReply(msg: HTMLElement, textEl: HTMLElement, text: string, role: "assistant" | "error") {
 		const bubble = part(msg, ".ask-bubble");
-		const before = bubble.getBoundingClientRect();
+		// Layout sizes, not on-screen ones: the dots may still be scaling in.
+		const from = { width: bubble.offsetWidth, height: bubble.offsetHeight };
 		msg.querySelectorAll(".ask-think").forEach((el) => el.remove());
 		delete msg.dataset.pending;
 		msg.dataset.role = role;
@@ -976,17 +1020,23 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		fitBubble(msg);
 		if (prefersReducedMotion()) return;
 
-		const after = bubble.getBoundingClientRect();
-		const right = Math.max(0, after.width - before.width);
-		const top = Math.max(0, after.height - before.height);
-		bubble.animate(
+		const to = { width: bubble.offsetWidth, height: bubble.offsetHeight };
+		// Hold the text at its final line breaks while the bubble is still
+		// narrower, so it's revealed rather than reflowed as the bubble grows.
+		const pad = parseFloat(getComputedStyle(bubble).paddingLeft) + parseFloat(getComputedStyle(bubble).paddingRight);
+		textEl.style.display = "block";
+		textEl.style.width = `${to.width - pad}px`;
+		const grow = bubble.animate(
 			[
-				{ clipPath: `inset(${top}px ${right}px 0px 0px round 20px)`, transform: `translateY(${-top}px)` },
-				{ clipPath: "inset(0px 0px 0px 0px round 20px)", transform: "translateY(0)" },
+				{ width: `${from.width}px`, height: `${from.height}px` },
+				{ width: `${to.width}px`, height: `${to.height}px` },
 			],
 			{ duration: LAYOUT.duration, easing: LAYOUT.easing },
 		);
-		textEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 60, easing: "ease", fill: "backwards" });
+		grow.onfinish = grow.oncancel = () => {
+			textEl.style.display = "";
+			textEl.style.width = "";
+		};
 	}
 
 	function setBusy(next: boolean) {
@@ -999,6 +1049,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	async function ask(message: string, source: Source) {
 		const text = message.trim();
 		if (!text) return;
+		// Sending mid-intro: the rest of the greeting lands at once, first.
+		introCancel?.();
 
 		// Sending always brings the thread back to its newest message.
 		pinnedToEnd = true;
@@ -1037,7 +1089,19 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			answer = "Couldn't reach the server. Check your connection and try again.";
 		}
 
-		revealReply(reply, textEl, answer.trim() || "Something went wrong. Try again in a bit.", role);
+		// Each line of the reply is its own text: the first opens out of the
+		// typing bubble, the rest follow one by one at the intro's pace.
+		const texts = role === "error" ? [answer.trim()] : answer.split(/\n+/).map((t) => t.trim()).filter(Boolean);
+		if (!texts.length) {
+			role = "error";
+			texts.push("Something went wrong. Try again in a bit.");
+		}
+		revealReply(reply, textEl, texts[0], role);
+		for (const text of texts.slice(1)) {
+			const next = addTyping();
+			await pause(lineDelay(text));
+			revealReply(next.msg, next.textEl, text, role);
+		}
 		setBusy(false);
 		input.focus();
 		updateChips();
@@ -1070,6 +1134,62 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		void ask(chip.textContent ?? "", { rect, inset, spring: FLIGHT });
 	});
 
-	chips.style.transform = "none";
-	chips.inert = false;
+	/** The reference's pacing per line: half a second, plus more for longer lines. */
+	const lineDelay = (line: string) => 500 + 2500 * Math.min(line.length / 200, 1);
+	const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
+
+	/** Typing dots, a pause scaled to the line's length, then the line. */
+	async function playIntro() {
+		let cancelled = false;
+		let typing = addTyping();
+		introCancel = () => {
+			cancelled = true;
+			introCancel = null;
+			typing.msg.remove();
+			for (const line of introLines.splice(0)) addMessage("assistant", line);
+			introRunning = false;
+		};
+		let last = performance.now();
+		while (introLines.length) {
+			const line = introLines[0];
+			await pause(lineDelay(line) - (performance.now() - last));
+			if (cancelled) return;
+			introLines.shift();
+			revealReply(typing.msg, typing.textEl, line, "assistant");
+			last = performance.now();
+			if (introLines.length) typing = addTyping();
+		}
+		introCancel = null;
+		introRunning = false;
+		updateChips();
+	}
+
+	if (introRunning) {
+		// Suggestions wait under the compose field until the greeting is done.
+		chipsShown = false;
+		chips.inert = true;
+		chips.style.transform = `translateY(${CHIPS_OFFSET}px)`;
+		// Start once the spot where the typing dots will appear is actually on
+		// screen: the last opening message fully in view, with ~80px of room
+		// under it. Keying off the section as a whole started it while that
+		// spot was still below the fold, so "hello!"'s dots were never seen.
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (!entries[0].isIntersecting) return;
+				observer.disconnect();
+				void playIntro();
+			},
+			{ threshold: 1, rootMargin: "0px 0px -80px 0px" },
+		);
+		// Wait for the page to finish loading and be on screen first: reloading
+		// while scrolled to the chat restores that position, and starting at
+		// once played the first dots and "hello!" before anything was painted.
+		const ready = document.readyState === "complete" ? Promise.resolve() : new Promise((resolve) => addEventListener("load", resolve, { once: true }));
+		void ready
+			.then(() => pause(INTRO_LEAD_MS))
+			.then(() => observer.observe(log.lastElementChild!));
+	} else {
+		chips.style.transform = "none";
+		chips.inert = false;
+	}
 </script>
