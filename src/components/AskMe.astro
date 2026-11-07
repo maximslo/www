@@ -60,11 +60,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 						</li>
 					))
 				}
-				<li>
-					<button type="button" class="ask-chips-hide" data-ask-chips-hide>
-						Hide suggestions
-					</button>
-				</li>
 			</ul>
 		</div>
 
@@ -469,24 +464,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		flex-shrink: 0;
 	}
 
-	.ask-chips-hide {
-		font: inherit;
-		font-size: 15px;
-		font-weight: 500;
-		white-space: nowrap;
-		color: #8e8e93;
-		background: none;
-		border: 0;
-		padding: 6px 8px;
-		cursor: pointer;
-	}
-
-	.ask-chips-hide:focus-visible {
-		outline: 2px solid var(--imsg-blue);
-		outline-offset: 2px;
-		border-radius: 6px;
-	}
-
 	.ask-chip {
 		font: inherit;
 		font-size: 15px;
@@ -636,7 +613,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	const log = document.querySelector<HTMLOListElement>("[data-ask-log]")!;
 	const template = document.querySelector<HTMLTemplateElement>("[data-ask-template]")!;
 	const chips = document.querySelector<HTMLUListElement>("[data-ask-chips]")!;
-	const hideChips = document.querySelector<HTMLButtonElement>("[data-ask-chips-hide]")!;
 	const form = document.querySelector<HTMLFormElement>("[data-ask-form]")!;
 	const input = document.querySelector<HTMLInputElement>("[data-ask-input]")!;
 
@@ -748,6 +724,10 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	let pinnedToEnd = true;
 	let followFrame = 0;
 	let followVelocity = 0;
+	// Keep gliding until at least this time, even if already at the bottom:
+	// a reply bubble grows for a moment after it lands, and nothing else
+	// changes in the DOM to say the thread got taller.
+	let followHoldUntil = 0;
 	let following = false;
 
 	log.addEventListener(
@@ -793,7 +773,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			const target = log.scrollHeight - log.clientHeight;
 			const diff = target - log.scrollTop;
 			followVelocity = ((0.7 * followVelocity + 0.05 * diff) / 1.25) * Math.max(frames, 1);
-			if (Math.abs(diff) < 0.5 && Math.abs(followVelocity) < 0.5) {
+			if (Math.abs(diff) < 0.5 && Math.abs(followVelocity) < 0.5 && now >= followHoldUntil) {
 				log.scrollTop = target;
 				stopFollow();
 				pinnedToEnd = true;
@@ -914,7 +894,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	input.addEventListener("input", updateChips);
-	hideChips.addEventListener("click", disableChips);
 
 	/* ---------- Messages ---------- */
 
@@ -1033,6 +1012,10 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			],
 			{ duration: LAYOUT.duration, easing: LAYOUT.easing },
 		);
+		// Follow the bubble down while it grows, so a tall reply (a list) isn't
+		// left hanging under the compose field and suggestions.
+		followHoldUntil = performance.now() + LAYOUT.duration + 50;
+		if (pinnedToEnd) followToEnd();
 		grow.onfinish = grow.oncancel = () => {
 			textEl.style.display = "";
 			textEl.style.width = "";
@@ -1089,9 +1072,16 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			answer = "Couldn't reach the server. Check your connection and try again.";
 		}
 
-		// Each line of the reply is its own text: the first opens out of the
-		// typing bubble, the rest follow one by one at the intro's pace.
-		const texts = role === "error" ? [answer.trim()] : answer.split(/\n+/).map((t) => t.trim()).filter(Boolean);
+		// Texts are separated by blank lines; a single line break stays inside
+		// one bubble (a list, like the tech stack). The first text opens out of
+		// the typing bubble, the rest follow one by one at the intro's pace.
+		const texts =
+			role === "error"
+				? [answer.trim()]
+				: answer
+						.split(/\n\s*\n/)
+						.map((t) => t.split("\n").map((line) => line.trim()).join("\n").trim())
+						.filter(Boolean);
 		if (!texts.length) {
 			role = "error";
 			texts.push("Something went wrong. Try again in a bit.");
