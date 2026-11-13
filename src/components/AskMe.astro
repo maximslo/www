@@ -1196,7 +1196,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		);
 	}
 
-	function setChips(show: boolean, how: "slide" | "fade" = "slide") {
+	function setChips(show: boolean, how: "slide" | "fade" | "instant" = "slide") {
 		if (show === chipsShown) return;
 		chipsShown = show;
 		chips.inert = !show;
@@ -1208,7 +1208,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		const hidden = `translateY(${CHIPS_OFFSET}px)`;
 		const end = show ? "none" : hidden;
 
-		if (prefersReducedMotion()) {
+		if (prefersReducedMotion() || how === "instant") {
 			chips.style.transform = end;
 			chips.style.opacity = "";
 			return;
@@ -1252,7 +1252,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	// still up or not, or as soon as the keyboard is closed.
 	input.addEventListener("focus", () => {
 		fieldTapped = touchScreen.matches;
-		updateChips();
+		// They vanish at once rather than sliding down, so they're not seen
+		// riding along with the keyboard as it comes up. Coming back is still
+		// the usual slide.
+		if (fieldTapped) setChips(false, "instant");
+		else updateChips();
 	});
 	input.addEventListener("blur", () => {
 		fieldTapped = false;
