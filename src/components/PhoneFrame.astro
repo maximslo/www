@@ -62,10 +62,17 @@
 		/* Room under the phone with no keyboard: clears the home indicator and
 		   floating bottom bars (viewport-fit=cover is set in BaseLayout). */
 		--phone-gap-bottom: max(32px, env(safe-area-inset-bottom) + 16px);
-		--phone-w: min(330px, 100vw - 32px, (100svh - 32px - var(--phone-gap-bottom)) * 330 / 697);
+		/* The -lock values are measured by the script while no field is
+		   focused and held while one is. Chrome on iOS shrinks its whole web
+		   view for the keyboard, svh and vw included, so the units alone
+		   still narrowed the phone there. */
+		--phone-w: var(
+			--phone-w-lock,
+			min(330px, 100vw - 32px, (100svh - 32px - var(--phone-gap-bottom)) * 330 / 697)
+		);
 		--phone-full-h: calc(var(--phone-w) * 697 / 330);
 		/* Centred on the keyboard-less screen, at least 32px down. */
-		--phone-top: max(32px, (100svh - var(--phone-full-h)) / 2);
+		--phone-top: var(--phone-top-lock, max(32px, (100svh - var(--phone-full-h)) / 2));
 		width: var(--phone-w);
 		margin-top: var(--phone-top);
 		/* cqh: the visible area (above any keyboard) inside the stage's padding. */
@@ -105,5 +112,35 @@
 		vv.addEventListener("resize", schedule);
 		vv.addEventListener("scroll", schedule);
 		sync();
+	}
+
+	// Hold the phone's width and top edge steady while typing. They're
+	// measured from the CSS whenever no text field is focused (load, resize,
+	// rotation, the keyboard closing) and frozen while one is, since some
+	// browsers (Chrome on iOS) shrink the whole viewport for the keyboard.
+	const phone = stage?.querySelector<HTMLElement>(".phone");
+	if (phone) {
+		const typing = () => {
+			const el = document.activeElement;
+			return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable === true;
+		};
+		let lockFrame = 0;
+		const lock = () => {
+			lockFrame = 0;
+			if (typing()) return;
+			phone.style.removeProperty("--phone-w-lock");
+			phone.style.removeProperty("--phone-top-lock");
+			const cs = getComputedStyle(phone);
+			phone.style.setProperty("--phone-w-lock", cs.width);
+			phone.style.setProperty("--phone-top-lock", cs.marginTop);
+		};
+		const scheduleLock = () => {
+			if (!lockFrame) lockFrame = requestAnimationFrame(lock);
+		};
+		window.addEventListener("resize", scheduleLock);
+		window.visualViewport?.addEventListener("resize", scheduleLock);
+		// Keyboard closing: re-measure once it has had time to go.
+		document.addEventListener("focusout", () => setTimeout(scheduleLock, 400));
+		lock();
 	}
 </script>
