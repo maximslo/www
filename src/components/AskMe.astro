@@ -694,6 +694,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	// typing dots are seen rather than lost in the load.
 	const INTRO_LEAD_MS = 400;
 	const HELLOS = ["hi", "sup", "yo"];
+	// Phones and tablets, where focusing the field brings up a keyboard.
+	const touchScreen = window.matchMedia("(pointer: coarse)");
 
 	const SESSION_KEY = "ask-me-session";
 
@@ -1038,6 +1040,9 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			!busy &&
 			!introRunning &&
 			input.value === "" &&
+			// On touch screens, focusing the field opens the keyboard: the
+			// suggestions step aside while you type.
+			!(touchScreen.matches && document.activeElement === input) &&
 			isAtBottom() &&
 			last?.dataset.role !== "user" &&
 			remainingChips() > 0
@@ -1095,6 +1100,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	input.addEventListener("input", updateChips);
+	input.addEventListener("focus", updateChips);
+	input.addEventListener("blur", updateChips);
 
 	// On phones the keyboard opens on focus and the chat shrinks to fit above
 	// it; once it has, bring the newest message back into view over the input.
@@ -1311,7 +1318,10 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			revealReply(next.msg, next.textEl, text, role);
 		}
 		setBusy(false);
-		input.focus();
+		// Back to the field for the next question. Not on touch screens: there
+		// a scripted focus doesn't open the keyboard, so it would only hide
+		// the suggestions with nothing to type on.
+		if (!touchScreen.matches) input.focus();
 		updateChips();
 	}
 
