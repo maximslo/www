@@ -90,6 +90,12 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 				</svg>
 			</button>
 		</form>
+
+		<!-- Touch screens in the phone layout: a drawn scroll indicator, kept
+		     off the phone's curved corners like the desktop scrollbar. -->
+		<div class="ask-scroll-track" aria-hidden="true" data-ask-scroll-track>
+			<div class="ask-scroll-thumb" data-ask-scroll-thumb></div>
+		</div>
 	</div>
 
 	<template data-ask-template>
@@ -170,6 +176,58 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		left: var(--screen-pad);
 		right: var(--screen-pad);
 		bottom: var(--screen-pad);
+	}
+
+	/* The drawn indicator: off everywhere except touch screens in the phone
+	   layout (below). */
+	.ask-scroll-track {
+		display: none;
+	}
+
+	/* Touch screens: mobile browsers draw their own overlay scroll indicator,
+	   run it the full height of the thread and ignore the track styling below,
+	   so it ran over the curved corners. It's hidden and replaced by a drawn
+	   one between the same limits as the desktop scrollbar: from where the
+	   top corners stop curving to where the bottom ones start. The thread
+	   fills the phone, so the track follows the phone as it shrinks. */
+	@media (pointer: coarse) {
+		/* .ask-thread in these selectors outranks the desktop scrollbar rules
+		   further down, which would otherwise switch the native bar back on. */
+		.ask-me[data-layout="phone"] .ask-thread .ask-log {
+			scrollbar-width: none;
+		}
+
+		.ask-me[data-layout="phone"] .ask-thread .ask-log::-webkit-scrollbar {
+			display: none;
+			width: 0;
+		}
+
+		.ask-me[data-layout="phone"] .ask-scroll-track {
+			display: block;
+			position: absolute;
+			z-index: 3;
+			top: var(--phone-radius, 0px);
+			bottom: var(--phone-radius, 0px);
+			right: 4px;
+			width: 3px;
+			pointer-events: none;
+		}
+
+		.ask-me[data-layout="phone"] .ask-scroll-thumb {
+			width: 100%;
+			height: var(--thumb-h, 0px);
+			transform: translateY(var(--thumb-y, 0px));
+			border-radius: 2px;
+			background: rgba(0, 0, 0, 0.35);
+			opacity: 0;
+			transition: opacity 300ms ease;
+		}
+
+		/* Shown while the thread moves, faded out a beat after it stops. */
+		.ask-me[data-layout="phone"] .ask-scroll-track[data-active] .ask-scroll-thumb {
+			opacity: 1;
+			transition-duration: 100ms;
+		}
 	}
 
 	/* Chrome and Safari: a thin scrollbar whose track stops where the phone's
@@ -875,6 +933,47 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	window.addEventListener("pointerup", endDrag);
 	window.addEventListener("pointercancel", endDrag);
 	const updateLogEdges = trackEdges(log, "y");
+
+	/* ---------- Drawn scroll indicator (touch, phone layout) ----------
+	   Sized and placed like a native one, inside the track's limits; shown
+	   while the thread scrolls and faded out shortly after. The CSS keeps
+	   it hidden everywhere else, so this is harmless there. */
+	const scrollTrack = document.querySelector<HTMLElement>("[data-ask-scroll-track]");
+	if (scrollTrack) {
+		let hideTimer = 0;
+		let trackFrame = 0;
+		const place = () => {
+			trackFrame = 0;
+			const trackH = scrollTrack.clientHeight;
+			const span = log.scrollHeight - log.clientHeight;
+			if (!trackH || span <= 0) {
+				scrollTrack.style.setProperty("--thumb-h", "0px");
+				return;
+			}
+			const thumbH = Math.max(32, (trackH * log.clientHeight) / log.scrollHeight);
+			const progress = Math.min(1, Math.max(0, log.scrollTop / span));
+			scrollTrack.style.setProperty("--thumb-h", `${thumbH}px`);
+			scrollTrack.style.setProperty("--thumb-y", `${(trackH - thumbH) * progress}px`);
+		};
+		const schedulePlace = () => {
+			if (!trackFrame) trackFrame = requestAnimationFrame(place);
+		};
+		log.addEventListener(
+			"scroll",
+			() => {
+				schedulePlace();
+				scrollTrack.toggleAttribute("data-active", true);
+				clearTimeout(hideTimer);
+				hideTimer = window.setTimeout(() => scrollTrack.removeAttribute("data-active"), 700);
+			},
+			{ passive: true },
+		);
+		// The phone shrinking (keyboard) and new messages change the sizes.
+		new ResizeObserver(schedulePlace).observe(log);
+		new ResizeObserver(schedulePlace).observe(scrollTrack);
+		new MutationObserver(schedulePlace).observe(log, { childList: true, subtree: true });
+		place();
+	}
 
 	// How wide the thread's scrollbar is, so the top fade can stop short of it.
 	new ResizeObserver(() => {
