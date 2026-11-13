@@ -1074,6 +1074,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	let busy = false;
 	let chipsDisabled = false;
 	let typedInARow = 0;
+	// Touch screens only: the field was tapped and nothing's been sent since.
+	let fieldTapped = false;
 	let chipsShown = true;
 	let chipsAnimation: Animation | null = null;
 
@@ -1086,9 +1088,9 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			!busy &&
 			!introRunning &&
 			input.value === "" &&
-			// On touch screens, focusing the field opens the keyboard: the
-			// suggestions step aside while you type.
-			!(touchScreen.matches && document.activeElement === input) &&
+			// On touch screens, tapping the field opens the keyboard: the
+			// suggestions step aside until something is sent.
+			!fieldTapped &&
 			isAtBottom() &&
 			last?.dataset.role !== "user" &&
 			remainingChips() > 0
@@ -1146,8 +1148,17 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	input.addEventListener("input", updateChips);
-	input.addEventListener("focus", updateChips);
-	input.addEventListener("blur", updateChips);
+	// Touch screens: the suggestions hide when the field is tapped (the
+	// keyboard comes up), and come back once a reply has landed, keyboard
+	// still up or not, or as soon as the keyboard is closed.
+	input.addEventListener("focus", () => {
+		fieldTapped = touchScreen.matches;
+		updateChips();
+	});
+	input.addEventListener("blur", () => {
+		fieldTapped = false;
+		updateChips();
+	});
 
 	// On phones the keyboard opens on focus and the chat shrinks to fit above
 	// it; once it has, bring the newest message back into view over the input.
@@ -1368,6 +1379,9 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		// a scripted focus doesn't open the keyboard, so it would only hide
 		// the suggestions with nothing to type on.
 		if (!touchScreen.matches) input.focus();
+		// Something was sent and answered: the suggestions may come back,
+		// even with the keyboard still up.
+		fieldTapped = false;
 		updateChips();
 	}
 
