@@ -1264,9 +1264,48 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	input.addEventListener("input", updateChips);
 	// Touch screens: the suggestions hide when the field is tapped (the
 	// keyboard comes up), and come back once a reply has landed, keyboard
-	// still up or not, or as soon as the keyboard is closed.
+	// still up or not, or once the keyboard has gone and the phone is back to
+	// full height. Safari and Chrome close the keyboard at different speeds,
+	// so that's watched for rather than timed: the thread's height when the
+	// field was tapped, reached again and holding still.
+	let heightBeforeKeyboard = 0;
+	let expandTimer = 0;
+	let expandGiveUp = 0;
+	let expandWatch: ResizeObserver | null = null;
+
+	function stopWaitingForExpand() {
+		expandWatch?.disconnect();
+		expandWatch = null;
+		clearTimeout(expandTimer);
+		clearTimeout(expandGiveUp);
+	}
+
+	function showChipsWhenExpanded() {
+		stopWaitingForExpand();
+		const settle = () => {
+			clearTimeout(expandTimer);
+			// Back to full height: wait a beat to be sure it's done moving.
+			if (log.clientHeight >= heightBeforeKeyboard - 1) {
+				expandTimer = window.setTimeout(done, 120);
+			}
+		};
+		const done = () => {
+			stopWaitingForExpand();
+			fieldTapped = false;
+			updateChips();
+		};
+		expandWatch = new ResizeObserver(settle);
+		expandWatch.observe(log);
+		// If the height never quite comes back (a browser bar changed size
+		// meanwhile), don't keep them away for good.
+		expandGiveUp = window.setTimeout(done, 1500);
+		settle();
+	}
+
 	input.addEventListener("focus", () => {
+		stopWaitingForExpand();
 		fieldTapped = touchScreen.matches;
+		if (fieldTapped) heightBeforeKeyboard = log.clientHeight;
 		// They vanish at once rather than sliding down, so they're not seen
 		// riding along with the keyboard as it comes up. Coming back is still
 		// the usual slide.
@@ -1274,7 +1313,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		else updateChips();
 	});
 	input.addEventListener("blur", () => {
-		fieldTapped = false;
+		if (fieldTapped) {
+			// The keyboard is on its way down: wait for the phone to be back.
+			showChipsWhenExpanded();
+			return;
+		}
 		updateChips();
 	});
 
