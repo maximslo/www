@@ -1105,6 +1105,21 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		updateLogEdges();
 	}).observe(log, { childList: true, subtree: true, characterData: true });
 
+	/* Anchor the thread to its bottom when it gets shorter. On phones the
+	   keyboard shrinks the phone from the bottom; left alone, the scroll
+	   position holds from the top and the newest messages slide under the
+	   compose field. Scrolling by however much height was lost keeps the
+	   same gap above the field the whole way up, like iMessage. */
+	let lastLogHeight = log.clientHeight;
+	new ResizeObserver(() => {
+		const height = log.clientHeight;
+		const lost = lastLogHeight - height;
+		lastLogHeight = height;
+		// A glide to the end is already headed there; nudging it would read
+		// as the visitor taking over and stop it.
+		if (lost > 0 && !following) log.scrollTop += lost;
+	}).observe(log);
+
 	/** Mark every bubble that's followed by another from the same side, so only the last in a run keeps its tail. */
 	const isUser = (msg: Element | null) => (msg as HTMLElement | null)?.dataset.role === "user";
 	function updateTails() {
