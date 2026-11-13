@@ -1,6 +1,13 @@
 ---
 import { GREETING } from "../chat/system-prompt";
 
+interface Props {
+	// "phone": fills its container (PhoneFrame) instead of a fixed 400px window.
+	layout?: "inline" | "phone";
+}
+
+const { layout = "inline" } = Astro.props;
+
 // Questions the profile can actually answer, so the first tap lands well.
 const SUGGESTIONS = [
 	"what did you do at the times?",
@@ -14,7 +21,7 @@ const SUGGESTIONS = [
 const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336 13.2978 25.924 16.6489Z";
 ---
 
-<section class="ask-me" aria-labelledby="ask-me-label">
+<section class="ask-me" data-layout={layout} aria-labelledby="ask-me-label">
 	<!-- Clicking the label focuses the input, so the hover nudge points somewhere real. -->
 	<label class="ask-label" id="ask-me-label" for="ask-input">
 		Chat
@@ -106,6 +113,92 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		margin-top: var(--section-gap);
 		--imsg-blue: #0092ff;
 		--imsg-gray: #e9e9eb;
+	}
+
+	/* Phone layout: the chat fills the PhoneFrame top to bottom and the thread
+	   takes all the height the label leaves, instead of a 400px window. */
+	.ask-me[data-layout="phone"] {
+		--ask-bg: #f5f5f5;
+		margin-top: 0;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	/* No "Chat" heading in the phone; it still names the section for screen
+	   readers through aria-labelledby. */
+	.ask-me[data-layout="phone"] .ask-label {
+		display: none;
+	}
+
+	.ask-me[data-layout="phone"] .ask-thread {
+		flex: 1;
+		min-height: 0;
+	}
+
+	/* The thread fills the phone edge to edge, so its scrollbar lands on the
+	   phone's right edge; the 20px screen margin moves inside it as padding. */
+	.ask-me[data-layout="phone"] .ask-thread {
+		--top-fade: 48px;
+		--screen-pad: 20px;
+		margin-top: 0;
+	}
+
+	.ask-me[data-layout="phone"] .ask-log {
+		height: 100%;
+		max-height: none;
+		/* The scrollbar's width comes out of the right margin, measured by the
+		   script: it's 0 until the thread overflows, and 0 always where
+		   scrollbars overlay the content. A fixed amount left sent bubbles
+		   6px from the edge whenever there was no bar. */
+		padding: var(--top-fade) calc(var(--screen-pad) - var(--scrollbar-width, 0px))
+			calc(10px + var(--form-height) + var(--form-gap) + var(--screen-pad)) var(--screen-pad);
+	}
+
+	/* Lined up with the suggestions and bubbles, and inset the same 20px from
+	   the sides as from the bottom, so its rounded ends sit concentric with
+	   the phone's corners like iOS's own compose field. */
+	.ask-me[data-layout="phone"] .ask-form {
+		left: var(--screen-pad);
+		right: var(--screen-pad);
+		bottom: var(--screen-pad);
+	}
+
+	/* Ends at the compose field's bottom, so chips sliding away are clipped
+	   under the glass rather than showing in the margin below it. */
+	.ask-me[data-layout="phone"] .ask-strip {
+		left: var(--screen-pad);
+		right: var(--screen-pad);
+		bottom: var(--screen-pad);
+	}
+
+	/* Chrome and Safari: a thin scrollbar whose track stops where the phone's
+	   corners start to curve. Chrome only honours ::-webkit-scrollbar when the
+	   standard scrollbar-width/-color are left at auto. Firefox can't inset the
+	   track and keeps its thin full-height bar. */
+	@supports selector(::-webkit-scrollbar) {
+		.ask-me[data-layout="phone"] .ask-log {
+			scrollbar-width: auto;
+			scrollbar-color: auto;
+		}
+
+		/* A 14px gutter with a 6px thumb in the middle: the transparent
+		   border insets the thumb 4px from the phone's edge. */
+		.ask-me[data-layout="phone"] .ask-log::-webkit-scrollbar {
+			width: 14px;
+		}
+
+		.ask-me[data-layout="phone"] .ask-log::-webkit-scrollbar-track {
+			background: transparent;
+			margin-block: var(--phone-radius, 0px);
+		}
+
+		.ask-me[data-layout="phone"] .ask-log::-webkit-scrollbar-thumb {
+			background: #c7c7cc;
+			background-clip: padding-box;
+			border: 4px solid transparent;
+			border-radius: 7px;
+		}
 	}
 
 	.ask-label {
@@ -232,7 +325,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		   overlay the content, like macOS by default). */
 		right: var(--scrollbar-width, 0px);
 		height: var(--top-fade);
-		background: linear-gradient(var(--color-bg-page), transparent);
+		background: linear-gradient(var(--ask-bg, var(--color-bg-page)), transparent);
 		pointer-events: none;
 	}
 
@@ -438,6 +531,13 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		scrollbar-width: none;
 		-webkit-overflow-scrolling: touch;
 		pointer-events: auto;
+	}
+
+	/* Mid-drag: a grabbing hand, and no text selection as the row slides. */
+	.ask-chips[data-dragging],
+	.ask-chips[data-dragging] .ask-chip {
+		cursor: grabbing;
+		user-select: none;
 	}
 
 	.ask-chips[inert] {
@@ -660,6 +760,107 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	trackEdges(chips, "x");
+
+	/* ---------- Moving the suggestions with a mouse ----------
+	   Trackpads and touch already scroll the row sideways. A mouse wheel only
+	   scrolls up and down, so it's turned sideways here, and the row can be
+	   grabbed and dragged. A drag past a few px doesn't count as a tap on the
+	   chip it started on. */
+	chips.addEventListener(
+		"wheel",
+		(event) => {
+			if (chips.scrollWidth <= chips.clientWidth) return;
+			if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+			event.preventDefault();
+			stopGlide();
+			chips.scrollLeft += event.deltaY;
+		},
+		{ passive: false },
+	);
+
+	let drag: { x: number; left: number; moved: boolean } | null = null;
+	let suppressClick = false;
+
+	/* Momentum: recent pointer positions give the speed at release, then the
+	   row glides on and eases to a stop. Low friction, so it floats a while
+	   (about a second from a quick flick) rather than stopping short. */
+	const GLIDE_FRICTION = 0.955; // speed kept per 60fps frame
+	const GLIDE_MIN_SPEED = 0.02; // px/ms; below this it's stopped
+	let samples: { x: number; t: number }[] = [];
+	let glideFrame = 0;
+
+	function stopGlide() {
+		cancelAnimationFrame(glideFrame);
+		glideFrame = 0;
+	}
+
+	function glide(velocity: number) {
+		stopGlide();
+		let last = performance.now();
+		const tick = (now: number) => {
+			const dt = Math.min(now - last, 50);
+			last = now;
+			const before = chips.scrollLeft;
+			chips.scrollLeft -= velocity * dt;
+			velocity *= GLIDE_FRICTION ** (dt / (1000 / 60));
+			// Ran into an end, or slowed to nothing.
+			if (chips.scrollLeft === before || Math.abs(velocity) < GLIDE_MIN_SPEED) {
+				glideFrame = 0;
+				return;
+			}
+			glideFrame = requestAnimationFrame(tick);
+		};
+		glideFrame = requestAnimationFrame(tick);
+	}
+
+	/** Pointer speed over the last ~80ms of the drag, in px/ms. */
+	function releaseVelocity() {
+		const now = performance.now();
+		const recent = samples.filter((s) => now - s.t < 80);
+		if (recent.length < 2) return 0;
+		const first = recent[0];
+		const last = recent[recent.length - 1];
+		const dt = last.t - first.t;
+		return dt > 0 ? (last.x - first.x) / dt : 0;
+	}
+
+	chips.addEventListener("pointerdown", (event) => {
+		if (event.pointerType !== "mouse" || event.button !== 0) return;
+		// Grabbing the row mid-glide catches it.
+		stopGlide();
+		drag = { x: event.clientX, left: chips.scrollLeft, moved: false };
+		samples = [{ x: event.clientX, t: performance.now() }];
+	});
+
+	window.addEventListener("pointermove", (event) => {
+		if (!drag) return;
+		const dx = event.clientX - drag.x;
+		if (!drag.moved && Math.abs(dx) < 4) return;
+		if (!drag.moved) {
+			drag.moved = true;
+			chips.setPointerCapture(event.pointerId);
+			chips.dataset.dragging = "";
+		}
+		chips.scrollLeft = drag.left - dx;
+		samples.push({ x: event.clientX, t: performance.now() });
+		if (samples.length > 20) samples.shift();
+	});
+
+	const endDrag = () => {
+		if (!drag) return;
+		// The click a drag produces fires right after pointerup; clear the flag
+		// straight after, so a drag ending off the row can't eat the next tap.
+		if (drag.moved) {
+			suppressClick = true;
+			setTimeout(() => (suppressClick = false), 0);
+			const velocity = releaseVelocity();
+			if (!prefersReducedMotion() && Math.abs(velocity) > GLIDE_MIN_SPEED) glide(velocity);
+		}
+		drag = null;
+		delete chips.dataset.dragging;
+	};
+	window.addEventListener("pointerup", endDrag);
+	window.addEventListener("pointercancel", endDrag);
 	const updateLogEdges = trackEdges(log, "y");
 
 	// How wide the thread's scrollbar is, so the top fade can stop short of it.
@@ -1113,6 +1314,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	});
 
 	chips.addEventListener("click", (event) => {
+		// The click that ends a drag isn't a tap on a suggestion.
+		if (suppressClick) {
+			suppressClick = false;
+			return;
+		}
 		const chip = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-ask-chip]");
 		if (!chip || busy) return;
 		const rect = chip.getBoundingClientRect();

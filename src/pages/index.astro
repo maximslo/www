@@ -1,21 +1,14 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import ExperimentsLab from "../components/ExperimentsLab.astro";
-import SiteFooter from "../components/SiteFooter.astro";
-import PageGrid from "../components/PageGrid.astro";
-import SiteIntro from "../components/SiteIntro.astro";
+import AskMe from "../components/AskMe.astro";
+import PhoneFrame from "../components/PhoneFrame.astro";
 import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 ---
 
+{/* Just the chat, in a phone. No reveal slot, so BaseLayout renders the white
+    sheet alone and canvas-reveal.ts stands down. */}
 <BaseLayout title={INTRO_NAME} description={META_DESCRIPTION}>
-	<PageGrid>
-		<SiteIntro />
-	</PageGrid>
-
-	{/* Both land on the dark surface below the white sheet; the footer closes the
-	    page out under the thumbnail rail. */}
-	<Fragment slot="reveal">
-		<ExperimentsLab />
-		<SiteFooter />
-	</Fragment>
+	<PhoneFrame>
+		<AskMe layout="phone" />
+	</PhoneFrame>
 </BaseLayout>

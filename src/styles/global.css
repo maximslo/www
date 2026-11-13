@@ -153,14 +153,6 @@ h3 {
 	line-height: inherit;
 }
 
-/* v3's selection: the text itself recolours to the accent and no highlight box
-   is painted, so a selection reads as the page's own emphasis rather than the
-   browser's blue slab. */
-::selection {
-	color: var(--color-accent);
-	background: transparent;
-}
-
 @media (width <= 768px) {
 	body {
 		font-size: 17px;
