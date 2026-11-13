@@ -1096,6 +1096,23 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	input.addEventListener("input", updateChips);
 
+	// On phones the keyboard opens on focus and the chat shrinks to fit above
+	// it; once it has, bring the newest message back into view over the input.
+	input.addEventListener("focus", () => {
+		if (!pinnedToEnd) return;
+		const vv = window.visualViewport;
+		let done = false;
+		const settle = () => {
+			if (done) return;
+			done = true;
+			vv?.removeEventListener("resize", settle);
+			if (pinnedToEnd) followToEnd();
+		};
+		vv?.addEventListener("resize", settle, { once: true });
+		// No keyboard (desktop), or no resize event: settle anyway.
+		setTimeout(settle, 350);
+	});
+
 	/* ---------- Messages ---------- */
 
 	function addMessage(role: "user" | "assistant" | "error", text = "") {

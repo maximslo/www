@@ -3,34 +3,75 @@
 // status bar: just the #f5f5f5 screen with whatever is slotted filling it.
 ---
 
-<div class="phone-stage">
+<div class="phone-stage" data-phone-stage>
 	<div class="phone">
 		<slot />
 	</div>
 </div>
 
 <style>
-	/* Pinned to the visible viewport rather than laid out in the page's white
-	   sheet (100lvh tall), so the phone stays dead centre as the window resizes
-	   and as mobile browser bars show and hide. */
+	/* The page itself never scrolls: everything lives in the fixed stage. With
+	   nothing to scroll, iOS can't shove the page around when the keyboard
+	   opens, and the 100lvh sheet can't run under a bottom address bar. */
+	:global(html:has(.phone-stage)),
+	:global(body:has(.phone-stage)) {
+		height: 100%;
+		overflow: hidden;
+		overscroll-behavior: none;
+	}
+
+	/* The white sheet keeps its full height (it's what paints the page white)
+	   but drops its clip-path: a clip-path clips even fixed descendants, so
+	   the phone vanished wherever the sheet didn't reach. */
+	:global(.site-canvas:has(.phone-stage)) {
+		clip-path: none;
+	}
+
+	/* Covers the *visible* part of the screen. Mobile browsers shrink only the
+	   visual viewport for the keyboard (Safari, and Chrome by default), so a
+	   plain `inset: 0` left the phone, and its input, under the keys. The
+	   script below feeds in the visual viewport's height and offset; without
+	   it (or before it runs) this is the dynamic viewport. */
 	.phone-stage {
 		position: fixed;
-		inset: 0;
-		display: grid;
-		place-items: center;
-		padding: 32px 16px;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: var(--vv-h, 100dvh);
+		transform: translateY(var(--vv-top, 0px));
+		container-type: size;
+		display: flex;
+		justify-content: center;
+		align-items: flex-start;
+		/* Only a small gap under the phone: that's all there is between it and
+		   an open keyboard. With no keyboard the phone is centred by its own
+		   top margin, which already keeps it clear of the bottom bars. */
+		padding: 0 16px 16px;
 	}
 
 	/* Sized like posh.vip's phone: 330×697 at most, with a 47px radius, and
-	   shrinking as a whole to fit the window (proportions and corner kept).
+	   shrinking as a whole to fit the screen (proportions and corner kept).
 	   Only the frame scales; the chat inside keeps its own type and bubble
-	   sizes. */
+	   sizes.
+
+	   Everything but the height comes from `svh`, the screen's height with the
+	   browser's bars showing, which a keyboard never changes. So with the
+	   keyboard up the phone keeps its width, corners and top edge, and only
+	   its bottom edge moves up to sit above the keys. */
 	.phone {
-		--phone-h: min(697px, 100dvh - 64px, (100vw - 32px) * 697 / 330);
-		height: var(--phone-h);
-		width: calc(var(--phone-h) * 330 / 697);
+		/* Room under the phone with no keyboard: clears the home indicator and
+		   floating bottom bars (viewport-fit=cover is set in BaseLayout). */
+		--phone-gap-bottom: max(32px, env(safe-area-inset-bottom) + 16px);
+		--phone-w: min(330px, 100vw - 32px, (100svh - 32px - var(--phone-gap-bottom)) * 330 / 697);
+		--phone-full-h: calc(var(--phone-w) * 697 / 330);
+		/* Centred on the keyboard-less screen, at least 32px down. */
+		--phone-top: max(32px, (100svh - var(--phone-full-h)) / 2);
+		width: var(--phone-w);
+		margin-top: var(--phone-top);
+		/* cqh: the visible area (above any keyboard) inside the stage's padding. */
+		height: min(var(--phone-full-h), 100cqh - var(--phone-top));
 		/* Read by the chat too, to keep its scrollbar off the curved corners. */
-		--phone-radius: calc(var(--phone-h) * 47 / 697);
+		--phone-radius: calc(var(--phone-w) * 47 / 330);
 		border-radius: var(--phone-radius);
 		/* No padding: the chat runs edge to edge (so its scrollbar sits on the
 		   phone's edge) and insets its own content. */
@@ -39,3 +80,30 @@
 		overflow: hidden;
 	}
 </style>
+
+<script>
+	// Keep the stage on the visual viewport: the part of the page actually on
+	// screen, above the keyboard and between the browser's bars.
+	const stage = document.querySelector<HTMLElement>("[data-phone-stage]");
+	const vv = window.visualViewport;
+
+	if (stage && vv) {
+		let frame = 0;
+		const sync = () => {
+			frame = 0;
+			stage.style.setProperty("--vv-h", `${vv.height}px`);
+			stage.style.setProperty("--vv-top", `${vv.offsetTop}px`);
+			// Keyboard closed again: undo any scroll iOS made to reveal the
+			// input, so the page is back where it started.
+			if (vv.height >= window.innerHeight - 1 && (window.scrollY || document.documentElement.scrollTop)) {
+				window.scrollTo(0, 0);
+			}
+		};
+		const schedule = () => {
+			if (!frame) frame = requestAnimationFrame(sync);
+		};
+		vv.addEventListener("resize", schedule);
+		vv.addEventListener("scroll", schedule);
+		sync();
+	}
+</script>
