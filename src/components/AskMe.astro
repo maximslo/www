@@ -394,12 +394,21 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		border-radius: 20px;
 		overflow: hidden;
 		overflow-wrap: break-word;
+		/* Plain greedy wrapping, not the page's inherited `pretty` (set on the
+		   bubble: line breaking belongs to the block, not the inline text). A
+		   bubble is fitted to its widest line; `pretty` then re-balances the
+		   lines and breaks earlier than that width needs, squeezing the text
+		   into more lines ("Hi / ther / e" in Safari 26, which supports it). */
+		text-wrap: wrap;
 	}
 
-	/* pre-wrap on the text only: on the bubble it would also render the markup's
-	   own indentation around the span as visible space. */
+	/* pre-line keeps a reply's line breaks (a list, like the tech stack) on
+	   the text only: on the bubble it would also render the markup's own
+	   indentation around the span. Not pre-wrap: Safari counts the space left
+	   at the end of a wrapped pre-wrap line, so a bubble fitted to its widest
+	   line wrapped once more ("this is" / "maxim (in" / "a way)"). */
 	.ask-log :global(.ask-text) {
-		white-space: pre-wrap;
+		white-space: pre-line;
 	}
 
 	/* The tail hangs below the bubble, tucked 8px in from its edge. It sits
@@ -424,9 +433,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		transform: scaleX(-1);
 	}
 
-	/* Like iMessage, only the last bubble in a run from one side gets a tail. */
-	.ask-log :global(.ask-msg[data-role="user"]:has(+ .ask-msg[data-role="user"]) .ask-tail),
-	.ask-log :global(.ask-msg:not([data-role="user"]):has(+ .ask-msg:not([data-role="user"])) .ask-tail) {
+	/* Like iMessage, only the last bubble in a run from one side gets a tail.
+	   The script marks the others (data-run-continues); a `:has(+ …)` rule did
+	   this before, but Safari didn't always re-check it when a bubble was
+	   added, leaving a tail on every line of a run. */
+	.ask-log :global(.ask-msg[data-run-continues] .ask-tail) {
 		display: none;
 	}
 
@@ -995,6 +1006,18 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		updateLogEdges();
 	}).observe(log, { childList: true, subtree: true, characterData: true });
 
+	/** Mark every bubble that's followed by another from the same side, so only the last in a run keeps its tail. */
+	const isUser = (msg: Element | null) => (msg as HTMLElement | null)?.dataset.role === "user";
+	function updateTails() {
+		for (const msg of log.querySelectorAll<HTMLElement>(".ask-msg")) {
+			const next = msg.nextElementSibling;
+			msg.toggleAttribute("data-run-continues", !!next && isUser(next) === isUser(msg));
+		}
+	}
+	// New bubbles, and a typing bubble turning into an error, change the runs.
+	new MutationObserver(updateTails).observe(log, { childList: true, subtree: true, attributeFilter: ["data-role"] });
+	updateTails();
+
 	/* ---------- Intro ----------
 	   Like alexsafayan.com: the thread starts with my first line and the
 	   visitor's canned "Hi there"; my lines after it are "typed" one by one
@@ -1020,6 +1043,29 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		cancelAnimationFrame(resizeFrame);
 		resizeFrame = requestAnimationFrame(fitAll);
 	});
+
+	/* Bubbles are fitted to their text once, when they appear. If the text
+	   later renders wider than it measured (seen on phones: "Hi there"
+	   wrapping to three lines inside its fitted width), the bubble would keep
+	   the stale width. So every settled bubble is watched, and refitted when
+	   its size changes (fitBubble first clears the width, so wrapped text is
+	   measured unwrapped). A refit that lands on the same width changes
+	   nothing, so this settles at once. */
+	const refitOnResize = new ResizeObserver((entries) => {
+		for (const entry of entries) {
+			const msg = (entry.target as HTMLElement).closest<HTMLElement>(".ask-msg");
+			if (!msg || msg.dataset.pending !== undefined) continue;
+			// Mid-animation sizes aren't the real ones; revealReply fits on its own.
+			if ((entry.target as HTMLElement).getAnimations().length) continue;
+			fitBubble(msg);
+		}
+	});
+	const watchBubbles = () => log.querySelectorAll(".ask-bubble").forEach((bubble) => refitOnResize.observe(bubble));
+	watchBubbles();
+	new MutationObserver(watchBubbles).observe(log, { childList: true });
+	// Fonts arriving or the page finishing its load can change text widths too.
+	document.fonts?.ready.then(fitAll);
+	addEventListener("load", fitAll, { once: true });
 
 	/* ---------- Suggestions ----------
 	   Shown only when there's nothing else going on: thread at the bottom,
