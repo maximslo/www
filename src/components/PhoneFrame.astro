@@ -27,26 +27,20 @@
 		clip-path: none;
 	}
 
-	/* Covers the *visible* part of the screen. Mobile browsers shrink only the
-	   visual viewport for the keyboard (Safari, and Chrome by default), so a
-	   plain `inset: 0` left the phone, and its input, under the keys. The
-	   script below feeds in the visual viewport's height and offset; without
-	   it (or before it runs) this is the dynamic viewport. */
+	/* Pinned to the top of the visible screen. iOS can scroll the page to
+	   "reveal" a focused field even with scrolling locked; the script moves
+	   the stage by that much (--vv-top) so the phone doesn't budge. */
 	.phone-stage {
 		position: fixed;
 		top: 0;
 		left: 0;
 		width: 100%;
-		height: var(--vv-h, 100dvh);
+		height: 100svh;
 		transform: translateY(var(--vv-top, 0px));
-		container-type: size;
 		display: flex;
 		justify-content: center;
 		align-items: flex-start;
-		/* Only a small gap under the phone: that's all there is between it and
-		   an open keyboard. With no keyboard the phone is centred by its own
-		   top margin, which already keeps it clear of the bottom bars. */
-		padding: 0 16px 16px;
+		padding: 0 16px;
 	}
 
 	/* Sized like posh.vip's phone: 330×697 at most, with a 47px radius, and
@@ -54,34 +48,33 @@
 	   Only the frame scales; the chat inside keeps its own type and bubble
 	   sizes.
 
-	   Everything but the height comes from `svh`, the screen's height with the
-	   browser's bars showing, which a keyboard never changes. So with the
-	   keyboard up the phone keeps its width, corners and top edge, and only
-	   its bottom edge moves up to sit above the keys. */
+	   The keyboard never moves or resizes the grey phone: its width, height
+	   and top are measured by the script while no field is focused and held
+	   (the -lock values) while one is. Chrome on iOS shrinks its whole web
+	   view for the keyboard, svh and vw included, so CSS units alone can't
+	   hold it there. What the keyboard does change is --kb-inset: how far it
+	   covers the phone. That becomes bottom padding, so the chat inside ends
+	   above the keys and the compose field rides up with it. */
 	.phone {
-		/* Room under the phone with no keyboard: clears the home indicator and
-		   floating bottom bars (viewport-fit=cover is set in BaseLayout). */
+		/* Room under the phone: clears the home indicator and floating bottom
+		   bars (viewport-fit=cover is set in BaseLayout). */
 		--phone-gap-bottom: max(32px, env(safe-area-inset-bottom) + 16px);
-		/* The -lock values are measured by the script while no field is
-		   focused and held while one is. Chrome on iOS shrinks its whole web
-		   view for the keyboard, svh and vw included, so the units alone
-		   still narrowed the phone there. */
 		--phone-w: var(
 			--phone-w-lock,
 			min(330px, 100vw - 32px, (100svh - 32px - var(--phone-gap-bottom)) * 330 / 697)
 		);
 		--phone-full-h: calc(var(--phone-w) * 697 / 330);
-		/* Centred on the keyboard-less screen, at least 32px down. */
+		/* Centred on the screen, at least 32px down. */
 		--phone-top: var(--phone-top-lock, max(32px, (100svh - var(--phone-full-h)) / 2));
 		width: var(--phone-w);
+		height: var(--phone-h-lock, var(--phone-full-h));
 		margin-top: var(--phone-top);
-		/* cqh: the visible area (above any keyboard) inside the stage's padding. */
-		height: min(var(--phone-full-h), 100cqh - var(--phone-top));
+		padding-bottom: var(--kb-inset, 0px);
 		/* Read by the chat too, to keep its scrollbar off the curved corners. */
 		--phone-radius: calc(var(--phone-w) * 47 / 330);
 		border-radius: var(--phone-radius);
-		/* No padding: the chat runs edge to edge (so its scrollbar sits on the
-		   phone's edge) and insets its own content. */
+		/* No side or top padding: the chat runs edge to edge (so its scrollbar
+		   sits on the phone's edge) and insets its own content. */
 		background: #f5f5f5;
 		box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
 		overflow: hidden;
@@ -89,58 +82,66 @@
 </style>
 
 <script>
-	// Keep the stage on the visual viewport: the part of the page actually on
-	// screen, above the keyboard and between the browser's bars.
 	const stage = document.querySelector<HTMLElement>("[data-phone-stage]");
+	const phone = stage?.querySelector<HTMLElement>(".phone");
 	const vv = window.visualViewport;
 
-	if (stage && vv) {
-		let frame = 0;
-		const sync = () => {
-			frame = 0;
-			stage.style.setProperty("--vv-h", `${vv.height}px`);
-			stage.style.setProperty("--vv-top", `${vv.offsetTop}px`);
-			// Keyboard closed again: undo any scroll iOS made to reveal the
-			// input, so the page is back where it started.
-			if (vv.height >= window.innerHeight - 1 && (window.scrollY || document.documentElement.scrollTop)) {
-				window.scrollTo(0, 0);
-			}
-		};
-		const schedule = () => {
-			if (!frame) frame = requestAnimationFrame(sync);
-		};
-		vv.addEventListener("resize", schedule);
-		vv.addEventListener("scroll", schedule);
-		sync();
-	}
+	// Gap kept between the compose field and the top of the keyboard. The chat
+	// already sits its field FORM_INSET up from its own bottom (AskMe's
+	// --screen-pad), so the chat's bottom may tuck that much behind the keys.
+	const INPUT_GAP = 12;
+	const FORM_INSET = 20;
 
-	// Hold the phone's width and top edge steady while typing. They're
-	// measured from the CSS whenever no text field is focused (load, resize,
-	// rotation, the keyboard closing) and frozen while one is, since some
-	// browsers (Chrome on iOS) shrink the whole viewport for the keyboard.
-	const phone = stage?.querySelector<HTMLElement>(".phone");
-	if (phone) {
+	if (stage && phone) {
 		const typing = () => {
 			const el = document.activeElement;
 			return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable === true;
 		};
-		let lockFrame = 0;
+
+		/** Measure the phone from the CSS and hold it, unless a field is focused. */
 		const lock = () => {
-			lockFrame = 0;
 			if (typing()) return;
-			phone.style.removeProperty("--phone-w-lock");
-			phone.style.removeProperty("--phone-top-lock");
+			for (const prop of ["--phone-w-lock", "--phone-h-lock", "--phone-top-lock"]) phone.style.removeProperty(prop);
 			const cs = getComputedStyle(phone);
 			phone.style.setProperty("--phone-w-lock", cs.width);
+			phone.style.setProperty("--phone-h-lock", cs.height);
 			phone.style.setProperty("--phone-top-lock", cs.marginTop);
 		};
-		const scheduleLock = () => {
-			if (!lockFrame) lockFrame = requestAnimationFrame(lock);
+
+		/** Follow the visible area: keep the stage still and lift the chat over the keyboard. */
+		const follow = () => {
+			const visibleH = vv ? vv.height : window.innerHeight;
+			stage.style.setProperty("--vv-top", `${vv ? vv.offsetTop : 0}px`);
+			// The stage starts at the top of the visible area, so this is where
+			// the phone's bottom edge sits in it.
+			const phoneBottom = phone.offsetTop + phone.offsetHeight;
+			const overlap = typing() ? Math.max(0, phoneBottom - visibleH - FORM_INSET + INPUT_GAP) : 0;
+			phone.style.setProperty("--kb-inset", `${overlap}px`);
+			// Keyboard closed again: undo any scroll iOS made to reveal the
+			// input, so the page is back where it started.
+			if (!typing() && (window.scrollY || document.documentElement.scrollTop)) window.scrollTo(0, 0);
 		};
-		window.addEventListener("resize", scheduleLock);
-		window.visualViewport?.addEventListener("resize", scheduleLock);
-		// Keyboard closing: re-measure once it has had time to go.
-		document.addEventListener("focusout", () => setTimeout(scheduleLock, 400));
+
+		let frame = 0;
+		const update = () => {
+			if (frame) return;
+			frame = requestAnimationFrame(() => {
+				frame = 0;
+				lock();
+				follow();
+			});
+		};
+
+		window.addEventListener("resize", update);
+		vv?.addEventListener("resize", update);
+		vv?.addEventListener("scroll", update);
+		document.addEventListener("focusin", update);
+		// Keyboard closing: settle once it has had time to go.
+		document.addEventListener("focusout", () => {
+			update();
+			setTimeout(update, 400);
+		});
 		lock();
+		follow();
 	}
 </script>
