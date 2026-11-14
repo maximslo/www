@@ -1867,4 +1867,39 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		chips.style.transform = "none";
 		chips.inert = false;
 	}
+
+	/* ---------- Debug readout (?debug) ----------
+	   Temporary: live layout numbers in a corner, to see what a real phone
+	   does with the keyboard up. Only with ?debug in the address. */
+	if (new URLSearchParams(location.search).has("debug")) {
+		const panel = document.createElement("pre");
+		panel.style.cssText =
+			"position:fixed;z-index:9999;top:4px;left:4px;margin:0;padding:6px 8px;font:11px/1.35 ui-monospace,monospace;background:rgba(0,0,0,.78);color:#0f0;border-radius:6px;pointer-events:none;white-space:pre";
+		document.body.append(panel);
+		const thread = log.parentElement!;
+		const phone = document.querySelector<HTMLElement>(".phone");
+		const stage = document.querySelector<HTMLElement>("[data-phone-stage]");
+		const r = (n: number) => Math.round(n);
+		const tick = () => {
+			const vv = window.visualViewport;
+			const ph = phone?.getBoundingClientRect();
+			const th = thread.getBoundingClientRect();
+			const lg = log.getBoundingClientRect();
+			const fm = form.getBoundingClientRect();
+			const last = log.lastElementChild?.getBoundingClientRect();
+			panel.textContent = [
+				`inner ${innerWidth}x${innerHeight}  scrollY ${r(scrollY)}`,
+				`vv ${vv ? `${r(vv.width)}x${r(vv.height)} top ${r(vv.offsetTop)}` : "none"}`,
+				`stage --vv-h ${stage?.style.getPropertyValue("--vv-h") || "-"} --vv-top ${stage?.style.getPropertyValue("--vv-top") || "-"}`,
+				`phone top ${ph ? r(ph.top) : "-"} h ${ph ? r(ph.height) : "-"}`,
+				`thread h ${r(th.height)}  log rect h ${r(lg.height)} bottom ${r(lg.bottom)}`,
+				`log client ${log.clientHeight} scroll ${log.scrollHeight} top ${r(log.scrollTop)} max ${log.scrollHeight - log.clientHeight}`,
+				`form top ${r(fm.top)}  last msg bottom ${last ? r(last.bottom) : "-"}`,
+				`focused ${document.activeElement === input}  pinned ${pinnedToEnd}  hold ${r(Math.max(0, stickUntil - performance.now()))}ms`,
+				`chipsAway ${log.hasAttribute("data-chips-away")}  scale ${chatZoom()}`,
+			].join("\n");
+			requestAnimationFrame(tick);
+		};
+		tick();
+	}
 </script>
