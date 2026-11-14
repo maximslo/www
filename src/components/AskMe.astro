@@ -126,16 +126,21 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	.ask-me[data-layout="phone"] {
 		/* The chat's own scale inside the phone: type, bubbles, field and
 		   suggestions 10% up from their base sizes (they read best at what
-		   was 110% browser zoom), while the phone frame keeps its size. The
-		   chat fills the frame by percentages, which zoom leaves alone. */
+		   was 110% browser zoom), while the phone frame keeps its size. It's
+		   laid out at 1/1.1 of the frame and scaled up to fill it exactly.
+		   A transform, not `zoom`: iOS Safari's zoom also scaled the 100%
+		   height, so the thread ran 10% past the bottom of the phone and its
+		   newest message sat under the field, out of scroll reach. */
 		--ask-zoom: 1.1;
-		zoom: var(--ask-zoom);
-		/* The phone's corner radius comes from the frame, outside the zoom:
+		width: calc(100% / var(--ask-zoom));
+		height: calc(100% / var(--ask-zoom));
+		transform: scale(var(--ask-zoom));
+		transform-origin: 0 0;
+		/* The phone's corner radius comes from the frame, outside the scale:
 		   brought back to this scale so the scrollbar limits stay put. */
 		--corner: calc(var(--phone-radius, 0px) / var(--ask-zoom));
 		--ask-bg: #f5f5f5;
 		margin-top: 0;
-		height: 100%;
 		display: flex;
 		flex-direction: column;
 	}
@@ -874,8 +879,12 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	const log = document.querySelector<HTMLOListElement>("[data-ask-log]")!;
-	/** The chat's own zoom (the phone layout scales it up; 1 elsewhere). */
-	const chatZoom = () => parseFloat(getComputedStyle(log.closest(".ask-me") ?? log).zoom) || 1;
+	/** The chat's own scale (the phone layout scales it up by --ask-zoom; 1 elsewhere). */
+	const chatZoom = () => {
+		const section = log.closest<HTMLElement>(".ask-me");
+		if (section?.dataset.layout !== "phone") return 1;
+		return parseFloat(getComputedStyle(section).getPropertyValue("--ask-zoom")) || 1;
+	};
 	const template = document.querySelector<HTMLTemplateElement>("[data-ask-template]")!;
 	const chips = document.querySelector<HTMLUListElement>("[data-ask-chips]")!;
 	const form = document.querySelector<HTMLFormElement>("[data-ask-form]")!;
