@@ -129,6 +129,21 @@
 		let predicting = false;
 		let predictTimer = 0;
 		const KB_KEY = "phone-kb-h";
+		const CUT_KEY = "phone-kb-cut";
+		/* Chrome on iOS (and the other non-Safari iOS browsers) doesn't slide
+		   its keyboard over the page: ~0.1s after the tap it cuts the whole
+		   web view to the keyboard-up height and paints white below while the
+		   keys come up. Anything sliding in that white is unseen, so there
+		   the phone takes its new height at once, to be in place by the cut.
+		   Known by name, or learned from the first keyboard on this device. */
+		const cutsView = () => {
+			if (/CriOS|FxiOS|EdgiOS|OPiOS/.test(navigator.userAgent)) return true;
+			try {
+				return localStorage.getItem(CUT_KEY) === "1";
+			} catch {
+				return false;
+			}
+		};
 		const sync = () => {
 			frame = 0;
 			if (!fieldFocused() && !closing) fullHeight = vv.height;
@@ -139,6 +154,9 @@
 				clearTimeout(predictTimer);
 				try {
 					localStorage.setItem(KB_KEY, `${innerWidth}:${Math.round(fullHeight - vv.height)}`);
+					// The whole page shrank with it, not just the visible part:
+					// a browser that cuts the view at once (see below).
+					if (innerHeight < fullHeight - 1) localStorage.setItem(CUT_KEY, "1");
 				} catch {}
 			}
 			// Mid-close, Safari may still report the keyboard-up height; the
@@ -209,7 +227,8 @@
 		};
 		document.addEventListener("focusin", () => {
 			if (!matchMedia("(pointer: coarse)").matches || !fieldFocused() || vv.height < fullHeight - 1) return;
-			stage.toggleAttribute("data-kb-opening", true);
+			const cut = cutsView();
+			stage.toggleAttribute("data-kb-opening", !cut);
 			clearTimeout(openingTimer);
 			openingTimer = window.setTimeout(() => stage.removeAttribute("data-kb-opening"), 1200);
 			predicting = true;
@@ -219,7 +238,8 @@
 			   the field snapped most of the way. Started here, its first
 			   drawn frame is its first step. */
 			const target = Math.max(200, fullHeight - expectedKeyboard());
-			requestAnimationFrame(() => {
+			if (cut) stage.style.setProperty("--vv-h", `${target}px`);
+			else requestAnimationFrame(() => {
 				if (predicting) stage.style.setProperty("--vv-h", `${target}px`);
 			});
 			// No keyboard after all (a hardware one, say): ease back.
