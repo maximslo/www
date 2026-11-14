@@ -125,12 +125,27 @@
 		// While the keyboard is going away (see below).
 		let closing = false;
 		let closingTimer = 0;
+		// Keyboard on its way up but not yet reported (see below).
+		let predicting = false;
+		let predictTimer = 0;
+		const KB_KEY = "phone-kb-h";
 		const sync = () => {
 			frame = 0;
 			if (!fieldFocused() && !closing) fullHeight = vv.height;
+			if (predicting && vv.height < fullHeight - 1) {
+				// The real keyboard height is in: remember it for next time,
+				// and let the slide already under way retarget to it.
+				predicting = false;
+				clearTimeout(predictTimer);
+				try {
+					localStorage.setItem(KB_KEY, `${innerWidth}:${Math.round(fullHeight - vv.height)}`);
+				} catch {}
+			}
 			// Mid-close, Safari may still report the keyboard-up height; the
-			// phone is already growing back, so don't pull it in again.
-			if (!closing || vv.height >= fullHeight - 1) stage.style.setProperty("--vv-h", `${vv.height}px`);
+			// phone is already growing back, so don't pull it in again. And
+			// while a keyboard is predicted, the full height reported before
+			// it arrives isn't news.
+			if ((!closing || vv.height >= fullHeight - 1) && !predicting) stage.style.setProperty("--vv-h", `${vv.height}px`);
 			stage.style.setProperty("--vv-top", `${vv.offsetTop}px`);
 			// Keyboard closed again: undo any scroll iOS made to reveal the
 			// input, so the page is back where it started.
@@ -179,15 +194,39 @@
 		   moving between fields or the bars changing while typing don't
 		   lag. */
 		let openingTimer = 0;
+		/* The slide starts on the tap, not when the browser gets round to
+		   reporting the keyboard (Safari late in its slide, Chrome ~110ms
+		   in), so the field rises with the keys from the first frame. It
+		   heads for the keyboard height last seen on this device at this
+		   width, or a typical iPhone one (~39% of the screen) the first time,
+		   and retargets mid-slide when the real one is reported. */
+		const expectedKeyboard = () => {
+			try {
+				const [w, h] = (localStorage.getItem(KB_KEY) || "").split(":").map(Number);
+				if (w === innerWidth && h > 0) return h;
+			} catch {}
+			return Math.round(screen.height * 0.39);
+		};
 		document.addEventListener("focusin", () => {
 			if (!matchMedia("(pointer: coarse)").matches || !fieldFocused() || vv.height < fullHeight - 1) return;
 			stage.toggleAttribute("data-kb-opening", true);
 			clearTimeout(openingTimer);
-			openingTimer = window.setTimeout(() => stage.removeAttribute("data-kb-opening"), 1000);
+			openingTimer = window.setTimeout(() => stage.removeAttribute("data-kb-opening"), 1200);
+			predicting = true;
+			stage.style.setProperty("--vv-h", `${Math.max(200, fullHeight - expectedKeyboard())}px`);
+			// No keyboard after all (a hardware one, say): ease back.
+			clearTimeout(predictTimer);
+			predictTimer = window.setTimeout(() => {
+				predicting = false;
+				sync();
+			}, 900);
 		});
 		document.addEventListener("focusout", () => {
 			clearTimeout(openingTimer);
 			stage.removeAttribute("data-kb-opening");
+			if (!predicting) return;
+			predicting = false;
+			clearTimeout(predictTimer);
 		});
 		document.addEventListener("focusin", () => {
 			if (!closing) return;
