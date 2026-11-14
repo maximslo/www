@@ -168,7 +168,7 @@
 			// phone is already growing back, so don't pull it in again. And
 			// while a keyboard is predicted, the full height reported before
 			// it arrives isn't news.
-			if ((!closing || vv.height >= fullHeight - 1) && !predicting) stage.style.setProperty("--vv-h", `${vv.height}px`);
+			if ((!closing || vv.height >= fullHeight - 1) && !predicting) stage.style.setProperty("--vv-h", `${Math.min(vv.height, innerHeight)}px`);
 			/* Chrome on iOS cuts the whole page to the visible part, so the
 			   stage never has an offset to follow there. It does briefly
 			   scroll the page to "reveal" the field and reports that as an
@@ -180,10 +180,17 @@
 				window.scrollTo(0, 0);
 			}
 		};
-		const schedule = () => {
-			if (!frame) frame = requestAnimationFrame(sync);
+		/* Straight away, not on the next frame. Chrome on iOS cuts the page
+		   (sometimes in two steps) and fires resize in the frame it does;
+		   left a frame too tall, the field sat below the cut and Chrome
+		   scrolled its whole view to reveal it, unseen by the page, and the
+		   phone was seen to shift down the screen. */
+		const syncNow = () => {
+			cancelAnimationFrame(frame);
+			sync();
 		};
-		vv.addEventListener("resize", schedule);
+		vv.addEventListener("resize", syncNow);
+		window.addEventListener("resize", syncNow);
 		// Straight away, not on the next frame: any pan Safari still makes is
 		// matched in the same frame it shows, instead of one frame late.
 		vv.addEventListener("scroll", () => {
