@@ -1233,7 +1233,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	let busy = false;
 	let chipsDisabled = false;
-	let typedInARow = 0;
 	// Touch screens only: the field was tapped and nothing's been sent since.
 	let fieldTapped = false;
 	let chipsShown = true;
@@ -1646,8 +1645,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		const box = input.getBoundingClientRect();
 		const rect = new DOMRect(box.left, box.top, textWidth(value.trim()) + 32, box.height);
 		input.value = "";
-		typedInARow += 1;
-		if (typedInARow >= 2) disableChips();
 		void ask(value, { rect, inset: 0, spring: QUICK });
 	});
 
@@ -1661,7 +1658,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		if (!chip || busy) return;
 		const rect = chip.getBoundingClientRect();
 		const inset = parseFloat(getComputedStyle(chip).paddingLeft) + parseFloat(getComputedStyle(chip).borderLeftWidth);
-		typedInARow = 0;
 		setChips(false, "fade");
 		// Used suggestions don't come back.
 		chip.closest("li")!.remove();
