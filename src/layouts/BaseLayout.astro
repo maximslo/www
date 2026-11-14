@@ -17,16 +17,6 @@ const ogImageUrl = new URL("/og-image.png", Astro.site);
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-		{/* Temporary: ?iw=resizes-visual | overlays-content | resizes-content
-		    tries how Chrome on iOS opens its keyboard. Rewritten before the
-		    page renders, so it's as if the tag said it. */}
-		<script is:inline>
-			(function () {
-				var iw = new URLSearchParams(location.search).get("iw");
-				var m = document.querySelector('meta[name="viewport"]');
-				if (iw && m) m.setAttribute("content", m.getAttribute("content") + ", interactive-widget=" + iw);
-			})();
-		</script>
 		<meta name="color-scheme" content="light" />
 		<meta name="theme-color" content="#ffffff" />
 		<meta name="description" content={description} />

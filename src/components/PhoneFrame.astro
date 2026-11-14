@@ -13,12 +13,8 @@
 	/* The page itself never scrolls: everything lives in the fixed stage. With
 	   nothing to scroll, iOS can't shove the page around when the keyboard
 	   opens, and the 100lvh sheet can't run under a bottom address bar. */
-	:global(html[data-kb-tall] body) {
-		min-height: 200vh;
-	}
-
-	:global(html:not([data-kb-tall]):has(.phone-stage)),
-	:global(html:not([data-kb-tall]):has(.phone-stage) body) {
+	:global(html:has(.phone-stage)),
+	:global(body:has(.phone-stage)) {
 		height: 100%;
 		overflow: hidden;
 		overscroll-behavior: none;
@@ -42,6 +38,11 @@
 		left: 0;
 		width: 100%;
 		height: var(--vv-h, 100dvh);
+		/* Never past the bottom of the page's own viewport. Chrome on iOS
+		   shrinks that viewport for the keyboard in one step (and paints
+		   white below it); clamped here, the phone shrinks in that very
+		   frame, from CSS, before any script has heard about it. */
+		max-height: 100%;
 		transform: translateY(var(--vv-top, 0px));
 		container-type: size;
 		display: flex;
@@ -115,10 +116,6 @@
 	// Keep the stage on the visual viewport: the part of the page actually on
 	// screen, above the keyboard and between the browser's bars.
 	const stage = document.querySelector<HTMLElement>("[data-phone-stage]");
-	// Temporary: ?tall makes the page scrollable (and taller than the
-	// screen) so Chrome's toolbars can be scrolled away before typing.
-	const tall = new URLSearchParams(location.search).has("tall");
-	if (tall) document.documentElement.toggleAttribute("data-kb-tall", true);
 	const vv = window.visualViewport;
 
 	const fieldFocused = () => {
@@ -136,13 +133,6 @@
 		// Keyboard on its way up but not yet reported (see below).
 		let predicting = false;
 		let predictTimer = 0;
-		// The frame-driven keyboard slide (see below), declared up here since
-		// sync() reads them and runs first.
-		let slideFrame = 0;
-		let slideTarget = 0;
-		let slideH = 0;
-		let slideLast = 0;
-		let slideStop = 0;
 		const KB_KEY = "phone-kb-h";
 		const CUT_KEY = "phone-kb-cut";
 		/* Chrome on iOS (and the other non-Safari iOS browsers) doesn't slide
@@ -152,8 +142,6 @@
 		   the phone takes its new height at once, to be in place by the cut.
 		   Known by name, or learned from the first keyboard on this device. */
 		const cutsView = () => {
-			// Temporary: the ?iw= experiment wants to see the slide.
-			if (new URLSearchParams(location.search).has("iw")) return false;
 			if (/CriOS|FxiOS|EdgiOS|OPiOS/.test(navigator.userAgent)) return true;
 			try {
 				return localStorage.getItem(CUT_KEY) === "1";
@@ -169,7 +157,6 @@
 				// and let the slide already under way retarget to it.
 				predicting = false;
 				clearTimeout(predictTimer);
-				slideTarget = vv.height;
 				try {
 					localStorage.setItem(KB_KEY, `${innerWidth}:${Math.round(fullHeight - vv.height)}`);
 					// The whole page shrank with it, not just the visible part:
@@ -181,11 +168,11 @@
 			// phone is already growing back, so don't pull it in again. And
 			// while a keyboard is predicted, the full height reported before
 			// it arrives isn't news.
-			if ((!closing || vv.height >= fullHeight - 1) && !predicting && !slideFrame) stage.style.setProperty("--vv-h", `${vv.height}px`);
+			if ((!closing || vv.height >= fullHeight - 1) && !predicting) stage.style.setProperty("--vv-h", `${vv.height}px`);
 			stage.style.setProperty("--vv-top", `${vv.offsetTop}px`);
 			// Keyboard closed again: undo any scroll iOS made to reveal the
 			// input, so the page is back where it started.
-			if (!tall && vv.height >= window.innerHeight - 1 && (window.scrollY || document.documentElement.scrollTop)) {
+			if (vv.height >= window.innerHeight - 1 && (window.scrollY || document.documentElement.scrollTop)) {
 				window.scrollTo(0, 0);
 			}
 		};
@@ -243,41 +230,13 @@
 			} catch {}
 			return Math.round(screen.height * 0.39);
 		};
-		/* Chrome on iOS also freezes the page for ~100ms around the tap, so
-		   an animation on wall time (a CSS transition) is mostly over by the
-		   first frame it draws: the field teleported. This slide is advanced
-		   by drawn frame instead, each frame easing the height a step toward
-		   the target (and no more than 25ms worth), so however long the
-		   freeze, the first drawn frame is an early step and every one after
-		   moves smoothly. The field rises out from behind the keys into
-		   place. Retargetable mid-slide: the real keyboard height, when
-		   reported, just becomes the new target. */
-		const slideStep = (now: number) => {
-			slideFrame = 0;
-			const dt = Math.min(now - slideLast, 25);
-			slideLast = now;
-			// Ease out on a ~90ms curve: ~350ms to land.
-			slideH += (slideTarget - slideH) * (1 - Math.exp(-dt / 90));
-			const done = Math.abs(slideTarget - slideH) < 0.5;
-			if (done) slideH = slideTarget;
-			stage.style.setProperty("--vv-h", `${slideH}px`);
-			// Landed, and the target is the browser's own figure: finished.
-			// Landed on a guess: idle on, in case the real height differs.
-			if ((done && !predicting) || now > slideStop) {
-				slideFrame = 0;
-				sync();
-				return;
-			}
-			slideFrame = requestAnimationFrame(slideStep);
-		};
-		const stopSlide = () => {
-			cancelAnimationFrame(slideFrame);
-			slideFrame = 0;
-		};
 		document.addEventListener("focusin", () => {
 			if (!matchMedia("(pointer: coarse)").matches || !fieldFocused() || vv.height < fullHeight - 1) return;
-			const cut = cutsView();
-			stage.toggleAttribute("data-kb-opening", !cut);
+			// Chrome on iOS: nothing to do; the clamp on the stage follows
+			// its cut exactly. A guess could only fall short and leave the
+			// phone running into the white below.
+			if (cutsView()) return;
+			stage.toggleAttribute("data-kb-opening", true);
 			clearTimeout(openingTimer);
 			openingTimer = window.setTimeout(() => stage.removeAttribute("data-kb-opening"), 1200);
 			predicting = true;
@@ -285,16 +244,9 @@
 			   drawn before it anyway, and a head start would only be eaten
 			   unseen. */
 			const target = Math.max(200, fullHeight - expectedKeyboard());
-			if (cut) {
-				slideTarget = target;
-				slideH = parseFloat(stage.style.getPropertyValue("--vv-h")) || vv.height;
-				slideLast = performance.now();
-				slideStop = slideLast + 1500;
-				if (!slideFrame) slideFrame = requestAnimationFrame(slideStep);
-			} else
-				requestAnimationFrame(() => {
-					if (predicting) stage.style.setProperty("--vv-h", `${target}px`);
-				});
+			requestAnimationFrame(() => {
+				if (predicting) stage.style.setProperty("--vv-h", `${target}px`);
+			});
 			// No keyboard after all (a hardware one, say): ease back.
 			clearTimeout(predictTimer);
 			predictTimer = window.setTimeout(() => {
@@ -305,7 +257,6 @@
 		document.addEventListener("focusout", () => {
 			clearTimeout(openingTimer);
 			stage.removeAttribute("data-kb-opening");
-			stopSlide();
 			if (!predicting) return;
 			predicting = false;
 			clearTimeout(predictTimer);
@@ -326,7 +277,7 @@
 	   field above the keyboard), so on touch screens the tap is taken over
 	   and the field focused with preventScroll. The keyboard still opens:
 	   it's a focus from the tap's own touchend. */
-	if (stage && window.matchMedia("(pointer: coarse)").matches && !tall) {
+	if (stage && window.matchMedia("(pointer: coarse)").matches) {
 		let start: { x: number; y: number } | null = null;
 		stage.addEventListener(
 			"touchstart",
