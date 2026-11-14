@@ -86,6 +86,17 @@
 		box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
 		overflow: hidden;
 	}
+
+	/* Growing back as the keyboard slides away, on roughly its curve. */
+	.phone-stage[data-kb-closing] .phone {
+		transition: height 350ms cubic-bezier(0.32, 0.72, 0, 1);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.phone-stage[data-kb-closing] .phone {
+			transition: none;
+		}
+	}
 </style>
 
 <script>
@@ -94,11 +105,24 @@
 	const stage = document.querySelector<HTMLElement>("[data-phone-stage]");
 	const vv = window.visualViewport;
 
+	const fieldFocused = () => {
+		const el = document.activeElement;
+		return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable === true;
+	};
+
 	if (stage && vv) {
 		let frame = 0;
+		// The visible height with no keyboard up, to grow back to.
+		let fullHeight = vv.height;
+		// While the keyboard is going away (see below).
+		let closing = false;
+		let closingTimer = 0;
 		const sync = () => {
 			frame = 0;
-			stage.style.setProperty("--vv-h", `${vv.height}px`);
+			if (!fieldFocused() && !closing) fullHeight = vv.height;
+			// Mid-close, Safari may still report the keyboard-up height; the
+			// phone is already growing back, so don't pull it in again.
+			if (!closing || vv.height >= fullHeight - 1) stage.style.setProperty("--vv-h", `${vv.height}px`);
 			stage.style.setProperty("--vv-top", `${vv.offsetTop}px`);
 			// Keyboard closed again: undo any scroll iOS made to reveal the
 			// input, so the page is back where it started.
@@ -117,6 +141,38 @@
 			sync();
 		});
 		sync();
+
+		/* Keyboard closing. iOS Safari only reports the new visible height once
+		   the keyboard has gone, so following it, the phone snapped back to
+		   full height after the fact. The field losing focus is the start of
+		   the close, and the height to return to is known, so the phone starts
+		   growing back right then, eased over about the keyboard's own slide.
+		   When Safari's report lands it matches, and nothing moves. */
+		document.addEventListener("focusout", () => {
+			// Moving between fields isn't a close.
+			setTimeout(() => {
+				if (fieldFocused()) return;
+				const current = parseFloat(stage.style.getPropertyValue("--vv-h")) || vv.height;
+				if (current >= fullHeight - 1) return;
+				closing = true;
+				stage.toggleAttribute("data-kb-closing", true);
+				stage.style.setProperty("--vv-h", `${fullHeight}px`);
+				clearTimeout(closingTimer);
+				closingTimer = window.setTimeout(() => {
+					closing = false;
+					stage.removeAttribute("data-kb-closing");
+					// Settle on whatever the browser now reports.
+					sync();
+				}, 600);
+			}, 0);
+		});
+		document.addEventListener("focusin", () => {
+			if (!closing) return;
+			// Straight back into a field mid-close: follow the browser again.
+			clearTimeout(closingTimer);
+			closing = false;
+			stage.removeAttribute("data-kb-closing");
+		});
 	}
 
 	/* Hold the page still when a text field is tapped. iOS Safari scrolls the
