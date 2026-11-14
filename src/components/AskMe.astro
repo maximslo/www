@@ -1941,6 +1941,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			const lastMsg = log.querySelector(".ask-msg:last-of-type")?.getBoundingClientRect();
 			const fm = form.getBoundingClientRect();
 			const row = [
+				`${innerHeight}/${r(scrollY)}`,
 				vv ? `${r(vv.height)}/${r(vv.offsetTop)}` : "-",
 				ph ? `${r(ph.top)}/${r(ph.height)}` : "-",
 				log.clientHeight,
@@ -1951,7 +1952,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			].join(" ");
 			if (row !== lastRow || tags.length) {
 				trace.push(`${String(r(t)).padStart(4)} ${tags.join(",").padEnd(6)} ${row}`);
-				if (trace.length > 34) trace.splice(1, 1);
+				if (trace.length > 46) return;
 			}
 			lastRow = row;
 			tags = [];
@@ -1959,7 +1960,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		};
 		input.addEventListener("focus", () => {
 			traceStart = performance.now();
-			trace = ["   t tags   vvH/top phTop/H logH st/max msgB formT"];
+			trace = ["   t tags   inH/sY vvH/top phTop/H logH st/max msgB formT"];
 			lastRow = "";
 			tags = ["focus"];
 			requestAnimationFrame(record);
