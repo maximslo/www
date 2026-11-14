@@ -1177,6 +1177,19 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	const watchBubbles = () => log.querySelectorAll(".ask-bubble").forEach((bubble) => refitOnResize.observe(bubble));
 	watchBubbles();
 	new MutationObserver(watchBubbles).observe(log, { childList: true });
+	// The thread itself changing width means every bubble's room changed:
+	// refit them all. On a phone refresh the opening bubbles were fitted
+	// while the frame was still settling to its width (viewport and bar sizes
+	// land a beat after the script runs) and kept the cramped widths ("Hi /
+	// there"). A fitted bubble has a fixed width, so it doesn't resize on its
+	// own and the watcher above never saw it.
+	let lastLogWidth = log.clientWidth;
+	new ResizeObserver(() => {
+		const width = log.clientWidth;
+		if (width === lastLogWidth) return;
+		lastLogWidth = width;
+		fitAll();
+	}).observe(log);
 	// Fonts arriving or the page finishing its load can change text widths too.
 	document.fonts?.ready.then(fitAll);
 	addEventListener("load", fitAll, { once: true });
