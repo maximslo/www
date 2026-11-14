@@ -472,6 +472,19 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		white-space: pre-line;
 	}
 
+	/* Links in replies: the bubble's own colour, underlined, so they read as
+	   tappable without a new colour in the thread. */
+	.ask-log :global(.ask-link) {
+		color: inherit;
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 2px;
+	}
+
+	.ask-log :global(.ask-link:hover) {
+		text-decoration-thickness: 2px;
+	}
+
 	/* The tail hangs below the bubble, tucked 8px in from its edge. It sits
 	   behind the body (z-index -1) in the same fill, so its flat top disappears
 	   under the bubble and the two read as one shape.
@@ -1359,11 +1372,52 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	/* ---------- Messages ---------- */
 
+	/* Links in my replies. The bot writes them bare, the way you'd text them
+	   (github.com/maximslo, an email address), so they're found in the plain
+	   text: full URLs, www. addresses, bare domains on common endings, and
+	   emails. Trailing punctuation stays outside the link. Built as DOM
+	   nodes, never HTML, so a reply can't inject markup. */
+	const LINK_PATTERN =
+		/\b([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})\b|\b((?:https?:\/\/|www\.)[^\s<]+|(?:[a-z0-9-]+\.)+(?:com|org|net|io|co|dev|app|me|ai|xyz|so|gg|edu|us|uk|ca|tv|fm|sh|page|site|design|studio|news)(?![a-z0-9-])(?:\/[^\s<]*)?)/gi;
+
+	function setReplyText(textEl: HTMLElement, text: string) {
+		textEl.textContent = "";
+		let at = 0;
+		for (const match of text.matchAll(LINK_PATTERN)) {
+			let label = match[0];
+			const start = match.index ?? 0;
+			// "github.com/maximslo." → link "github.com/maximslo", then "."
+			const trailing = label.match(/[.,!?;:)\]'"]+$/)?.[0] ?? "";
+			if (trailing && !(trailing.startsWith(")") && label.includes("("))) label = label.slice(0, -trailing.length);
+			if (!label) continue;
+			if (start > at) textEl.append(text.slice(at, start));
+			const link = document.createElement("a");
+			link.className = "ask-link";
+			// A link too long for the bubble breaks after a slash
+			// ("linkedin.com/in/" / "maximslo"), not mid-word.
+			label.split(/(?<=\/)/).forEach((piece, i) => {
+				if (i) link.append(document.createElement("wbr"));
+				link.append(piece);
+			});
+			if (match[1]) {
+				link.href = `mailto:${label}`;
+			} else {
+				link.href = /^https?:\/\//i.test(label) ? label : `https://${label}`;
+				link.target = "_blank";
+				link.rel = "noopener noreferrer";
+			}
+			textEl.append(link);
+			at = start + label.length;
+		}
+		if (at < text.length) textEl.append(text.slice(at));
+	}
+
 	function addMessage(role: "user" | "assistant" | "error", text = "") {
 		const msg = template.content.firstElementChild!.cloneNode(true) as HTMLLIElement;
 		msg.dataset.role = role;
 		const textEl = msg.querySelector<HTMLElement>(".ask-text")!;
-		textEl.textContent = text;
+		if (role === "user") textEl.textContent = text;
+		else setReplyText(textEl, text);
 		log.append(msg);
 		if (text) fitBubble(msg);
 		return { msg, textEl };
@@ -1457,7 +1511,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		msg.querySelectorAll(".ask-think").forEach((el) => el.remove());
 		delete msg.dataset.pending;
 		msg.dataset.role = role;
-		textEl.textContent = text;
+		setReplyText(textEl, text);
 		fitBubble(msg);
 		if (prefersReducedMotion()) return;
 
