@@ -1163,6 +1163,16 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	log.addEventListener("scroll", startSettle, { passive: true });
 
+	/* A scroll the page makes itself in one step (the keyboard snap, keeping
+	   the bottom anchored as the phone shrinks). Read as speed, a jump like
+	   that is thousands of px/s, so the bubbles lagged a few pixels behind
+	   and sprang back: a visible hitch after the thread had already landed.
+	   The settle is told the new position up front, so it sees no movement. */
+	function jumpTo(top: number) {
+		log.scrollTop = top;
+		lastScrollTop = log.scrollTop;
+	}
+
 	/* ---------- Following the conversation ----------
 	   New bubbles and replies glide the thread to the bottom on a soft spring
 	   (use-stick-to-bottom's constants, as the reference uses), unless the
@@ -1256,7 +1266,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		}
 		// A glide to the end is already headed there; nudging it would read
 		// as the visitor taking over and stop it.
-		if (lost > 0 && !following) log.scrollTop += lost;
+		if (lost > 0 && !following) jumpTo(log.scrollTop + lost);
 	}).observe(log);
 
 	/* Held on the newest message while a phone keyboard opens. Safari reports
@@ -1269,7 +1279,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	let stickUntil = 0;
 	function stickToEnd() {
 		stopFollow();
-		log.scrollTop = log.scrollHeight - log.clientHeight;
+		jumpTo(log.scrollHeight - log.clientHeight);
 		pinnedToEnd = true;
 	}
 	function holdEndFor(ms: number) {
