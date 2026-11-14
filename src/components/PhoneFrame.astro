@@ -169,7 +169,11 @@
 			// while a keyboard is predicted, the full height reported before
 			// it arrives isn't news.
 			if ((!closing || vv.height >= fullHeight - 1) && !predicting) stage.style.setProperty("--vv-h", `${vv.height}px`);
-			stage.style.setProperty("--vv-top", `${vv.offsetTop}px`);
+			/* Chrome on iOS cuts the whole page to the visible part, so the
+			   stage never has an offset to follow there. It does briefly
+			   scroll the page to "reveal" the field and reports that as an
+			   offset, which slid the phone down the screen mid-keyboard. */
+			stage.style.setProperty("--vv-top", `${cutsView() ? 0 : vv.offsetTop}px`);
 			// Keyboard closed again: undo any scroll iOS made to reveal the
 			// input, so the page is back where it started.
 			if (vv.height >= window.innerHeight - 1 && (window.scrollY || document.documentElement.scrollTop)) {
