@@ -761,16 +761,19 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		border: 2px dashed rgba(0, 146, 255, 0.55);
 		border-radius: 999px;
 		padding: 6px 14px;
-		cursor: pointer;
+		/* "Add this": an arrow with a green + on macOS, as on
+		   alexsafayan.com/chat. */
+		cursor: copy;
 	}
 
-	.ask-chip:hover {
+	/* Keyboard focus looks like hover: the blue wash, no ring. */
+	.ask-chip:hover,
+	.ask-chip:focus-visible {
 		background: rgba(0, 146, 255, 0.08);
 	}
 
 	.ask-chip:focus-visible {
-		outline: 2px solid var(--imsg-blue);
-		outline-offset: 2px;
+		outline: none;
 	}
 
 	/* Compose field as frosted glass, from alexsafayan.com: a faint white
@@ -1034,6 +1037,33 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	trackEdges(chips, "x");
+
+	/* Tabbing along the suggestions: the focused one glides fully into view,
+	   clear of the row's faded edges (24px at the start, 40px at the end).
+	   The browser's own focus scroll stops with it right under a fade, and
+	   jumps; it has already happened by focusin, so the row is put back
+	   where it was and eased over instead. */
+	let chipsLeft = chips.scrollLeft;
+	chips.addEventListener("scroll", () => (chipsLeft = chips.scrollLeft), { passive: true });
+	chips.addEventListener("focusin", (event) => {
+		const chip = (event.target as HTMLElement).closest<HTMLElement>("[data-ask-chip]");
+		if (!chip || !chip.matches(":focus-visible") || chips.hasAttribute("data-dragging")) return;
+		const row = chips.getBoundingClientRect();
+		const box = chip.getBoundingClientRect();
+		// Screen px to the row's own (the chat is scaled).
+		const k = row.width / chips.offsetWidth || 1;
+		const start = (box.left - row.left) / k + chips.scrollLeft;
+		const end = start + box.width / k;
+		const view = chips.clientWidth;
+		const max = chips.scrollWidth - view;
+		let target = chipsLeft;
+		if (start < chipsLeft + 24) target = start - 24;
+		else if (end > chipsLeft + view - 40) target = end - view + 40;
+		target = Math.min(max, Math.max(0, target));
+		stopGlide();
+		chips.scrollLeft = chipsLeft;
+		chips.scrollTo({ left: target, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+	});
 
 	/* ---------- Moving the suggestions with a mouse ----------
 	   Trackpads and touch already scroll the row sideways. A mouse wheel only
