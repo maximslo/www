@@ -1612,13 +1612,12 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		// Texts are separated by blank lines; a single line break stays inside
 		// one bubble (a list, like the tech stack). The first text opens out of
 		// the typing bubble, the rest follow one by one at the intro's pace.
-		const texts =
-			role === "error"
-				? [answer.trim()]
-				: answer
-						.split(/\n\s*\n/)
-						.map((t) => t.split("\n").map((line) => line.trim()).join("\n").trim())
-						.filter(Boolean);
+		// The server's own messages (like the end-of-chat one) split the same
+		// way, so they can arrive as several texts too.
+		const texts = answer
+			.split(/\n\s*\n/)
+			.map((t) => t.split("\n").map((line) => line.trim()).join("\n").trim())
+			.filter(Boolean);
 		if (!texts.length) {
 			role = "error";
 			texts.push("Something went wrong. Try again in a bit.");

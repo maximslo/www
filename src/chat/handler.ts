@@ -113,7 +113,8 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 		return text(`Something broke on my end. Email me at ${CONTACT_EMAIL}.`, 500);
 	}
 	if ((count ?? 0) >= MAX_TURNS_PER_SESSION) {
-		return text(`That's all for this chat. If you want to keep talking, email me at ${CONTACT_EMAIL}!`, 429);
+		// Sent as three texts: the chat splits on blank lines.
+		return text(`im getting sleepy, gonna go nap\n\nchat later\n\n${CONTACT_EMAIL}`, 429);
 	}
 
 	const { data: rows, error: historyError } = await supabase
