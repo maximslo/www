@@ -172,13 +172,18 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		   scrollbars overlay the content. A fixed amount left sent bubbles
 		   6px from the edge whenever there was no bar. */
 		/* Bottom: room between the newest message and the compose field
-		   (--last-gap, past the 9.5px tail), then the field itself. */
+		   (--last-gap, past the 9.5px tail), then the field itself. It's
+		   made by the thread's ::after spacer (--log-end), not bottom
+		   padding: WebKit (Safari, and Chrome on iOS) leaves a flex scroll
+		   container's bottom padding out of its scroll range, so with the
+		   suggestions' room gone the newest message sat under the field and
+		   couldn't be scrolled to. */
 		--last-gap: 28px;
+		--log-end: calc(var(--last-gap) + var(--form-height) + var(--form-gap) + var(--screen-pad));
 		/* The phone is narrow: let a bubble take a bit more of it, so longer
 		   lines (and links) fit on one line. */
 		--bubble-max: 85%;
-		padding: var(--top-fade) calc(var(--screen-pad) - var(--scrollbar-width, 0px))
-			calc(var(--last-gap) + var(--form-height) + var(--form-gap) + var(--screen-pad)) var(--screen-pad);
+		padding: var(--top-fade) calc(var(--screen-pad) - var(--scrollbar-width, 0px)) 0 var(--screen-pad);
 	}
 
 	/* Phones: a tighter gap. There the keyboard takes half the screen, and
@@ -186,7 +191,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	   field with little thread showing. */
 	@media (pointer: coarse) {
 		.ask-me[data-layout="phone"] .ask-log {
-			--last-gap: 20px;
+			--last-gap: 12px;
 		}
 	}
 
@@ -380,17 +385,24 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		flex-direction: column;
 	}
 
-	/* Room under the newest message for the suggestions floating over it.
-	   Dropped once they're gone for good. */
+	/* Room under the newest message: for the suggestions floating over it
+	   (--chips-room, dropped when they're gone for good or tucked away for a
+	   phone keyboard), plus, in the phone layout, the gap and the compose
+	   field (--log-end). A real element, so every engine counts it as
+	   scrollable room. */
+	.ask-log {
+		--chips-room: 46px;
+	}
+
+	.ask-log[data-chips-off],
+	.ask-log[data-chips-away] {
+		--chips-room: 0px;
+	}
+
 	.ask-log::after {
 		content: "";
 		flex: none;
-		height: 46px;
-	}
-
-	.ask-log[data-chips-off]::after,
-	.ask-log[data-chips-away]::after {
-		display: none;
+		height: calc(var(--chips-room) + var(--log-end, 0px));
 	}
 
 	/* A fixed fade along the thread's top edge, there whether or not it's
