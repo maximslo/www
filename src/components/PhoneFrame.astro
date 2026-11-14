@@ -110,8 +110,50 @@
 			if (!frame) frame = requestAnimationFrame(sync);
 		};
 		vv.addEventListener("resize", schedule);
-		vv.addEventListener("scroll", schedule);
+		// Straight away, not on the next frame: any pan Safari still makes is
+		// matched in the same frame it shows, instead of one frame late.
+		vv.addEventListener("scroll", () => {
+			cancelAnimationFrame(frame);
+			sync();
+		});
 		sync();
+	}
+
+	/* Hold the page still when a text field is tapped. iOS Safari scrolls the
+	   page to "reveal" a focused field, even with scrolling locked, and the
+	   phone was seen to jump up and then slide back as the stage caught up.
+	   That reveal isn't needed here (the phone already shortens to keep the
+	   field above the keyboard), so on touch screens the tap is taken over
+	   and the field focused with preventScroll. The keyboard still opens:
+	   it's a focus from the tap's own touchend. */
+	if (stage && window.matchMedia("(pointer: coarse)").matches) {
+		let start: { x: number; y: number } | null = null;
+		stage.addEventListener(
+			"touchstart",
+			(event) => {
+				const t = event.touches[0];
+				start = t ? { x: t.clientX, y: t.clientY } : null;
+			},
+			{ passive: true },
+		);
+		stage.addEventListener("touchend", (event) => {
+			const field = (event.target as Element | null)?.closest<HTMLInputElement | HTMLTextAreaElement>("input, textarea");
+			if (!field || document.activeElement === field || !start) return;
+			// A drag that began on the field isn't a tap.
+			const t = event.changedTouches[0];
+			if (t && Math.hypot(t.clientX - start.x, t.clientY - start.y) > 10) return;
+			event.preventDefault();
+			field.focus({ preventScroll: true });
+		});
+		// Backstop: should the page still get scrolled while a field is
+		// focused, put it straight back.
+		window.addEventListener(
+			"scroll",
+			() => {
+				if (window.scrollY || document.documentElement.scrollTop) window.scrollTo(0, 0);
+			},
+			{ passive: true },
+		);
 	}
 
 	// Hold the phone's width and top edge steady while typing. They're
