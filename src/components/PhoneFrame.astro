@@ -145,6 +145,50 @@
 			event.preventDefault();
 			field.focus({ preventScroll: true });
 		});
+		/* No wiggling the page. With the keyboard up, iOS Safari lets a drag
+		   pan the whole view around (Chrome doesn't). A one-finger drag is
+		   only let through when it scrolls something inside the phone (the
+		   thread up and down, the suggestions sideways) and that thing still
+		   has room to go that way; anything else, including a drag past the
+		   end of the thread, is stopped. Pinches pass, so zooming still works. */
+		let last: { x: number; y: number } | null = null;
+		document.addEventListener(
+			"touchstart",
+			(event) => {
+				const t = event.touches[0];
+				last = t ? { x: t.clientX, y: t.clientY } : null;
+			},
+			{ passive: true },
+		);
+		const canScroll = (el: HTMLElement, axis: "x" | "y", toward: number) => {
+			const cs = getComputedStyle(el);
+			const overflow = axis === "y" ? cs.overflowY : cs.overflowX;
+			if (overflow !== "auto" && overflow !== "scroll") return false;
+			const pos = axis === "y" ? el.scrollTop : el.scrollLeft;
+			const max = axis === "y" ? el.scrollHeight - el.clientHeight : el.scrollWidth - el.clientWidth;
+			if (max <= 0) return false;
+			// Finger moving down/right scrolls back toward the start.
+			return toward > 0 ? pos > 0 : pos < max - 1;
+		};
+		document.addEventListener(
+			"touchmove",
+			(event) => {
+				if (event.touches.length > 1 || !last) return;
+				const t = event.touches[0];
+				const dx = t.clientX - last.x;
+				const dy = t.clientY - last.y;
+				last = { x: t.clientX, y: t.clientY };
+				if (!dx && !dy) return;
+				const axis = Math.abs(dy) >= Math.abs(dx) ? "y" : "x";
+				const toward = axis === "y" ? dy : dx;
+				for (let el = event.target as HTMLElement | null; el && el !== document.body; el = el.parentElement) {
+					if (canScroll(el, axis, toward)) return;
+				}
+				if (event.cancelable) event.preventDefault();
+			},
+			{ passive: false },
+		);
+
 		// Backstop: should the page still get scrolled while a field is
 		// focused, put it straight back.
 		window.addEventListener(
