@@ -87,12 +87,20 @@
 		overflow: hidden;
 	}
 
-	/* Growing back as the keyboard slides away, on roughly its curve. */
+	/* Shrinking as the keyboard slides up, and growing back as it slides
+	   away, on roughly its curve. Browsers report the keyboard's height
+	   early in its slide (Chrome on iOS at ~110ms of ~450), so easing to it
+	   moves the field up alongside the keys instead of jumping there. */
+	.phone-stage[data-kb-opening] .phone {
+		transition: height 380ms cubic-bezier(0.32, 0.72, 0, 1);
+	}
+
 	.phone-stage[data-kb-closing] .phone {
 		transition: height 350ms cubic-bezier(0.32, 0.72, 0, 1);
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+		.phone-stage[data-kb-opening] .phone,
 		.phone-stage[data-kb-closing] .phone {
 			transition: none;
 		}
@@ -165,6 +173,21 @@
 					sync();
 				}, 600);
 			}, 0);
+		});
+		/* Keyboard opening: ease into whatever height the browser reports
+		   while it slides up. Only from a field focused at full height, so
+		   moving between fields or the bars changing while typing don't
+		   lag. */
+		let openingTimer = 0;
+		document.addEventListener("focusin", () => {
+			if (!matchMedia("(pointer: coarse)").matches || !fieldFocused() || vv.height < fullHeight - 1) return;
+			stage.toggleAttribute("data-kb-opening", true);
+			clearTimeout(openingTimer);
+			openingTimer = window.setTimeout(() => stage.removeAttribute("data-kb-opening"), 1000);
+		});
+		document.addEventListener("focusout", () => {
+			clearTimeout(openingTimer);
+			stage.removeAttribute("data-kb-opening");
 		});
 		document.addEventListener("focusin", () => {
 			if (!closing) return;

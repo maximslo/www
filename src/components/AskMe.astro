@@ -1535,7 +1535,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	window.visualViewport?.addEventListener("resize", () => {
 		if (!touchScreen.matches || document.activeElement !== input || !stickUntil) return;
 		if (performance.now() > stickUntil + 1500) return;
-		holdEndFor(400);
+		holdEndFor(500);
 	});
 
 	/* ---------- Messages ---------- */
