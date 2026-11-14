@@ -213,7 +213,15 @@
 			clearTimeout(openingTimer);
 			openingTimer = window.setTimeout(() => stage.removeAttribute("data-kb-opening"), 1200);
 			predicting = true;
-			stage.style.setProperty("--vv-h", `${Math.max(200, fullHeight - expectedKeyboard())}px`);
+			/* From the first frame actually drawn, not the tap: Chrome on iOS
+			   draws nothing for ~75ms while it brings the keyboard up, and a
+			   slide timed from the tap was three-quarters done by then, so
+			   the field snapped most of the way. Started here, its first
+			   drawn frame is its first step. */
+			const target = Math.max(200, fullHeight - expectedKeyboard());
+			requestAnimationFrame(() => {
+				if (predicting) stage.style.setProperty("--vv-h", `${target}px`);
+			});
 			// No keyboard after all (a hardware one, say): ease back.
 			clearTimeout(predictTimer);
 			predictTimer = window.setTimeout(() => {
