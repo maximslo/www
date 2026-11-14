@@ -778,6 +778,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	// A beat after the page loads before the intro may start, so its first
 	// typing dots are seen rather than lost in the load.
 	const INTRO_LEAD_MS = 400;
+	// After a message is sent, how long before the typing dots appear.
+	const TYPING_DELAY_MS = 700;
 	const HELLOS = ["hi", "sup", "yo"];
 	// Phones and tablets, where focusing the field brings up a keyboard.
 	const touchScreen = window.matchMedia("(pointer: coarse)");
@@ -1572,38 +1574,44 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		pinnedToEnd = true;
 		const { msg } = addMessage("user", text);
 		if (!prefersReducedMotion()) animateSend(msg, source.rect, source.inset, source.spring);
-		const { msg: reply, textEl } = addTyping();
 		setBusy(true);
 
 		(window as unknown as { plausible?: (event: string) => void }).plausible?.("chat_message");
 
-		// The whole reply is collected behind the typing dots, then shown at once.
-		let answer = "";
-		let role: "assistant" | "error" = "assistant";
-		try {
-			const res = await fetch("/api/chat", {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ sessionId: getSessionId(), message: text }),
-			});
+		// The whole reply is collected behind the typing dots, then shown at
+		// once. The request goes out straight away; only the dots wait.
+		const replyPromise = (async (): Promise<{ answer: string; role: "assistant" | "error" }> => {
+			try {
+				const res = await fetch("/api/chat", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ sessionId: getSessionId(), message: text }),
+				});
 
-			if (!res.ok || !res.body) {
-				role = "error";
-				answer = (await res.text()) || "Something went wrong. Try again in a bit.";
-			} else {
+				if (!res.ok || !res.body) {
+					return { role: "error", answer: (await res.text()) || "Something went wrong. Try again in a bit." };
+				}
 				const reader = res.body.getReader();
 				const decoder = new TextDecoder();
+				let answer = "";
 				for (;;) {
 					const { done, value } = await reader.read();
 					if (done) break;
 					answer += decoder.decode(value, { stream: true });
 				}
-				answer += decoder.decode();
+				return { role: "assistant", answer: answer + decoder.decode() };
+			} catch {
+				return { role: "error", answer: "Couldn't reach the server. Check your connection and try again." };
 			}
-		} catch {
-			role = "error";
-			answer = "Couldn't reach the server. Check your connection and try again.";
-		}
+		})();
+
+		// A beat before the typing dots, like someone reading the text before
+		// they start typing back, rather than dots popping up the instant it's
+		// sent.
+		if (!prefersReducedMotion()) await pause(TYPING_DELAY_MS);
+		const { msg: reply, textEl } = addTyping();
+
+		let { answer, role } = await replyPromise;
 
 		// Texts are separated by blank lines; a single line break stays inside
 		// one bubble (a list, like the tech stack). The first text opens out of
