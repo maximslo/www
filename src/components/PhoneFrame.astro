@@ -92,6 +92,32 @@
 		overflow: hidden;
 	}
 
+	/* Phones: no phone inside the phone. The chat is the page itself, edge
+	   to edge on white, for more breathing room; only the safe areas (notch,
+	   home indicator) are kept clear. The width/top locks the script
+	   measures are simply unused here. */
+	@media (width <= 768px) {
+		.phone-stage {
+			padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+				env(safe-area-inset-left);
+		}
+
+		.phone {
+			--phone-radius: 0px;
+			width: 100%;
+			margin-top: 0;
+			height: 100cqh;
+			border-radius: 0;
+			background: var(--color-bg-page);
+			box-shadow: none;
+		}
+
+		/* The thread's top fade blends into the page, not the old grey. */
+		.phone-stage .phone :global(.ask-me[data-layout="phone"]) {
+			--ask-bg: var(--color-bg-page);
+		}
+	}
+
 	/* Shrinking as the keyboard slides up, and growing back as it slides
 	   away, on roughly its curve. Browsers report the keyboard's height
 	   early in its slide (Chrome on iOS at ~110ms of ~450), so easing to it
