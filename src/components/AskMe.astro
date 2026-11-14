@@ -176,6 +176,15 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			calc(var(--last-gap) + var(--form-height) + var(--form-gap) + var(--screen-pad)) var(--screen-pad);
 	}
 
+	/* Phones: a tighter gap. There the keyboard takes half the screen, and
+	   the desktop 28px (zoomed) left the newest message well clear of the
+	   field with little thread showing. */
+	@media (pointer: coarse) {
+		.ask-me[data-layout="phone"] .ask-log {
+			--last-gap: 20px;
+		}
+	}
+
 	/* Lined up with the suggestions and bubbles, and inset the same 20px from
 	   the sides as from the bottom, so its rounded ends sit concentric with
 	   the phone's corners like iOS's own compose field. */
@@ -374,7 +383,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		height: 46px;
 	}
 
-	.ask-log[data-chips-off]::after {
+	.ask-log[data-chips-off]::after,
+	.ask-log[data-chips-away]::after {
 		display: none;
 	}
 
@@ -1408,6 +1418,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		const done = () => {
 			stopWaitingForExpand();
 			fieldTapped = false;
+			setChipsRoom(true);
 			updateChips();
 		};
 		expandWatch = new ResizeObserver(settle);
@@ -1418,6 +1429,17 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		settle();
 	}
 
+	/* The room kept under the newest message for the suggestions row (the
+	   thread's ::after). On touch screens it's dropped while they're tucked
+	   away for the keyboard, so the newest message sits just above the
+	   field, and put back, with the thread following it down, before they
+	   slide in again so they don't land on top of the last message. */
+	function setChipsRoom(on: boolean) {
+		if (on === !log.hasAttribute("data-chips-away")) return;
+		log.toggleAttribute("data-chips-away", !on);
+		if (on && pinnedToEnd) followToEnd();
+	}
+
 	input.addEventListener("focus", () => {
 		stopWaitingForExpand();
 		fieldTapped = touchScreen.matches;
@@ -1425,8 +1447,10 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		// They vanish at once rather than sliding down, so they're not seen
 		// riding along with the keyboard as it comes up. Coming back is still
 		// the usual slide.
-		if (fieldTapped) setChips(false, "instant");
-		else updateChips();
+		if (fieldTapped) {
+			setChips(false, "instant");
+			setChipsRoom(false);
+		} else updateChips();
 	});
 	input.addEventListener("blur", () => {
 		if (fieldTapped) {
@@ -1714,6 +1738,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		// Something was sent and answered: the suggestions may come back,
 		// even with the keyboard still up.
 		fieldTapped = false;
+		setChipsRoom(true);
 		updateChips();
 	}
 
