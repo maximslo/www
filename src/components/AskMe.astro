@@ -91,6 +91,14 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			</button>
 		</form>
 
+		<!-- Phone layout: start over, in the same frosted glass as the field. -->
+		<button type="button" class="ask-new" title="New chat" aria-label="Start new chat" data-ask-new>
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+				<path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
+			</svg>
+		</button>
+
 		<!-- Touch screens in the phone layout: a drawn scroll indicator, kept
 		     off the phone's curved corners like the desktop scrollbar. -->
 		<div class="ask-scroll-track" aria-hidden="true" data-ask-scroll-track>
@@ -847,6 +855,66 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		outline-offset: 2px;
 	}
 
+	/* New chat: a round button of the compose field's frosted glass, in the
+	   top right corner, inset like the field. Phone layout only. */
+	.ask-new {
+		display: none;
+	}
+
+	.ask-me[data-layout="phone"] .ask-new {
+		position: absolute;
+		z-index: 3;
+		top: var(--screen-pad);
+		right: var(--screen-pad);
+		display: grid;
+		place-items: center;
+		/* The send button's height: a snug ring of glass around the icon. */
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		color: #000;
+		border: 0;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.3);
+		-webkit-backdrop-filter: blur(8px) saturate(300%);
+		backdrop-filter: blur(8px) saturate(300%);
+		box-shadow:
+			0 0 32px rgba(0, 0, 0, 0.12),
+			inset 0 0 3px 1px #fff;
+		cursor: pointer;
+	}
+
+	/* Fades in with the rest of the page (the body's site-fade-in, same
+	   timing). The body's own fade didn't reach it: its backdrop-filter
+	   gives it a layer of its own, which showed at full strength from the
+	   first frame. */
+	@media (prefers-reduced-motion: no-preference) {
+		.ask-me[data-layout="phone"] .ask-new {
+			animation: ask-new-in var(--page-fade-duration) var(--page-fade-easing) both;
+		}
+	}
+
+	@keyframes ask-new-in {
+		from {
+			opacity: 0;
+		}
+	}
+
+	.ask-new svg {
+		width: 18px;
+		height: 18px;
+		transition: transform 200ms ease-out;
+	}
+
+	.ask-new:active svg {
+		transform: scale(0.9);
+	}
+
+	.ask-new:focus-visible {
+		outline: 2px solid var(--imsg-blue);
+		outline-offset: 2px;
+	}
+
 	.visually-hidden {
 		position: absolute;
 		width: 1px;
@@ -1322,6 +1390,14 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	log.toggleAttribute("data-intro-ready", true);
 	let introRunning = introLines.length > 0;
 	let introCancel: (() => void) | null = null;
+	// Waiting for the chat to come on screen before the first intro starts.
+	let introObserver: IntersectionObserver | null = null;
+	// The untouched opening, kept for a new chat to start from again.
+	const openerHTML = log.innerHTML;
+	const greetingLines = [...introLines];
+	const chipsHTML = chips.innerHTML;
+	// Bumped by a new chat, so a reply still on its way to the old one stops.
+	let chatGen = 0;
 
 	const fitAll = () => log.querySelectorAll<HTMLElement>(".ask-msg").forEach(fitBubble);
 	fitAll();
@@ -1725,8 +1801,16 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	async function ask(message: string, source: Source) {
 		const text = message.trim();
 		if (!text) return;
+		const gen = chatGen;
 		// Sending mid-intro: the rest of the greeting lands at once, first.
 		introCancel?.();
+		// Or before it has even started: same, and it won't start later.
+		if (introLines.length) {
+			introObserver?.disconnect();
+			introObserver = null;
+			for (const line of introLines.splice(0)) addMessage("assistant", line);
+			introRunning = false;
+		}
 
 		// Sending always brings the thread back to its newest message.
 		pinnedToEnd = true;
@@ -1767,9 +1851,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		// they start typing back, rather than dots popping up the instant it's
 		// sent.
 		if (!prefersReducedMotion()) await pause(TYPING_DELAY_MS);
+		if (gen !== chatGen) return;
 		const { msg: reply, textEl } = addTyping();
 
 		let { answer, role } = await replyPromise;
+		if (gen !== chatGen) return;
 
 		// Texts are separated by blank lines; a single line break stays inside
 		// one bubble (a list, like the tech stack). The first text opens out of
@@ -1788,6 +1874,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		for (const text of texts.slice(1)) {
 			const next = addTyping();
 			await pause(lineDelay(text));
+			if (gen !== chatGen) return;
 			revealReply(next.msg, next.textEl, text, role);
 		}
 		setBusy(false);
@@ -1816,6 +1903,72 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		if (typedInARow >= 3) disableChips();
 		void ask(value, { rect, inset: 0, spring: QUICK });
 	});
+
+	/* New chat, in place, after alexsafayan.com/chat. The server keeps the
+	   thread by session id, so a fresh id is a fresh conversation. On the
+	   page, everything after the greeting goes at once (no fade), the thread
+	   jumps back to the top, and the greeting, which was scrolled up out of
+	   sight, glides back down into place: the reference gets that from
+	   Framer Motion's layout animation (0.45s, ease [0.4, 0, 0.1, 1]) on
+	   the thread's content when its scroll position resets. Then the rest
+	   of the greeting is typed again, as on a first visit, and every
+	   suggestion comes back once it's done. */
+	const RESET_GLIDE = { duration: 450, easing: "cubic-bezier(0.4, 0, 0.1, 1)" };
+	function newChat() {
+		chatGen += 1;
+		try {
+			sessionStorage.removeItem(SESSION_KEY);
+		} catch {}
+		delete (window as unknown as { __askSession?: string }).__askSession;
+
+		// A greeting still being typed stops (and is replayed below).
+		introCancel?.();
+		introObserver?.disconnect();
+		introObserver = null;
+		introLines.splice(0);
+		introRunning = false;
+		busy = false;
+		stickUntil = 0;
+
+		// Where the greeting sits now (above the top, if the thread grew).
+		const before = log.querySelector(".ask-msg")?.getBoundingClientRect().top ?? 0;
+
+		log.innerHTML = openerHTML;
+		fitAll();
+		log.scrollTop = 0;
+		pinnedToEnd = true;
+		// The greeting's typing dots come straight away, not after the glide:
+		// added first, they glide in with the rest.
+		introLines.push(...greetingLines);
+		introRunning = introLines.length > 0;
+		if (introRunning) void playIntro();
+
+		// From where it was to where it is now. Capped at a screenful, so a
+		// long chat glides back rather than whipping down from far above.
+		const after = log.querySelector(".ask-msg")?.getBoundingClientRect().top ?? 0;
+		const offset = Math.max(before - after, -log.clientHeight);
+		if (offset < -1 && !prefersReducedMotion()) {
+			for (const msg of log.querySelectorAll<HTMLElement>(".ask-msg")) {
+				// Added on top of the bubbles' own transforms, not in place of them.
+				msg.animate([{ transform: `translateY(${offset}px)` }, { transform: "translateY(0)" }], { ...RESET_GLIDE, composite: "add" });
+			}
+		}
+
+		input.value = "";
+		// Suggestions step aside while the greeting is typed, then return
+		// in full, as on load.
+		setChips(false);
+		chips.innerHTML = chipsHTML;
+		chips.scrollLeft = 0;
+		chipsDisabled = false;
+		typedInARow = 0;
+		log.removeAttribute("data-chips-off");
+		if (!introRunning) updateChips();
+		// Ready for the first question, as in the reference. Not on touch
+		// screens, where a scripted focus can't open the keyboard anyway.
+		if (!touchScreen.matches) input.focus();
+	}
+	document.querySelector<HTMLButtonElement>("[data-ask-new]")?.addEventListener("click", newChat);
 
 	chips.addEventListener("click", (event) => {
 		// The click that ends a drag isn't a tap on a suggestion.
@@ -1877,17 +2030,22 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			(entries) => {
 				if (!entries[0].isIntersecting) return;
 				observer.disconnect();
+				introObserver = null;
 				void playIntro();
 			},
-			{ threshold: 1, rootMargin: "0px 0px -80px 0px" },
+			// Not 1: the chat's 1.1 scale leaves a fully visible bubble measured at
+			// 0.9999999 at some widths, and the greeting never started.
+			{ threshold: 0.99, rootMargin: "0px 0px -80px 0px" },
 		);
+		introObserver = observer;
 		// Wait for the page to finish loading and be on screen first: reloading
 		// while scrolled to the chat restores that position, and starting at
 		// once played the first dots and "hello!" before anything was painted.
 		const ready = document.readyState === "complete" ? Promise.resolve() : new Promise((resolve) => addEventListener("load", resolve, { once: true }));
 		void ready
 			.then(() => pause(INTRO_LEAD_MS))
-			.then(() => observer.observe(log.lastElementChild!));
+			// Unless a new chat already took over the intro meanwhile.
+			.then(() => introObserver === observer && observer.observe(log.lastElementChild!));
 	} else {
 		chips.style.transform = "none";
 		chips.inert = false;
