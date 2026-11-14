@@ -1728,7 +1728,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		const rect = new DOMRect(box.left, box.top, textWidth(value.trim()) + 32, box.height);
 		input.value = "";
 		typedInARow += 1;
-		if (typedInARow >= 2) disableChips();
+		if (typedInARow >= 3) disableChips();
 		void ask(value, { rect, inset: 0, spring: QUICK });
 	});
 
