@@ -1886,7 +1886,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	if (new URLSearchParams(location.search).has("debug")) {
 		const panel = document.createElement("pre");
 		panel.style.cssText =
-			"position:fixed;z-index:9999;top:4px;left:4px;margin:0;padding:6px 8px;font:11px/1.35 ui-monospace,monospace;background:rgba(0,0,0,.78);color:#0f0;border-radius:6px;pointer-events:none;white-space:pre";
+			"position:fixed;z-index:9999;top:4px;left:4px;margin:0;padding:6px 8px;font:10px/1.3 ui-monospace,monospace;background:rgba(0,0,0,.78);color:#0f0;border-radius:6px;pointer-events:none;white-space:pre";
 		document.body.append(panel);
 		const thread = log.parentElement!;
 		const phone = document.querySelector<HTMLElement>(".phone");
@@ -1899,7 +1899,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			const lg = log.getBoundingClientRect();
 			const fm = form.getBoundingClientRect();
 			const last = log.lastElementChild?.getBoundingClientRect();
-			panel.textContent = [
+			panel.textContent = trace.length ? trace.join("\n") : [
 				`inner ${innerWidth}x${innerHeight}  scrollY ${r(scrollY)}`,
 				`vv ${vv ? `${r(vv.width)}x${r(vv.height)} top ${r(vv.offsetTop)}` : "none"}`,
 				`stage --vv-h ${stage?.style.getPropertyValue("--vv-h") || "-"} --vv-top ${stage?.style.getPropertyValue("--vv-top") || "-"}`,
@@ -1912,6 +1912,53 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			].join("\n");
 			requestAnimationFrame(tick);
 		};
+
+		/* Frame-by-frame trace from the moment the field is focused, for 2s:
+		   one row whenever something changes. Columns: ms since focus, event
+		   tags, vv height/top, phone top/height, log height, scrollTop/max,
+		   newest message's bottom and the field's top (both on screen), and
+		   F = glide running, H = keyboard hold on. */
+		let trace: string[] = [];
+		let traceStart = 0;
+		let tags: string[] = [];
+		let lastRow = "";
+		const tag = (t: string) => tags.push(t);
+		const record = () => {
+			const t = performance.now() - traceStart;
+			if (t > 2000) return;
+			const vv = window.visualViewport;
+			const ph = phone?.getBoundingClientRect();
+			const lastMsg = log.querySelector(".ask-msg:last-of-type")?.getBoundingClientRect();
+			const fm = form.getBoundingClientRect();
+			const row = [
+				vv ? `${r(vv.height)}/${r(vv.offsetTop)}` : "-",
+				ph ? `${r(ph.top)}/${r(ph.height)}` : "-",
+				log.clientHeight,
+				`${r(log.scrollTop)}/${log.scrollHeight - log.clientHeight}`,
+				lastMsg ? r(lastMsg.bottom) : "-",
+				r(fm.top),
+				(following ? "F" : "") + (performance.now() < stickUntil ? "H" : ""),
+			].join(" ");
+			if (row !== lastRow || tags.length) {
+				trace.push(`${String(r(t)).padStart(4)} ${tags.join(",").padEnd(6)} ${row}`);
+				if (trace.length > 34) trace.splice(1, 1);
+			}
+			lastRow = row;
+			tags = [];
+			requestAnimationFrame(record);
+		};
+		input.addEventListener("focus", () => {
+			traceStart = performance.now();
+			trace = ["   t tags   vvH/top phTop/H logH st/max msgB formT"];
+			lastRow = "";
+			tags = ["focus"];
+			requestAnimationFrame(record);
+		});
+		window.visualViewport?.addEventListener("resize", () => tag("vvR"));
+		window.visualViewport?.addEventListener("scroll", () => tag("vvS"));
+		window.addEventListener("resize", () => tag("winR"));
+		window.addEventListener("scroll", () => tag("winS"));
+		log.addEventListener("scroll", () => tag("s"));
 		tick();
 	}
 </script>
