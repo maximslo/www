@@ -124,6 +124,15 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	/* Phone layout: the chat fills the PhoneFrame top to bottom and the thread
 	   takes all the height the label leaves, instead of a 400px window. */
 	.ask-me[data-layout="phone"] {
+		/* The chat's own scale inside the phone: type, bubbles, field and
+		   suggestions 10% up from their base sizes (they read best at what
+		   was 110% browser zoom), while the phone frame keeps its size. The
+		   chat fills the frame by percentages, which zoom leaves alone. */
+		--ask-zoom: 1.1;
+		zoom: var(--ask-zoom);
+		/* The phone's corner radius comes from the frame, outside the zoom:
+		   brought back to this scale so the scrollbar limits stay put. */
+		--corner: calc(var(--phone-radius, 0px) / var(--ask-zoom));
 		--ask-bg: #f5f5f5;
 		margin-top: 0;
 		height: 100%;
@@ -212,8 +221,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			display: block;
 			position: absolute;
 			z-index: 3;
-			top: var(--phone-radius, 0px);
-			bottom: var(--phone-radius, 0px);
+			top: var(--corner, 0px);
+			bottom: var(--corner, 0px);
 			right: 4px;
 			width: 3px;
 			pointer-events: none;
@@ -254,7 +263,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 		.ask-me[data-layout="phone"] .ask-log::-webkit-scrollbar-track {
 			background: transparent;
-			margin-block: var(--phone-radius, 0px);
+			margin-block: var(--corner, 0px);
 		}
 
 		.ask-me[data-layout="phone"] .ask-log::-webkit-scrollbar-thumb {
@@ -855,6 +864,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	const log = document.querySelector<HTMLOListElement>("[data-ask-log]")!;
+	/** The chat's own zoom (the phone layout scales it up; 1 elsewhere). */
+	const chatZoom = () => parseFloat(getComputedStyle(log.closest(".ask-me") ?? log).zoom) || 1;
 	const template = document.querySelector<HTMLTemplateElement>("[data-ask-template]")!;
 	const chips = document.querySelector<HTMLUListElement>("[data-ask-chips]")!;
 	const form = document.querySelector<HTMLFormElement>("[data-ask-form]")!;
@@ -962,7 +973,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			const dt = Math.min(now - last, 50);
 			last = now;
 			const before = chips.scrollLeft;
-			chips.scrollLeft -= velocity * dt;
+			chips.scrollLeft -= (velocity * dt) / chatZoom();
 			velocity *= GLIDE_FRICTION ** (dt / (1000 / 60));
 			// Ran into an end, or slowed to nothing.
 			if (chips.scrollLeft === before || Math.abs(velocity) < GLIDE_MIN_SPEED) {
@@ -1002,7 +1013,9 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			chips.setPointerCapture(event.pointerId);
 			chips.dataset.dragging = "";
 		}
-		chips.scrollLeft = drag.left - dx;
+		// Scroll positions count in the zoomed chat's pixels, the pointer in
+		// screen pixels: divided, the row stays under the cursor.
+		chips.scrollLeft = drag.left - dx / chatZoom();
 		samples.push({ x: event.clientX, t: performance.now() });
 		if (samples.length > 20) samples.shift();
 	});
@@ -1519,15 +1532,21 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		const tail = part(msg, ".ask-tail");
 		const end = bubble.getBoundingClientRect();
 		const pad = parseFloat(getComputedStyle(bubble).paddingLeft);
+		// Rects are screen pixels; the transform and clip apply inside the
+		// chat's zoom (the phone layout's --ask-zoom), so they're converted
+		// back, or the bubble would fly in from 10% too far away.
+		const z = chatZoom();
 
 		// Line the bubble's text up with the source text, centred vertically.
-		const dx = from.left + textInset - (end.left + pad);
-		const dy = from.top + from.height / 2 - (end.top + end.height / 2);
-		const startWidth = Math.min(from.width, end.width);
-		const startHeight = Math.min(from.height, end.height);
-		const clipTop = (end.height - startHeight) / 2;
+		const dx = (from.left - end.left) / z + textInset - pad;
+		const dy = (from.top + from.height / 2 - (end.top + end.height / 2)) / z;
+		const endWidth = end.width / z;
+		const endHeight = end.height / z;
+		const startWidth = Math.min(from.width / z, endWidth);
+		const startHeight = Math.min(from.height / z, endHeight);
+		const clipTop = (endHeight - startHeight) / 2;
 		const startRadius = startHeight / 2;
-		const startClip = `inset(${clipTop}px ${end.width - startWidth}px ${clipTop}px 0px round ${startRadius}px)`;
+		const startClip = `inset(${clipTop}px ${endWidth - startWidth}px ${clipTop}px 0px round ${startRadius}px)`;
 
 		body.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }], {
 			duration: spring.duration,
