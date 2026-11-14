@@ -1228,10 +1228,36 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		const height = log.clientHeight;
 		const lost = lastLogHeight - height;
 		lastLogHeight = height;
+		// Keyboard opening: held on the newest message (see below).
+		if (performance.now() < stickUntil) {
+			stickToEnd();
+			return;
+		}
 		// A glide to the end is already headed there; nudging it would read
 		// as the visitor taking over and stop it.
 		if (lost > 0 && !following) log.scrollTop += lost;
 	}).observe(log);
+
+	/* Held on the newest message while a phone keyboard opens. Safari reports
+	   the new size once, at the end; Chrome in steps along the way; and the
+	   suggestions' room under the thread drops at the same moment. A glide
+	   started once could finish early or be knocked off by any of that, and
+	   the newest messages ended up under the keyboard. So for as long as the
+	   keyboard is still settling, every change of size or scroll room snaps
+	   the thread straight to its end. A touch or wheel on the thread lets go. */
+	let stickUntil = 0;
+	function stickToEnd() {
+		stopFollow();
+		log.scrollTop = log.scrollHeight - log.clientHeight;
+		pinnedToEnd = true;
+	}
+	function holdEndFor(ms: number) {
+		stickUntil = Math.max(stickUntil, performance.now() + ms);
+		stickToEnd();
+	}
+	for (const type of ["touchstart", "wheel"]) {
+		log.addEventListener(type, () => (stickUntil = 0), { passive: true });
+	}
 
 	/** Mark every bubble that's followed by another from the same side, so only the last in a run keeps its tail. */
 	const isUser = (msg: Element | null) => (msg as HTMLElement | null)?.dataset.role === "user";
@@ -1466,19 +1492,19 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	// with the full gap under it. Like iMessage, tapping the field always
 	// jumps to the latest, even when scrolled back up through the thread.
 	input.addEventListener("focus", () => {
-		if (!touchScreen.matches && !pinnedToEnd) return;
-		pinnedToEnd = true;
-		const vv = window.visualViewport;
-		let done = false;
-		const settle = () => {
-			if (done) return;
-			done = true;
-			vv?.removeEventListener("resize", settle);
-			if (pinnedToEnd) followToEnd();
-		};
-		vv?.addEventListener("resize", settle, { once: true });
-		// No keyboard (desktop), or no resize event: settle anyway.
-		setTimeout(settle, 350);
+		if (touchScreen.matches) {
+			// Held on the newest message through the keyboard's arrival; each
+			// resize along the way extends the hold a little.
+			holdEndFor(1000);
+			return;
+		}
+		// Desktop: no keyboard, just catch up if already following along.
+		if (pinnedToEnd) followToEnd();
+	});
+	window.visualViewport?.addEventListener("resize", () => {
+		if (!touchScreen.matches || document.activeElement !== input || !stickUntil) return;
+		if (performance.now() > stickUntil + 1500) return;
+		holdEndFor(400);
 	});
 
 	/* ---------- Messages ---------- */
