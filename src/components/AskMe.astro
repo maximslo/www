@@ -157,8 +157,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		   script: it's 0 until the thread overflows, and 0 always where
 		   scrollbars overlay the content. A fixed amount left sent bubbles
 		   6px from the edge whenever there was no bar. */
+		/* Bottom: room between the newest message and the compose field
+		   (--last-gap, past the 9.5px tail), then the field itself. */
+		--last-gap: 28px;
 		padding: var(--top-fade) calc(var(--screen-pad) - var(--scrollbar-width, 0px))
-			calc(10px + var(--form-height) + var(--form-gap) + var(--screen-pad)) var(--screen-pad);
+			calc(var(--last-gap) + var(--form-height) + var(--form-gap) + var(--screen-pad)) var(--screen-pad);
 	}
 
 	/* Lined up with the suggestions and bubbles, and inset the same 20px from
@@ -1335,9 +1338,12 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	});
 
 	// On phones the keyboard opens on focus and the chat shrinks to fit above
-	// it; once it has, bring the newest message back into view over the input.
+	// it; once it has, bring the newest message back into view over the input,
+	// with the full gap under it. Like iMessage, tapping the field always
+	// jumps to the latest, even when scrolled back up through the thread.
 	input.addEventListener("focus", () => {
-		if (!pinnedToEnd) return;
+		if (!touchScreen.matches && !pinnedToEnd) return;
+		pinnedToEnd = true;
 		const vv = window.visualViewport;
 		let done = false;
 		const settle = () => {
