@@ -13,8 +13,8 @@
 	/* The page itself never scrolls: everything lives in the fixed stage. With
 	   nothing to scroll, iOS can't shove the page around when the keyboard
 	   opens, and the 100lvh sheet can't run under a bottom address bar. */
-	:global(html:not([data-kb-scrollable]):has(.phone-stage)),
-	:global(html:not([data-kb-scrollable]):has(.phone-stage) body) {
+	:global(html:has(.phone-stage)),
+	:global(body:has(.phone-stage)) {
 		height: 100%;
 		overflow: hidden;
 		overscroll-behavior: none;
@@ -111,17 +111,6 @@
 	// Keep the stage on the visual viewport: the part of the page actually on
 	// screen, above the keyboard and between the browser's bars.
 	const stage = document.querySelector<HTMLElement>("[data-phone-stage]");
-
-	/* Temporary keyboard experiments, switched on from the address:
-	   ?nofit      drop viewport-fit=cover from the viewport tag
-	   ?nativefocus let a tap focus the field natively (no takeover)
-	   ?scrollable  leave the page scrollable (no overflow lock)
-	   ?slide      always slide, even in Chrome on iOS */
-	const kbTest = new URLSearchParams(location.search);
-	if (kbTest.has("nofit")) {
-		document.querySelector('meta[name="viewport"]')?.setAttribute("content", "width=device-width, initial-scale=1");
-	}
-	if (kbTest.has("scrollable")) document.documentElement.toggleAttribute("data-kb-scrollable", true);
 	const vv = window.visualViewport;
 
 	const fieldFocused = () => {
@@ -238,7 +227,7 @@
 		};
 		document.addEventListener("focusin", () => {
 			if (!matchMedia("(pointer: coarse)").matches || !fieldFocused() || vv.height < fullHeight - 1) return;
-			const cut = !kbTest.has("slide") && cutsView();
+			const cut = cutsView();
 			stage.toggleAttribute("data-kb-opening", !cut);
 			clearTimeout(openingTimer);
 			openingTimer = window.setTimeout(() => stage.removeAttribute("data-kb-opening"), 1200);
@@ -283,7 +272,7 @@
 	   field above the keyboard), so on touch screens the tap is taken over
 	   and the field focused with preventScroll. The keyboard still opens:
 	   it's a focus from the tap's own touchend. */
-	if (stage && window.matchMedia("(pointer: coarse)").matches && !kbTest.has("nativefocus")) {
+	if (stage && window.matchMedia("(pointer: coarse)").matches) {
 		let start: { x: number; y: number } | null = null;
 		stage.addEventListener(
 			"touchstart",
