@@ -136,6 +136,13 @@
 		// Keyboard on its way up but not yet reported (see below).
 		let predicting = false;
 		let predictTimer = 0;
+		// The frame-driven keyboard slide (see below), declared up here since
+		// sync() reads them and runs first.
+		let slideFrame = 0;
+		let slideTarget = 0;
+		let slideH = 0;
+		let slideLast = 0;
+		let slideStop = 0;
 		const KB_KEY = "phone-kb-h";
 		const CUT_KEY = "phone-kb-cut";
 		/* Chrome on iOS (and the other non-Safari iOS browsers) doesn't slide
@@ -162,6 +169,7 @@
 				// and let the slide already under way retarget to it.
 				predicting = false;
 				clearTimeout(predictTimer);
+				slideTarget = vv.height;
 				try {
 					localStorage.setItem(KB_KEY, `${innerWidth}:${Math.round(fullHeight - vv.height)}`);
 					// The whole page shrank with it, not just the visible part:
@@ -173,7 +181,7 @@
 			// phone is already growing back, so don't pull it in again. And
 			// while a keyboard is predicted, the full height reported before
 			// it arrives isn't news.
-			if ((!closing || vv.height >= fullHeight - 1) && !predicting) stage.style.setProperty("--vv-h", `${vv.height}px`);
+			if ((!closing || vv.height >= fullHeight - 1) && !predicting && !slideFrame) stage.style.setProperty("--vv-h", `${vv.height}px`);
 			stage.style.setProperty("--vv-top", `${vv.offsetTop}px`);
 			// Keyboard closed again: undo any scroll iOS made to reveal the
 			// input, so the page is back where it started.
@@ -235,6 +243,37 @@
 			} catch {}
 			return Math.round(screen.height * 0.39);
 		};
+		/* Chrome on iOS also freezes the page for ~100ms around the tap, so
+		   an animation on wall time (a CSS transition) is mostly over by the
+		   first frame it draws: the field teleported. This slide is advanced
+		   by drawn frame instead, each frame easing the height a step toward
+		   the target (and no more than 25ms worth), so however long the
+		   freeze, the first drawn frame is an early step and every one after
+		   moves smoothly. The field rises out from behind the keys into
+		   place. Retargetable mid-slide: the real keyboard height, when
+		   reported, just becomes the new target. */
+		const slideStep = (now: number) => {
+			slideFrame = 0;
+			const dt = Math.min(now - slideLast, 25);
+			slideLast = now;
+			// Ease out on a ~90ms curve: ~350ms to land.
+			slideH += (slideTarget - slideH) * (1 - Math.exp(-dt / 90));
+			const done = Math.abs(slideTarget - slideH) < 0.5;
+			if (done) slideH = slideTarget;
+			stage.style.setProperty("--vv-h", `${slideH}px`);
+			// Landed, and the target is the browser's own figure: finished.
+			// Landed on a guess: idle on, in case the real height differs.
+			if ((done && !predicting) || now > slideStop) {
+				slideFrame = 0;
+				sync();
+				return;
+			}
+			slideFrame = requestAnimationFrame(slideStep);
+		};
+		const stopSlide = () => {
+			cancelAnimationFrame(slideFrame);
+			slideFrame = 0;
+		};
 		document.addEventListener("focusin", () => {
 			if (!matchMedia("(pointer: coarse)").matches || !fieldFocused() || vv.height < fullHeight - 1) return;
 			const cut = cutsView();
@@ -242,16 +281,20 @@
 			clearTimeout(openingTimer);
 			openingTimer = window.setTimeout(() => stage.removeAttribute("data-kb-opening"), 1200);
 			predicting = true;
-			/* From the first frame actually drawn, not the tap: Chrome on iOS
-			   draws nothing for ~75ms while it brings the keyboard up, and a
-			   slide timed from the tap was three-quarters done by then, so
-			   the field snapped most of the way. Started here, its first
-			   drawn frame is its first step. */
+			/* From the first frame actually drawn, not the tap: nothing is
+			   drawn before it anyway, and a head start would only be eaten
+			   unseen. */
 			const target = Math.max(200, fullHeight - expectedKeyboard());
-			if (cut) stage.style.setProperty("--vv-h", `${target}px`);
-			else requestAnimationFrame(() => {
-				if (predicting) stage.style.setProperty("--vv-h", `${target}px`);
-			});
+			if (cut) {
+				slideTarget = target;
+				slideH = parseFloat(stage.style.getPropertyValue("--vv-h")) || vv.height;
+				slideLast = performance.now();
+				slideStop = slideLast + 1500;
+				if (!slideFrame) slideFrame = requestAnimationFrame(slideStep);
+			} else
+				requestAnimationFrame(() => {
+					if (predicting) stage.style.setProperty("--vv-h", `${target}px`);
+				});
 			// No keyboard after all (a hardware one, say): ease back.
 			clearTimeout(predictTimer);
 			predictTimer = window.setTimeout(() => {
@@ -262,6 +305,7 @@
 		document.addEventListener("focusout", () => {
 			clearTimeout(openingTimer);
 			stage.removeAttribute("data-kb-opening");
+			stopSlide();
 			if (!predicting) return;
 			predicting = false;
 			clearTimeout(predictTimer);
