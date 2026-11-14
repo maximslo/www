@@ -119,6 +119,9 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		margin-top: var(--section-gap);
 		--imsg-blue: #0092ff;
 		--imsg-gray: #e9e9eb;
+		/* No grey flash over the field, chips or send button on tap (iOS
+		   WebKit, Chrome included); the controls show their own states. */
+		-webkit-tap-highlight-color: transparent;
 	}
 
 	/* Phone layout: the chat fills the PhoneFrame top to bottom and the thread
