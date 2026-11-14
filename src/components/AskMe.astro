@@ -4,11 +4,9 @@ import { GREETING } from "../chat/system-prompt";
 interface Props {
 	// "phone": fills its container (PhoneFrame) instead of a fixed 400px window.
 	layout?: "inline" | "phone";
-	// "dark": iMessage's dark look, for a black phone screen.
-	theme?: "light" | "dark";
 }
 
-const { layout = "inline", theme = "light" } = Astro.props;
+const { layout = "inline" } = Astro.props;
 
 // Questions the profile can actually answer, so the first tap lands well.
 const SUGGESTIONS = [
@@ -23,7 +21,7 @@ const SUGGESTIONS = [
 const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336 13.2978 25.924 16.6489Z";
 ---
 
-<section class="ask-me" data-layout={layout} data-theme={theme} aria-labelledby="ask-me-label">
+<section class="ask-me" data-layout={layout} aria-labelledby="ask-me-label">
 	<!-- Clicking the label focuses the input, so the hover nudge points somewhere real. -->
 	<label class="ask-label" id="ask-me-label" for="ask-input">
 		Chat
@@ -274,64 +272,6 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			border: 4px solid transparent;
 			border-radius: 7px;
 		}
-	}
-
-	/* Dark theme: iMessage in dark mode on a black screen. Sent bubbles stay
-	   blue; received ones go dark gray with white text, and the field,
-	   suggestions and scroll bars are retuned to read on black. The extra
-	   .ask-me.ask-me[data-theme] doubles the class so these outrank the light
-	   rules, some of which come later at the same specificity. */
-	.ask-me.ask-me[data-theme="dark"] {
-		--imsg-gray: #262628;
-		--ask-bg: #000;
-	}
-
-	.ask-me.ask-me[data-theme="dark"] .ask-log :global(.ask-msg:not([data-role="user"])) {
-		--bubble-fg: #fff;
-	}
-
-	.ask-me.ask-me[data-theme="dark"] .ask-log :global(.ask-dots i) {
-		background: #98989f;
-	}
-
-	.ask-me.ask-me[data-theme="dark"] .ask-chip {
-		background: #000;
-	}
-
-	.ask-me.ask-me[data-theme="dark"] .ask-chip:hover {
-		background: rgba(0, 146, 255, 0.16);
-	}
-
-	/* Frosted glass, dark (alexsafayan.com's dark variant): the blurred
-	   thread behind is dimmed rather than washed white. */
-	.ask-me.ask-me[data-theme="dark"] .ask-form {
-		background: rgba(255, 255, 255, 0.05);
-		-webkit-backdrop-filter: blur(8px) saturate(300%) brightness(0.3);
-		backdrop-filter: blur(8px) saturate(300%) brightness(0.3);
-		box-shadow:
-			0 0 32px rgba(0, 0, 0, 0.12),
-			inset 0 0 3px 1px rgba(255, 255, 255, 0.2);
-	}
-
-	.ask-me.ask-me[data-theme="dark"] .ask-input {
-		color: #fff;
-	}
-
-	.ask-me.ask-me[data-theme="dark"] .ask-input::placeholder {
-		color: #8d8d93;
-	}
-
-	.ask-me.ask-me[data-theme="dark"] .ask-log {
-		scrollbar-color: #48484a transparent;
-	}
-
-	.ask-me.ask-me[data-theme="dark"] .ask-log::-webkit-scrollbar-thumb {
-		background: #48484a;
-		background-clip: padding-box;
-	}
-
-	.ask-me.ask-me[data-theme="dark"] .ask-scroll-thumb {
-		background: rgba(255, 255, 255, 0.4);
 	}
 
 	.ask-label {

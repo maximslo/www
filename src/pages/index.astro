@@ -8,7 +8,7 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 {/* Just the chat, in a phone. No reveal slot, so BaseLayout renders the white
     sheet alone and canvas-reveal.ts stands down. */}
 <BaseLayout title={INTRO_NAME} description={META_DESCRIPTION}>
-	<PhoneFrame theme="dark">
-		<AskMe layout="phone" theme="dark" />
+	<PhoneFrame>
+		<AskMe layout="phone" />
 	</PhoneFrame>
 </BaseLayout>
