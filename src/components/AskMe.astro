@@ -160,6 +160,9 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		/* Bottom: room between the newest message and the compose field
 		   (--last-gap, past the 9.5px tail), then the field itself. */
 		--last-gap: 28px;
+		/* The phone is narrow: let a bubble take a bit more of it, so longer
+		   lines (and links) fit on one line. */
+		--bubble-max: 85%;
 		padding: var(--top-fade) calc(var(--screen-pad) - var(--scrollbar-width, 0px))
 			calc(var(--last-gap) + var(--form-height) + var(--form-gap) + var(--screen-pad)) var(--screen-pad);
 	}
@@ -409,7 +412,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	.ask-log :global(.ask-msg) {
 		width: fit-content;
-		max-width: 80%;
+		max-width: var(--bubble-max, 80%);
 		margin-top: 12px;
 	}
 
@@ -474,15 +477,12 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	/* Links in replies: the bubble's own colour, underlined, so they read as
 	   tappable without a new colour in the thread. */
+	/* Links in replies, iMessage style: blue and underlined, no hover change. */
 	.ask-log :global(.ask-link) {
-		color: inherit;
+		color: var(--imsg-blue);
 		text-decoration: underline;
 		text-decoration-thickness: 1px;
 		text-underline-offset: 2px;
-	}
-
-	.ask-log :global(.ask-link:hover) {
-		text-decoration-thickness: 2px;
 	}
 
 	/* The tail hangs below the bubble, tucked 8px in from its edge. It sits
@@ -815,8 +815,25 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		msg.style.width = "";
 		const range = document.createRange();
 		range.selectNodeContents(text);
+		// A line can come back as several rects: one per text node or link on
+		// it, and one per piece of a link split at its break points. So each
+		// line is measured edge to edge (its rects grouped by vertical
+		// position), not by its widest single rect, which fitted a bubble to
+		// "github.com/" alone and wrapped "maximslo" onto a second line.
+		const lines = new Map<number, { left: number; right: number }>();
+		for (const rect of range.getClientRects()) {
+			if (!rect.width) continue;
+			const key = Math.round(rect.top + rect.height / 2);
+			const line = [...lines.entries()].find(([mid]) => Math.abs(mid - key) <= rect.height / 2)?.[1];
+			if (line) {
+				line.left = Math.min(line.left, rect.left);
+				line.right = Math.max(line.right, rect.right);
+			} else {
+				lines.set(key, { left: rect.left, right: rect.right });
+			}
+		}
 		let widest = 0;
-		for (const rect of range.getClientRects()) widest = Math.max(widest, rect.width);
+		for (const line of lines.values()) widest = Math.max(widest, line.right - line.left);
 		if (widest === 0) return;
 		// Measured on screen, so a bubble mid-animation (the typing bubble
 		// still scaling in when its line arrives) reads small. Undo that scale,
