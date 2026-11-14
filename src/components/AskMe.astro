@@ -437,6 +437,65 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		--bubble-fg: #fff;
 	}
 
+	/* iMessage's shaded blue (after alexsafayan.com): sent bubbles are a
+	   deeper blue low in the thread and lighten as they scroll up. Each
+	   bubble tracks its own trip through the thread (a view timeline) and
+	   fades a lighter blue in over itself; the tail, drawn separately, shifts
+	   its fill on the same timeline so the two always match. Browsers without
+	   scroll-driven animations keep the flat blue. */
+	@supports (animation-timeline: view()) {
+		.ask-log :global(.ask-msg[data-role="user"]) {
+			--bubble-bg: rgb(0, 140, 255);
+		}
+
+		.ask-log :global(.ask-msg[data-role="user"] .ask-body) {
+			view-timeline-name: --ask-bubble;
+			view-timeline-axis: y;
+		}
+
+		.ask-log :global(.ask-msg[data-role="user"] .ask-bubble) {
+			position: relative;
+			isolation: isolate;
+		}
+
+		.ask-log :global(.ask-msg[data-role="user"] .ask-bubble::after) {
+			content: "";
+			position: absolute;
+			inset: 0;
+			z-index: -1;
+			border-radius: inherit;
+			background: rgb(0, 190, 255);
+			pointer-events: none;
+			animation: ask-bubble-lighten linear both;
+			animation-timeline: --ask-bubble;
+			animation-range: cover 30%;
+		}
+
+		.ask-log :global(.ask-msg[data-role="user"] .ask-tail) {
+			animation: ask-tail-lighten linear both;
+			animation-timeline: --ask-bubble;
+			animation-range: cover 30%;
+		}
+	}
+
+	@keyframes ask-bubble-lighten {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	@keyframes ask-tail-lighten {
+		from {
+			fill: rgb(0, 140, 255);
+		}
+		to {
+			fill: rgb(0, 190, 255);
+		}
+	}
+
 	.ask-log :global(.ask-msg:not([data-role="user"])) {
 		align-self: flex-start;
 		--bubble-bg: var(--imsg-gray);
