@@ -137,6 +137,8 @@
 		   the phone takes its new height at once, to be in place by the cut.
 		   Known by name, or learned from the first keyboard on this device. */
 		const cutsView = () => {
+			// Temporary: the ?iw= experiment wants to see the slide.
+			if (new URLSearchParams(location.search).has("iw")) return false;
 			if (/CriOS|FxiOS|EdgiOS|OPiOS/.test(navigator.userAgent)) return true;
 			try {
 				return localStorage.getItem(CUT_KEY) === "1";
