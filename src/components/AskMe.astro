@@ -2066,6 +2066,78 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		updateChips();
 	}
 
+	/* ---------- Kept across page loads ----------
+	   The thread lives only on the page, so leaving for /portfolio (or any
+	   link in this tab) and coming back would show a fresh greeting while the
+	   server still has the conversation. So the thread is saved for the tab
+	   (sessionStorage, like the session id it belongs to) whenever the page
+	   is left, and put back as it was when the page loads again, with no
+	   intro replayed. A new chat drops it. */
+	const THREAD_KEY = "ask-me-thread";
+	type SavedThread = { session: string; log: string; chips: string; chipsOff: boolean; typed: number; scroll: number | null };
+	function saveThread() {
+		try {
+			const session = sessionStorage.getItem(SESSION_KEY);
+			// The session id is made by the first question: without one,
+			// nothing's been asked and there's no conversation to keep.
+			if (!session) {
+				sessionStorage.removeItem(THREAD_KEY);
+				return;
+			}
+			const copy = log.cloneNode(true) as HTMLElement;
+			// Typing dots still waiting on a reply don't come back as dots.
+			copy.querySelectorAll(".ask-msg[data-pending]").forEach((msg) => msg.remove());
+			const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 4;
+			const saved: SavedThread = {
+				session,
+				log: copy.innerHTML,
+				chips: chips.innerHTML,
+				chipsOff: chipsDisabled,
+				typed: typedInARow,
+				scroll: atEnd ? null : log.scrollTop,
+			};
+			sessionStorage.setItem(THREAD_KEY, JSON.stringify(saved));
+		} catch {}
+	}
+	addEventListener("pagehide", saveThread);
+	document.querySelector<HTMLButtonElement>("[data-ask-new]")?.addEventListener("click", () => {
+		try {
+			sessionStorage.removeItem(THREAD_KEY);
+		} catch {}
+	});
+
+	(() => {
+		let saved: SavedThread | null = null;
+		try {
+			saved = JSON.parse(sessionStorage.getItem(THREAD_KEY) ?? "null");
+			// Only for the conversation the server is still keeping.
+			if (saved && saved.session !== sessionStorage.getItem(SESSION_KEY)) saved = null;
+		} catch {}
+		if (!saved) return;
+		log.innerHTML = saved.log;
+		chips.innerHTML = saved.chips;
+		introLines.splice(0);
+		introRunning = false;
+		typedInARow = saved.typed;
+		if (saved.chipsOff) {
+			// Put away for good (typed three in a row): hidden from the start.
+			chipsDisabled = true;
+			chipsShown = false;
+			chips.inert = true;
+			chips.style.transform = `translateY(${CHIPS_OFFSET}px)`;
+			log.toggleAttribute("data-chips-off", true);
+		}
+		fitAll();
+		const place = () => {
+			pinnedToEnd = saved.scroll === null;
+			log.scrollTop = saved.scroll ?? log.scrollHeight;
+		};
+		place();
+		// Again once the layout has settled (fonts, the phone's final size).
+		requestAnimationFrame(place);
+		addEventListener("load", place, { once: true });
+	})();
+
 	if (introRunning) {
 		// Suggestions wait under the compose field until the greeting is done.
 		chipsShown = false;
@@ -2095,7 +2167,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			.then(() => pause(INTRO_LEAD_MS))
 			// Unless a new chat already took over the intro meanwhile.
 			.then(() => introObserver === observer && observer.observe(log.lastElementChild!));
-	} else {
+	} else if (!chipsDisabled) {
 		chips.style.transform = "none";
 		chips.inert = false;
 	}

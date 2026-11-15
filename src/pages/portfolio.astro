@@ -13,7 +13,7 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 			<path d="m15 18-6-6 6-6"></path>
 		</svg>
-		Chat
+		<span>Chat</span>
 	</a>
 	<ExperimentsLab />
 	<SiteFooter />
@@ -82,6 +82,19 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 	.portfolio-back:focus-visible {
 		outline: 2px solid #fff;
 		outline-offset: 2px;
+	}
+
+	/* Centred on its letters, not its line box: the font's line box has more
+	   room above the capitals than below, which left "Chat" sitting high.
+	   Trimmed to cap height and baseline, flexbox centres what you see. */
+	.portfolio-back span {
+		text-box: trim-both cap alphabetic;
+	}
+
+	@supports not (text-box: trim-both cap alphabetic) {
+		.portfolio-back span {
+			transform: translateY(0.05em);
+		}
 	}
 
 	.portfolio-back svg {
