@@ -183,9 +183,19 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		-webkit-tap-highlight-color: transparent;
 		transition:
 			transform 200ms ease-out,
-			background-color 200ms ease-out;
+			background-color 200ms ease-out,
+			opacity 250ms ease;
 		/* Its own layer, scaled whole on press, so the letters don't wobble. */
 		will-change: transform;
+	}
+
+	/* Out of the way while a project is open: gone as the project grows
+	   (at the veil's pace), back once it has shrunk into the grid again.
+	   lab-lightbox.ts holds .is-lightbox-open for that whole stretch. */
+	:global(html.is-lightbox-open) .portfolio-back {
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 340ms ease;
 	}
 
 	.portfolio-back:hover {
