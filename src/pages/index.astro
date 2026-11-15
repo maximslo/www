@@ -4,9 +4,8 @@ import AskMe from "../components/AskMe.astro";
 import PhoneFrame from "../components/PhoneFrame.astro";
 import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 
-// "Maxim S.", for windows too narrow for the whole name beside the phone.
-const [first, last = ""] = INTRO_NAME.split(" ");
-const shortName = last ? `${first} ${last[0]}.` : first;
+// First name and the rest, so the name can stack on two lines.
+const [first, ...rest] = INTRO_NAME.split(" ");
 ---
 
 {/* Just the chat, in a phone. No reveal slot, so BaseLayout renders the white
@@ -15,8 +14,7 @@ const shortName = last ? `${first} ${last[0]}.` : first;
 	{/* My name, top left beside the phone, set like the messages. Desktop
 	    only: at phone widths the chat fills the screen. */}
 	<p class="site-name">
-		<span class="site-name-full">{INTRO_NAME}</span>
-		<span class="site-name-short">{shortName}</span>
+		<span class="site-name-line">{first}</span>{" "}<span class="site-name-line">{rest.join(" ")}</span>
 	</p>
 	<PhoneFrame>
 		<AskMe layout="phone" />
@@ -47,17 +45,18 @@ const shortName = last ? `${first} ${last[0]}.` : first;
 		}
 	}
 
-	.site-name-short {
-		display: none;
-	}
-
-	@media (width <= 1070px) {
-		.site-name-full {
-			display: none;
+	/* Too narrow for it on one line beside the phone: first name over last,
+	   set tight. The first line stays where it was: the padding makes up
+	   the half of the leading the tighter line height took off its top
+	   ((1.4 - 1.15) / 2 = 0.125em). */
+	@media (width > 768px) and (width <= 1070px) {
+		.site-name {
+			padding-top: 0.125em;
+			line-height: 1.15;
 		}
 
-		.site-name-short {
-			display: inline;
+		.site-name-line {
+			display: block;
 		}
 	}
 </style>
