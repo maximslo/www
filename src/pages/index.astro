@@ -8,9 +8,8 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 {/* Just the chat, in a phone. No reveal slot, so BaseLayout renders the white
     sheet alone and canvas-reveal.ts stands down. */}
 <BaseLayout title={INTRO_NAME} description={META_DESCRIPTION}>
-	{/* My name, top left beside the phone, in the site's body text (as the
-	    old intro set it). Desktop only: at phone widths the chat fills the
-	    screen. */}
+	{/* My name, top left beside the phone, set like the messages. Desktop
+	    only: at phone widths the chat fills the screen. */}
 	<p class="site-name">{INTRO_NAME}</p>
 	<PhoneFrame>
 		<AskMe layout="phone" />
@@ -30,7 +29,10 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 			top: 40px;
 			left: 64px;
 			margin: 0;
-			font-size: 20px;
+			/* The messages' type as it shows: AskMe's 15px at weight 500, scaled
+			   up 1.1 by the chat's --ask-zoom. */
+			font-size: 16.5px;
+			font-weight: 500;
 		}
 	}
 </style>
