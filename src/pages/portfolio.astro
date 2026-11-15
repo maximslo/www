@@ -42,15 +42,15 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		   Values are the reference's own (its video cards): 0.5s (0.55s on
 		   phones), transform on cubic-bezier(0, .91, 0, 1), opacity linear;
 		   400px of travel for tiles on the first screen, their own height for
-		   ones scrolled to; only the first 3 rows (5 on phones) and whatever's
-		   on the first screen animate, the rest are just there. (In a block:
+		   ones scrolled to. Unlike the reference, which only animates its first
+		   few rows, every tile does: what's on screen first, then each one as
+		   it's scrolled into view. (In a block:
 		   an inline script's names are otherwise page-wide.) */
 		if (document.documentElement.hasAttribute("data-entry")) {
 			const root = document.documentElement;
 			root.setAttribute("data-entry-running", "");
 			const phone = matchMedia("(max-width: 480px)").matches;
 			const duration = phone ? 550 : 500;
-			const rows = phone ? 5 : 3;
 			const STAGGER = 75;
 			const MARGIN = 40;
 			const columns = [...document.querySelectorAll(".lab-column")];
@@ -95,10 +95,6 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 				[...column.querySelectorAll(":scope > .lab-tile")].forEach((tile, row) => {
 					const box = tile.getBoundingClientRect();
 					const firstScreen = box.top < innerHeight + MARGIN && box.bottom > 0;
-					// Everything on the first screen joins in, so a short grid that
-					// fits whole (phones) doesn't have its last row sitting there
-					// while the rest rise.
-					if (row >= rows && !firstScreen) return reveal(tile);
 					order.set(tile, row * columns.length + col);
 					// On the first screen: the reference's fixed 400px of travel.
 					if (firstScreen) offsets.set(tile, 400);
