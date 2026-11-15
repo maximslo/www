@@ -220,13 +220,24 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 	/* Centred on its letters, not its line box: the font's line box has more
 	   room above the capitals than below, which left "Chat" sitting high.
 	   Trimmed to cap height and baseline, flexbox centres what you see. */
+	/* Set exactly like my name on the home page, and the chat's messages:
+	   15px scaled up 1.1, so SF Pro draws it at the same optical size
+	   (16.5px set directly gets different letterforms and spacing). The
+	   scale doesn't change its layout width, so the 10% it adds to "Chat"
+	   (~2.1em wide) is made up on the right, keeping the pill's padding. */
 	.portfolio-back span {
+		display: inline-block;
+		font-size: 15px;
 		text-box: trim-both cap alphabetic;
+		/* Measured: scaled, the capitals landed ~0.6px below centre. */
+		transform: translateY(-0.5px) scale(1.1);
+		transform-origin: left center;
+		margin-right: 0.21em;
 	}
 
 	@supports not (text-box: trim-both cap alphabetic) {
 		.portfolio-back span {
-			transform: translateY(0.05em);
+			transform: translateY(-0.5px) scale(1.1) translateY(0.05em);
 		}
 	}
 
