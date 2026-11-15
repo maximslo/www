@@ -54,10 +54,12 @@
 		padding: 0 16px 16px;
 	}
 
-	/* Sized like posh.vip's phone: 330×697 at most, with a 47px radius, and
-	   shrinking as a whole to fit the screen (proportions and corner kept).
-	   Only the frame scales; the chat inside keeps its own type and bubble
-	   sizes.
+	/* Sized like posh.vip's phone: 330×697 at most, with a 47px radius. Its
+	   width never gives way to a short window: only its height does, so on
+	   a short screen it's a shorter phone, not a narrower one (a narrow one
+	   squeezed every bubble into a column of single words). Only a window
+	   too narrow for it makes it narrower. The chat inside keeps its own
+	   type and bubble sizes either way.
 
 	   Everything but the height comes from `svh`, the screen's height with the
 	   browser's bars showing, which a keyboard never changes. So with the
@@ -73,9 +75,10 @@
 		   still narrowed the phone there. */
 		--phone-w: var(
 			--phone-w-lock,
-			min(330px, 100vw - 32px, (100svh - 32px - var(--phone-gap-bottom)) * 330 / 697)
+			min(330px, 100vw - 32px)
 		);
-		--phone-full-h: calc(var(--phone-w) * 697 / 330);
+		/* 697 tall at full width, or whatever the screen has room for. */
+		--phone-full-h: min(var(--phone-w) * 697 / 330, 100svh - 32px - var(--phone-gap-bottom));
 		/* Centred on the keyboard-less screen, at least 32px down. */
 		--phone-top: var(--phone-top-lock, max(32px, (100svh - var(--phone-full-h)) / 2));
 		width: var(--phone-w);
