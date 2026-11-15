@@ -158,7 +158,11 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		position: fixed;
 		z-index: 10;
 		top: calc(env(safe-area-inset-top) + 20px);
-		left: calc(env(safe-area-inset-left) + 20px);
+		/* At every width, where it is on desktop: its arrow on my name's
+		   left edge on the home page (64px; the arrow's ink starts 16.5px
+		   into the pill and the name's "M" 1px past 64px, so the pill sits
+		   15.5px left of that). Clear of a notch in landscape too. */
+		left: calc(env(safe-area-inset-left) + 64px - 15.5px);
 		display: flex;
 		align-items: center;
 		gap: 2px;
@@ -242,10 +246,6 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 
 		.portfolio-back {
 			top: calc(var(--name-mid) - 18px);
-			/* Lined up on the arrow, not the pill's edge: the arrow's ink
-			   starts 16.5px into the pill, and the name's "M" 1px past its
-			   64px, so the pill sits 15.5px left of it. */
-			left: calc(64px - 15.5px);
 		}
 
 		:global(body .lab-section.lab-section) {
