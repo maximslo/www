@@ -56,6 +56,41 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 			const columns = [...document.querySelectorAll(".lab-column")];
 			const reveal = (tile) => tile.setAttribute("data-entered", "");
 
+			// Tiles that come into view together rise together, staggered in
+			// reading order (row by row, left to right) from that moment. A
+			// stagger counted from the top of the whole grid made a third-row
+			// tile scrolled to later sit out 300ms+ while the row under it,
+			// which doesn't animate, was already showing.
+			const order = new Map();
+			const offsets = new Map();
+			const observer = new IntersectionObserver(
+				(entries) => {
+					const arriving = entries
+						.filter((entry) => entry.isIntersecting || entry.boundingClientRect.top <= innerHeight + MARGIN)
+						.map((entry) => entry.target)
+						.sort((a, b) => order.get(a) - order.get(b));
+					arriving.forEach((tile, i) => {
+						observer.unobserve(tile);
+						const now = tile.getBoundingClientRect();
+						const offset = offsets.get(tile) ?? Math.max(innerHeight + now.height - now.top, now.height);
+						const delay = i * STAGGER;
+						reveal(tile);
+						// Two animations, as the reference's two transitions: the
+						// rise eased hard, the fade linear. Held at the start through
+						// the stagger, then nothing left behind on the tile (the
+						// lightbox measures and animates it).
+						tile.animate([{ transform: `translateY(${offset}px) scale(0.4)` }, { transform: "none" }], {
+							duration,
+							delay,
+							easing: "cubic-bezier(0, 0.91, 0, 1)",
+							fill: "backwards",
+						});
+						tile.animate([{ opacity: 0 }, { opacity: 1 }], { duration, delay, easing: "linear", fill: "backwards" });
+					});
+				},
+				{ rootMargin: `0px 0px ${MARGIN}px` },
+			);
+
 			columns.forEach((column, col) => {
 				[...column.querySelectorAll(":scope > .lab-tile")].forEach((tile, row) => {
 					const box = tile.getBoundingClientRect();
@@ -64,29 +99,9 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 					// fits whole (phones) doesn't have its last row sitting there
 					// while the rest rise.
 					if (row >= rows && !firstScreen) return reveal(tile);
-					const delay = (row * columns.length + col) * STAGGER;
-
-					const observer = new IntersectionObserver(
-						([entry]) => {
-							if (!entry.isIntersecting && entry.boundingClientRect.top > innerHeight + MARGIN) return;
-							observer.disconnect();
-							const now = tile.getBoundingClientRect();
-							const offset = firstScreen ? 400 : Math.max(innerHeight + now.height - now.top, now.height);
-							reveal(tile);
-							// Two animations, as the reference's two transitions: the
-							// rise eased hard, the fade linear. Held at the start through
-							// the stagger, then nothing left behind on the tile (the
-							// lightbox measures and animates it).
-							tile.animate([{ transform: `translateY(${offset}px) scale(0.4)` }, { transform: "none" }], {
-								duration,
-								delay,
-								easing: "cubic-bezier(0, 0.91, 0, 1)",
-								fill: "backwards",
-							});
-							tile.animate([{ opacity: 0 }, { opacity: 1 }], { duration, delay, easing: "linear", fill: "backwards" });
-						},
-						{ rootMargin: `0px 0px ${MARGIN}px` },
-					);
+					order.set(tile, row * columns.length + col);
+					// On the first screen: the reference's fixed 400px of travel.
+					if (firstScreen) offsets.set(tile, 400);
 					observer.observe(tile);
 				});
 			});
