@@ -7,32 +7,28 @@
         "poster": "/videos/project-one.jpg",
         "placeholder": "#9b9bed",
         "title": "The Future of AI & News",
-        "detail": "OpenAI × Washington Post",
-        "preview": "data:image/jpeg;base64,/9j//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABlAAEBAQEAAAAAAAAAAAAAAAACBQQDAQADAQAAAAAAAAAAAAAAAAAAAQMGEAABBQAABwEBAAAAAAAAAAABEQIAAyETIvAxkuFxUWERAAIDAQEBAAAAAAAAAAAAAAEAIQIRBBRB/8AAEQgADAAUAwEiAAIRAAMRAP/aAAwDAQACEQMRAD8Ap1Um04W5p3c/kd9CJzV+XqbwjArQizgge7Qs1cnZYDmAoRsn6y20uPb9+xcB3Ql9oDQAAEiWJPLR/9k="
+        "detail": "OpenAI × Washington Post"
       },
       {
         "aspect": "1200 / 1210",
         "image": "/images/cooking.jpg",
         "placeholder": "#c4b8a8",
         "href": "https://cooking.nytimes.com",
-        "action": "Visit project",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAJXAlvAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xAB5AAADAAMBAAAAAAAAAAAAAAAFBgECBAMHAQADAQEBAAAAAAAAAAAAAAADAQQFAgAQAAIBAwMDBAMBAQAAAAAAAAECAxEAEjEEIQUTUSIyoYHRkUEjMxEAAgIBAwQDAQEAAAAAAAAAAQACESESgUEicTIDMfChkVH/wAARCAAUABQDARIAAhIAAxIA/9oADAMBAAIRAxEAPwA3GmyldB23ozqD6SppXkAnQ0s7tVPbiYUqJUx5OJNdMhoPJpeYB1WQaFk7BphxvTdKRETRyilV5usXXzXawj+pdI2e3hjaKGVnllxAZg2IKM+FBwaAa/Jtz6hIiwRZpX/VfJrVWHFi6JxJhEg4/c1/Gyfiv1+yZl1HGyCPlh8cl2jK5HZYfQ/NvTy7csdVpxTt4/FbztEk2qIdDXH/AFnEZfS70SmailmAVgwxONCun8vPa+77Nn57PuUKnl1F5FiUGR35qMmJofNNLnVP+a2pSJw8yeogLipUhbI+pv3ck9xsekPSTUVP/9k="
+        "action": "Visit project"
       },
       {
         "aspect": "1200 / 674",
         "image": "/images/clihero.jpg",
         "placeholder": "#dde1de",
         "title": "Designing a CLI",
-        "detail": "The Washington Post",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgACqwKAAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABkAAEAAwEAAAAAAAAAAAAAAAAFAQADBwEBAQEBAAAAAAAAAAAAAAAAAAIDARABAAICAwEBAQAAAAAAAAAAAQMCACERMQUEcZERAAICAgMBAAAAAAAAAAAAAAEAAhESA1FCITH/wAARCAAMABQDARIAAhIAAxIA/9oADAMBAAIRAxEAPwDt2QgnDse8lJInnem/dJLHaOsbGDqyvfHCNTf5rFY/nghVjijjXtrStV/hlSERjjOM7jZrqeD6wAB8DjrnKeeWuWvGVC+w5Hgd7d8udTxP/9k="
+        "detail": "The Washington Post"
       },
       {
         "aspect": "1200 / 928",
         "image": "/images/flue2.jpg",
         "placeholder": "#cfc0e9",
         "title": "Open-Source Harness Framework",
-        "detail": "Astro + Flue",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAAWABVAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABmAAEBAQAAAAAAAAAAAAAAAAAABAcBAQEAAAAAAAAAAAAAAAAAAAAEEAAABQQCAwEAAAAAAAAAAAARARICAAQhAxMiMVIzIxQRAAAGAwEBAQAAAAAAAAAAAAEhEQACEgMxEzJRIv/AABEIABAAFAMBEgACEgADEgD/2gAMAwEAAhEDEQA/ANQiWM6mcdNU/pW5rfmQIyD7PLiBG1J2v3FNTaFOc7ZkyBsyAlQCniRgQFa3cozYeNQkP7O0E8fD0KgZabNm61AApCPmCrVdmJiombmwZ+9hjH8AlJr7+lsEEj22DBysIyvOfuaJZNEBAgETsiTs6Wf/2Q=="
+        "detail": "Astro + Flue"
       },
       {
         "aspect": "1200 / 676",
@@ -40,15 +36,13 @@
         "poster": "/videos/new-project.jpg",
         "placeholder": "#343b40",
         "href": "https://drinks.maximslo.com",
-        "action": "Visit project",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAAEAAPAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABgAAEBAQEBAAAAAAAAAAAAAAAABgECBwEBAAAAAAAAAAAAAAAAAAAAABAAAgEEAgMBAQAAAAAAAAAAAQIDABEEBRIhQXEGMSIRAQEAAwEAAAAAAAAAAAAAAADwIWEx8f/AABEIAAwAFAMBIgACEQADEQD/2gAMAwEAAhEDEQA/APLdLrY9plNA7yRgRs941DNcMotYkdd1QbL5vE1+JLkNk5P83VOUSWZyDxU8WJFz58VBgkfhI9G1aWY9FmPsk0tFjvjmlKUH/9k="
+        "action": "Visit project"
       },
       {
         "aspect": "1078 / 688",
         "video": "/videos/maxim-elections-map-but-make-it-clean-atk6sw.mp4",
         "poster": "/videos/maxim-elections-map-but-make-it-clean-atk6sw.jpg",
-        "placeholder": "#f1ebf1",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAGUQa4AAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABiAAEBAQEBAAAAAAAAAAAAAAAAAwQHBQEBAAAAAAAAAAAAAAAAAAAAARAAAgEEAwEBAQAAAAAAAAAAAQIRAAMSBCFBMXEiMhEAAgEFAQAAAAAAAAAAAAAAABFBIQEx8GFR/8AAEQgADAAUAwEiAAIRAAMRAP/aAAwDAQACEQMRAD8A7ltX11rWbEgZASAD79rLr7YvugW6HDKTGAX+fZ/RPM9CK9NlVhDAEHo+VNbFpHzVFVscZAjiQYgcdUwNlXLjzelqUpQB/9k="
+        "placeholder": "#f1ebf1"
       }
     ],
     [
@@ -57,8 +51,7 @@
         "image": "/images/cookmap.jpg",
         "placeholder": "#e5e0d3",
         "href": "https://sandwiches.maximslo.com",
-        "action": "Visit project",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgACBQH1AAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABvAAADAQEAAAAAAAAAAAAAAAADAQACBwEBAQEBAAAAAAAAAAAAAAAAAAIBAxAAAQMCBQMFAQAAAAAAAAAAAQIRABIDMUFhcSFCgZGhURNysSIRAQADAAEFAQEAAAAAAAAAAAARAWEhAjEioXFRQf/AABEIABQAFAMBEgACEgADEgD/2gAMAwEAAhEDEQA/AOvBVJBCajkM9SNWhA1J11bDMThdxrV1U4w6rYvcqZSmtkdLgEgOw/og++0CgD5TdKlOkFADilSclADBz3kT01e9mxzM38/iouPZPjHH7qPBLzVYTjavL1SioeXEpM5aWxtE5ZopQwGpFtynrAqzfj07TSsE/UfkADgsBtIYDaAH/9k="
+        "action": "Visit project"
       },
       {
         "aspect": "1012 / 609",
@@ -67,16 +60,14 @@
         "bg": "#3a85fc",
         "placeholder": "#8bb0f0",
         "title": "Election Developer Tools",
-        "detail": "The New York Times",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgACqwKAAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xAB3AAEBAQEAAAAAAAAAAAAAAAAFAAYHAQADAQEAAAAAAAAAAAAAAAAGBQAEAxAAAgEDAgQHAQAAAAAAAAAAAQIDBBEAIQUSFTHRgWNxQVEUEzIRAAEEAAQFBQEAAAAAAAAAAAECEQADEgQxEyFTsQWSFRSRcdEy/8AAEQgADAAUAwESAAISAAMSAP/aAAwDAQACEQMRAD8Af2WhpK0zmpZlWNUIIbh/onqfDBIaienJMMskROh4GK39bYZ9wzN2XFe0zqJdw+gEYrqrsbGhK20xAFvmDuVqrtK9xwAA3FplStSP5UU/RadB5FtJuAzhrXUfurXFtDYfPtmG5jXdPtVGvmP3wTHdsziCSa9QGw8esJ/a5fk1+I/I+9OrKMYSspbV+HSJN63mL8jD8s0ynGU//9k="
+        "detail": "The New York Times"
       },
       {
         "aspect": "1200 / 900",
         "image": "/images/wapo11-2.jpg",
         "placeholder": "#c2ceda",
         "title": "Olympics Medal Tracker",
-        "detail": "The Washington Post",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAAEAAPAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABwAAEBAAAAAAAAAAAAAAAAAAAFBgEBAQEBAQAAAAAAAAAAAAAABAUGAgMQAAIBAgUEAwEAAAAAAAAAAAECAwASBCEREyJhcVEVFEEzMhEAAgICAgEEAwEAAAAAAAAAAQIRABIhBANxBRPRobFRIjH/wAARCAAQABQDARIAAhIAAxIA/9oADAMBAAIRAxEAPwC/jgEkqo7tGtkjsVtu4W5auGA/rPL6pVY7MTGdB+Uwz7x1Z5XIPSmQMf7JidATR8hpVfNk8fpXsYhvir6FgnxS/XmKOd2xjSkI80QCRKAigkK45F/Bdbe1L48siYhAqAfHlAIB1A2z189K809QdmSHU5AMBA2ut/dnI7e5iQsByFj9BQfzem4aAN/JEaOzo1xUFGMmYB8kmjbdMbNa3KhzuaxrML//2Q=="
+        "detail": "The Washington Post"
       },
       {
         "aspect": "1200 / 702",
@@ -84,15 +75,13 @@
         "poster": "/videos/atp-newest-trimmed.jpg",
         "placeholder": "#171917",
         "title": "Ask The Post",
-        "detail": "The Washington Post",
-        "preview": "data:image/jpeg;base64,/9j//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABWAAEBAQAAAAAAAAAAAAAAAAAABAcBAQAAAAAAAAAAAAAAAAAAAAAQAAICAQUBAAAAAAAAAAAAAAEAAhEDUXEhEgSBEQEAAAAAAAAAAAAAAAAAAAAA/8AAEQgADAAUAwEiAAIRAAMRAP/aAAwDAQACEQMRAD8AxWETM0CBuaaZeWcQT2xcaZIk/BdljSBJIf/Z"
+        "detail": "The Washington Post"
       },
       {
         "aspect": "1200 / 900",
         "video": "/videos/goal-2.mp4",
         "poster": "/videos/goal-2.jpg",
-        "placeholder": "#eec8c5",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAAEAAPAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABgAAEBAQAAAAAAAAAAAAAAAAAFAAcBAQEBAAAAAAAAAAAAAAAAAAMBAhAAAgICAwEBAAAAAAAAAAAAAQIRABIEBQMhExQRAAICAwEBAAAAAAAAAAAAABESADECASFBE//AABEIABAAFAMBIgACEQADEQD/2gAMAwEAAhEDEQA/ANvpWjyunyR7BrdjP8wpaUdPHnEjNRIOJgiq0vR4vT43P83WU+gUNLu/iTiBmxgCTAFzsnQA9jY/JM2d+IAt9b2qilrWtMKf/9k="
+        "placeholder": "#eec8c5"
       },
       {
         "aspect": "1200 / 542",
@@ -100,8 +89,7 @@
         "poster": "/videos/goal3.jpg",
         "placeholder": "#af998f",
         "href": "https://drinks.maximslo.com",
-        "action": "Visit project",
-        "preview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAgAB4AGxAAD//gAQTGF2YzYyLjI4LjEwMgD/2wBDAAgKCgsKCw0NDQ0NDRAPEBAQEBAQEBAQEBASEhIVFRUSEhIQEBISFBQVFRcXFxUVFRUXFxkZGR4eHBwjIyQrKzP/xABLAAEBAAAAAAAAAAAAAAAAAAAACAEBAAAAAAAAAAAAAAAAAAAAABABAAAAAAAAAAAAAAAAAAAAABEBAAAAAAAAAAAAAAAAAAAAAP/AABEIAAoAFAMBIgACEQADEQD/2gAMAwEAAhEDEQA/AJ/AAAB//9k="
+        "action": "Visit project"
       }
     ]
   ]

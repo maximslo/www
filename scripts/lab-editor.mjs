@@ -214,7 +214,6 @@ async function encodeMedia({ buffer, srcPath, kind, name, crop }) {
 
 	const encoded = await probe(staged);
 	const placeholder = await averageColour(staged, kind === "video");
-	const preview = await tinyPreview(staged);
 
 	// rename() fails across filesystems (scratch is in the OS temp dir), so fall
 	// back to a copy rather than losing the encode.
@@ -231,7 +230,6 @@ async function encodeMedia({ buffer, srcPath, kind, name, crop }) {
 		width: encoded.width,
 		height: encoded.height,
 		placeholder,
-		preview,
 	};
 }
 
@@ -256,25 +254,6 @@ async function averageColour(file, isVideo) {
 	} catch {
 		// A missing placeholder just falls back to the section colour in CSS —
 		// not worth failing an otherwise good encode over.
-		return undefined;
-	}
-}
-
-/**
- * A ~20px-wide JPEG of the asset as a data: URL. The tile shows it, blurred,
- * over its placeholder colour until the media has decoded, so it loads as a
- * soft version of itself rather than a flat card. For a video, the first
- * frame: the one its poster shows, which is what the tile reveals first.
- */
-async function tinyPreview(file) {
-	try {
-		const out = await runBinary("ffmpeg", [
-			"-v", "error", "-i", file, "-frames:v", "1",
-			"-vf", "scale=20:-2", "-q:v", "5", "-f", "image2pipe", "-vcodec", "mjpeg", "-",
-		]);
-		return out.length ? `data:image/jpeg;base64,${out.toString("base64")}` : undefined;
-	} catch {
-		// Without it the tile just shows its placeholder colour, as before.
 		return undefined;
 	}
 }
@@ -695,7 +674,7 @@ function clearTile(tile) {
   if (tile._pending) { URL.revokeObjectURL(blobs.get(tile._pending)); files.delete(tile._pending); blobs.delete(tile._pending); }
   delete tile.image; delete tile.video; delete tile.poster;
   // The matte belongs to the asset that was in the tile, not to the tile.
-  delete tile.fit; delete tile.bg; delete tile.placeholder; delete tile.preview;
+  delete tile.fit; delete tile.bg; delete tile.placeholder;
   // The caption describes the asset that was in the tile, so it goes with it.
   delete tile.title; delete tile.detail; delete tile.href; delete tile.action;
   delete tile._pending; delete tile._kind; delete tile._natural; delete tile._crop;
@@ -968,7 +947,6 @@ $("#save").onclick = async () => {
         // shipped bytes can't drift apart.
         tile.aspect = out.width + " / " + out.height;
         if (out.placeholder) tile.placeholder = out.placeholder;
-        if (out.preview) tile.preview = out.preview;
         tile._natural = { w: out.width, h: out.height };
       }
     }

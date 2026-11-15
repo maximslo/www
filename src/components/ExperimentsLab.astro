@@ -39,7 +39,6 @@ type LabTile = {
 	fit?: string;
 	bg?: string;
 	placeholder?: string;
-	preview?: string;
 	title?: string;
 	detail?: string;
 	href?: string;
@@ -52,8 +51,6 @@ const tileStyle = (tile: LabTile) => {
 	const parts = [`--lab-tile-aspect: ${tile.aspect}`];
 	if (tile.fit) parts.push(`--lab-tile-fit: ${tile.fit}`);
 	if (tile.placeholder) parts.push(`--lab-tile-placeholder: ${tile.placeholder}`);
-	// A data: URL (base64, so no quotes or parentheses to escape).
-	if (tile.preview) parts.push(`--lab-tile-preview: url("${tile.preview}")`);
 	// Inline rather than a custom property with a fallback: it has to beat
 	// .lab-tile's placeholder gradient, which would otherwise show through the
 	// matte on a `contain` tile.
@@ -275,19 +272,6 @@ const tileStyle = (tile: LabTile) => {
 		opacity: 1;
 		background: var(--lab-tile-placeholder, var(--color-bg-reveal));
 		pointer-events: none;
-	}
-
-	/* The asset itself, ~20px wide and blurred, over that colour: the tile
-	   loads as a soft version of itself, not a flat card. Sized the way the
-	   media is (cover, or contain on a matted tile), and scaled up a little
-	   so the blur's faded edge stays outside the tile. */
-	.lab-tile-cover::before {
-		content: "";
-		position: absolute;
-		inset: 0;
-		background: var(--lab-tile-preview, none) center / var(--lab-tile-fit, cover) no-repeat;
-		filter: blur(18px);
-		transform: scale(1.12);
 	}
 
 	.lab-tile-cover.is-loaded {
