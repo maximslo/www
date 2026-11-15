@@ -3,6 +3,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import AskMe from "../components/AskMe.astro";
 import PhoneFrame from "../components/PhoneFrame.astro";
 import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
+
+// "Maxim S.", for windows too narrow for the whole name beside the phone.
+const [first, last = ""] = INTRO_NAME.split(" ");
+const shortName = last ? `${first} ${last[0]}.` : first;
 ---
 
 {/* Just the chat, in a phone. No reveal slot, so BaseLayout renders the white
@@ -10,7 +14,10 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 <BaseLayout title={INTRO_NAME} description={META_DESCRIPTION}>
 	{/* My name, top left beside the phone, set like the messages. Desktop
 	    only: at phone widths the chat fills the screen. */}
-	<p class="site-name">{INTRO_NAME}</p>
+	<p class="site-name">
+		<span class="site-name-full">{INTRO_NAME}</span>
+		<span class="site-name-short">{shortName}</span>
+	</p>
 	<PhoneFrame>
 		<AskMe layout="phone" />
 	</PhoneFrame>
@@ -37,6 +44,20 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 			font-weight: 500;
 			transform: scale(1.1);
 			transform-origin: top left;
+		}
+	}
+
+	.site-name-short {
+		display: none;
+	}
+
+	@media (width <= 1070px) {
+		.site-name-full {
+			display: none;
+		}
+
+		.site-name-short {
+			display: inline;
 		}
 	}
 </style>
