@@ -15,6 +15,17 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		</svg>
 		<span>Chat</span>
 	</a>
+	{/* Tiles start hidden for their entry (below), set before they render so
+	    none flashes in first. Never with reduced motion, and never for good:
+	    if the entry script hasn't taken over in a few seconds, they show. */}
+	<script is:inline>
+		if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			document.documentElement.setAttribute("data-entry", "");
+			setTimeout(() => {
+				if (!document.documentElement.hasAttribute("data-entry-running")) document.documentElement.removeAttribute("data-entry");
+			}, 3000);
+		}
+	</script>
 	<ExperimentsLab />
 	<SiteFooter />
 </BaseLayout>
@@ -35,7 +46,100 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 	});
 </script>
 
+<script>
+	/* Project entry, after bruce-cao.com: each tile rises from below at 40%
+	   size and fades in, row by row with a 75ms stagger, once its picture has
+	   loaded and it's in view. Values are the reference's own (its video
+	   cards): 0.5s (0.55s on phones), transform on cubic-bezier(0, .91, 0,
+	   1), opacity linear; 400px of travel for tiles on the first screen,
+	   their own height for ones scrolled to; only the first 3 rows (5 on
+	   phones) and whatever's on the first screen animate, the rest are
+	   just there. */
+	const root = document.documentElement;
+	if (root.hasAttribute("data-entry")) {
+		root.setAttribute("data-entry-running", "");
+		const phone = matchMedia("(max-width: 480px)").matches;
+		const duration = phone ? 550 : 500;
+		const rows = phone ? 5 : 3;
+		const STAGGER = 75;
+		const MARGIN = 40;
+		// Don't hold a tile back forever on a slow connection: by then its
+		// blurred preview is a fine thing to rise in with.
+		const LOAD_WAIT = 1200;
+
+		const columns = [...document.querySelectorAll<HTMLElement>(".lab-column")];
+		const reveal = (tile: HTMLElement) => tile.setAttribute("data-entered", "");
+
+		const loaded = (tile: HTMLElement) =>
+			new Promise<void>((resolve) => {
+				const timer = setTimeout(resolve, LOAD_WAIT);
+				const done = () => (clearTimeout(timer), resolve());
+				const img = tile.querySelector("img");
+				const poster = tile.querySelector("video")?.poster;
+				if (img) {
+					if (img.complete && img.naturalWidth) return done();
+					img.addEventListener("load", done, { once: true });
+					img.addEventListener("error", done, { once: true });
+					// Lazy: it may not start loading until it's this close anyway.
+					img.loading = "eager";
+				} else if (poster) {
+					const probe = new Image();
+					probe.onload = probe.onerror = done;
+					probe.src = poster;
+				} else done();
+			});
+
+		columns.forEach((column, col) => {
+			[...column.querySelectorAll<HTMLElement>(":scope > .lab-tile")].forEach((tile, row) => {
+				const box = tile.getBoundingClientRect();
+				const firstScreen = box.top < innerHeight + MARGIN && box.bottom > 0;
+				// Everything on the first screen joins in, so a short grid that
+				// fits whole (phones) doesn't have its last row sitting there
+				// while the rest rise.
+				if (row >= rows && !firstScreen) return reveal(tile);
+				const delay = (row * columns.length + col) * STAGGER;
+				const ready = loaded(tile);
+
+				const observer = new IntersectionObserver(
+					async ([entry]) => {
+						if (!entry.isIntersecting && entry.boundingClientRect.top > innerHeight + MARGIN) return;
+						observer.disconnect();
+						await ready;
+						const now = tile.getBoundingClientRect();
+						const offset = firstScreen ? 400 : Math.max(innerHeight + now.height - now.top, now.height);
+						reveal(tile);
+						// Two animations, as the reference's two transitions: the
+						// rise eased hard, the fade linear. Held at the start through
+						// the stagger, then nothing left behind on the tile (the
+						// lightbox measures and animates it).
+						tile.animate([{ transform: `translateY(${offset}px) scale(0.4)` }, { transform: "none" }], {
+							duration,
+							delay,
+							easing: "cubic-bezier(0, 0.91, 0, 1)",
+							fill: "backwards",
+						});
+						tile.animate([{ opacity: 0 }, { opacity: 1 }], { duration, delay, easing: "linear", fill: "backwards" });
+					},
+					{ rootMargin: `0px 0px ${MARGIN}px` },
+				);
+				observer.observe(tile);
+			});
+		});
+	}
+</script>
+
 <style>
+	:global(html[data-entry] .lab-tile:not([data-entered])) {
+		opacity: 0;
+	}
+
+	/* No slow whole-page fade here: the tiles' own entry is the intro, and
+	   the fade under it dimmed them as they rose. */
+	:global(html[data-entry] body) {
+		opacity: 1;
+		animation: none;
+	}
+
 	/* Pinned top left, over the grid as it scrolls: a pill of frosted
 	   glass, the dark-side cousin of the chat's New chat button. */
 	.portfolio-back {
@@ -109,7 +213,7 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 
 	@media (prefers-reduced-motion: no-preference) {
 		.portfolio-back {
-			animation: portfolio-back-in var(--page-fade-duration) var(--page-fade-easing) both;
+			animation: portfolio-back-in 500ms linear both;
 		}
 	}
 
