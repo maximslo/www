@@ -80,6 +80,9 @@ document.querySelectorAll<HTMLElement>(".lab-tile-media").forEach((tile) => {
 	const player = new IntersectionObserver(
 		(entries) => {
 			for (const entry of entries) {
+				// Held: shown inside the homepage's phone, but off screen there
+				// (PhoneApps.astro), which plays them once it's on screen.
+				if (document.documentElement.hasAttribute("data-hold")) continue;
 				if (entry.isIntersecting) media.play().catch(() => {});
 				else media.pause();
 			}

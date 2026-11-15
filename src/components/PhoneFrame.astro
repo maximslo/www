@@ -87,7 +87,10 @@
 		border-radius: var(--phone-radius);
 		/* No padding: the chat runs edge to edge (so its scrollbar sits on the
 		   phone's edge) and insets its own content. */
-		background: #f5f5f5;
+		/* The screen's colour, also read by the chat card inside it
+		   (PhoneApps.astro). */
+		--phone-screen: #f5f5f5;
+		background: var(--phone-screen);
 		box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
 		overflow: hidden;
 	}
@@ -108,7 +111,7 @@
 			margin-top: 0;
 			height: 100cqh;
 			border-radius: 0;
-			background: var(--color-bg-page);
+			--phone-screen: var(--color-bg-page);
 			box-shadow: none;
 		}
 

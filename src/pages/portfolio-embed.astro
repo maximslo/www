@@ -1,0 +1,106 @@
+---
+// The live site's black section (the lab grid; no footer), on its own, for
+// the homepage chat to show inside its phone as the "portfolio app". It's
+// framed at a desktop width and scaled down there (PhoneApps.astro), so its
+// own width rules see a desktop screen and it looks exactly as on the site.
+// Not BaseLayout: no white sheet, no scroll reveal, no page fade-in.
+import "../styles/global.css";
+import ExperimentsLab from "../components/ExperimentsLab.astro";
+import { INTRO_NAME } from "../config/intro";
+---
+
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="robots" content="noindex" />
+		<meta name="color-scheme" content="dark" />
+		<title>{`${INTRO_NAME} — work`}</title>
+	</head>
+	<body class="portfolio-embed">
+		<ExperimentsLab />
+		<script>
+			// No dragging the photos and videos out of the page (the CSS
+			// below covers WebKit; this covers the rest).
+			document.addEventListener("dragstart", (event) => {
+				if ((event.target as Element | null)?.closest?.("img, video")) event.preventDefault();
+			});
+		</script>
+	</body>
+</html>
+
+<style is:global>
+	html:has(.portfolio-embed) {
+		--site-browser-bg: var(--color-bg-reveal);
+	}
+
+	/* Its own scrollbar is hidden: the phone draws one (PhoneApps.astro). */
+	html:has(.portfolio-embed) {
+		scrollbar-width: none;
+	}
+
+	html:has(.portfolio-embed)::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* Astro's dev toolbar (dev server only): the homepage has its own, so a
+	   second, shrunken copy in here was just a duplicate. */
+	astro-dev-toolbar {
+		display: none !important;
+	}
+
+	body.portfolio-embed {
+		background-color: var(--color-bg-reveal);
+		/* Already on screen by the time the phone zooms in on it. */
+		opacity: 1;
+		animation: none;
+	}
+
+	/* The grid fills the width, its side margins the same as the gap between
+	   projects. It starts below the phone's "‹ Chat" pill: --portfolio-top
+	   is set by the phone (PhoneApps.astro), as the pill sits outside this
+	   page and its size here depends on the scale. */
+	body.portfolio-embed .lab-section {
+		padding-inline: var(--grid-gutter);
+		padding-top: var(--portfolio-top, 160px);
+	}
+
+	body.portfolio-embed .lab-grid {
+		width: 100%;
+	}
+
+	/* Photos and videos can't be dragged out, selected, or long-pressed
+	   for iOS's preview and save menu. Taps still open them. */
+	body.portfolio-embed img,
+	body.portfolio-embed video {
+		-webkit-user-drag: none;
+		user-select: none;
+		-webkit-user-select: none;
+		-webkit-touch-callout: none;
+	}
+
+	/* The enlarged tile's caption. This page is shown at about 30% of its
+	   size in the phone, so the site's 15px read as ~4.5px. At 58px it reads
+	   as ~17px in the desktop phone (~20px full-screen on a phone). Too big for one row, it stacks: the title, then the
+	   detail or the link under it. */
+	body.portfolio-embed .lightbox-figure {
+		gap: 44px;
+	}
+
+	body.portfolio-embed .lightbox-caption {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 12px;
+		font-size: 58px;
+		line-height: 1.25;
+	}
+
+	body.portfolio-embed .lightbox-action,
+	body.portfolio-embed .lightbox-detail {
+		margin-left: 0;
+	}
+
+	body.portfolio-embed .lightbox-action {
+		border-bottom-width: 3px;
+	}
+</style>

@@ -10,10 +10,12 @@ const { layout = "inline" } = Astro.props;
 
 // Questions the profile can actually answer, so the first tap lands well.
 const SUGGESTIONS = [
-	"what did you do at the times?",
-	"why journalism?",
-	"what's the tech stack here?",
-	"tell me a fun fact",
+	"Got a portfolio?",
+	"Tell me about your favorite project.",
+	"Website tech stack?",
+	"Tell me a fun fact.",
+	"How did you get into journalism?",
+	"What's your favorite book?",
 ];
 
 // iMessage bubble tail, from beerwar.app's montage caption. Drawn for the
@@ -946,6 +948,10 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	// After a message is sent, how long before the typing dots appear.
 	const TYPING_DELAY_MS = 700;
 	const HELLOS = ["hi", "sup", "yo"];
+	// In a reply that hands over the portfolio link; never shown.
+	const PORTFOLIO_MARKER = /\s*\[\[portfolio\]\]\s*/gi;
+	// The portfolio's "link" in a reply (see setReplyText).
+	const PORTFOLIO_LINK = /^(https?:\/\/)?(www\.)?maximslo\.com\/portfolio\/?$/i;
 	// Phones and tablets, where focusing the field brings up a keyboard.
 	const touchScreen = window.matchMedia("(pointer: coarse)");
 
@@ -1678,6 +1684,12 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			});
 			if (match[1]) {
 				link.href = `mailto:${label}`;
+			} else if (PORTFOLIO_LINK.test(label)) {
+				// Not really a link: tapping it plays the switch over to the
+				// portfolio (PhoneApps.astro) instead of leaving. The href is
+				// the portfolio itself, for a middle-click or a new tab.
+				link.href = "/portfolio-embed";
+				link.dataset.portfolioLink = "";
 			} else {
 				link.href = /^https?:\/\//i.test(label) ? label : `https://${label}`;
 				link.target = "_blank";
@@ -1887,6 +1899,16 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		let { answer, role } = await replyPromise;
 		if (gen !== chatGen) return;
 
+		// Asked to see my work: the reply is the "maximslo.com/portfolio" link
+		// plus a marker (see the system prompt). The marker is never shown, and
+		// nothing opens on its own: tapping the link switches the phone over
+		// to the portfolio (see setReplyText). (search, not test: a /g regex's
+		// test() carries lastIndex between calls.)
+		if (role === "assistant" && answer.search(PORTFOLIO_MARKER) !== -1) {
+			// Swapped for a text break, so text either side never runs together.
+			answer = answer.replace(PORTFOLIO_MARKER, "\n\n").trim() || "maximslo.com/portfolio";
+		}
+
 		// Texts are separated by blank lines; a single line break stays inside
 		// one bubble (a list, like the tech stack). The first text opens out of
 		// the typing bubble, the rest follow one by one at the intro's pace.
@@ -1999,6 +2021,15 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		if (!touchScreen.matches) input.focus();
 	}
 	document.querySelector<HTMLButtonElement>("[data-ask-new]")?.addEventListener("click", newChat);
+
+	// The fake portfolio link: the switch, not a new tab. A modified click
+	// (new tab, new window) still goes to the real page.
+	log.addEventListener("click", (event) => {
+		const link = (event.target as Element | null)?.closest("[data-portfolio-link]");
+		if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		event.preventDefault();
+		dispatchEvent(new CustomEvent("phone:open-portfolio"));
+	});
 
 	chips.addEventListener("click", (event) => {
 		// The click that ends a drag isn't a tap on a suggestion.

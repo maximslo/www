@@ -2,6 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import AskMe from "../components/AskMe.astro";
 import PhoneFrame from "../components/PhoneFrame.astro";
+import PhoneApps from "../components/PhoneApps.astro";
 import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 ---
 
@@ -9,6 +10,9 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
     sheet alone and canvas-reveal.ts stands down. */}
 <BaseLayout title={INTRO_NAME} description={META_DESCRIPTION}>
 	<PhoneFrame>
-		<AskMe layout="phone" />
+		{/* The chat, and the portfolio it can switch over to. */}
+		<PhoneApps>
+			<AskMe layout="phone" />
+		</PhoneApps>
 	</PhoneFrame>
 </BaseLayout>
