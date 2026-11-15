@@ -5,23 +5,23 @@ import { INTRO_NAME } from "../config/intro";
 interface Props {
 	title: string;
 	description: string;
-	/** A page that's all dark surface (the portfolio): no white sheet above
-	    it and no scroll reveal, just the default slot on the dark colour. */
-	dark?: boolean;
+	/** A page of its own (the portfolio): no white sheet over a dark section
+	    and no scroll reveal, just the default slot on the page colour. */
+	bare?: boolean;
 }
 
-const { title, description, dark = false } = Astro.props;
+const { title, description, bare = false } = Astro.props;
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 const ogImageUrl = new URL("/og-image.png", Astro.site);
 ---
 
-<html lang="en" data-site-surface={dark ? "reveal" : undefined}>
+<html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-		<meta name="color-scheme" content={dark ? "dark" : "light"} />
-		<meta name="theme-color" content={dark ? "#050505" : "#ffffff"} />
+		<meta name="color-scheme" content="light" />
+		<meta name="theme-color" content="#ffffff" />
 		<meta name="description" content={description} />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="canonical" href={canonicalUrl} />
@@ -55,7 +55,7 @@ const ogImageUrl = new URL("/og-image.png", Astro.site);
 	</head>
 	<body>
 		{
-			dark ? (
+			bare ? (
 				<slot />
 			) : (
 				<>
@@ -75,7 +75,7 @@ const ogImageUrl = new URL("/og-image.png", Astro.site);
 		}
 
 		{
-			!dark && (
+			!bare && (
 				<script>
 					import "../scripts/canvas-reveal";
 				</script>

@@ -1,6 +1,7 @@
 ---
-// maximslo.com/portfolio: the home page's black section (the lab grid and
-// the footer) on its own, without the white intro sheet above it. The chat
+// maximslo.com/portfolio: the old home page's project section (the lab grid
+// and the footer) on its own, on the home page's white rather than the
+// near-black it sat on there. The chat
 // links here when someone asks to see my work.
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ExperimentsLab from "../components/ExperimentsLab.astro";
@@ -8,7 +9,7 @@ import SiteFooter from "../components/SiteFooter.astro";
 import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 ---
 
-<BaseLayout title={`Work — ${INTRO_NAME}`} description={META_DESCRIPTION} dark>
+<BaseLayout title={`Work — ${INTRO_NAME}`} description={META_DESCRIPTION} bare>
 	<a class="portfolio-back" href="/" data-portfolio-back aria-label="Back to chat">
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 			<path d="m15 18-6-6 6-6"></path>
@@ -133,6 +134,33 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 </script>
 
 <style>
+	/* The section was built for near-black; here it's on the home page's
+	   white. Its colours all come from these, so they're swapped for the
+	   page's own: the surface, then the text and dotted link rules of the
+	   white pages. */
+	/* (:root twice: global.css sets them on :root, which outranks html.) */
+	:global(:root:root) {
+		--color-bg-reveal: var(--color-bg-page);
+		--color-text-on-reveal: var(--color-text-primary);
+		--color-text-on-reveal-dim: var(--color-text-secondary);
+		--color-link-line-on-reveal: var(--color-link-line);
+	}
+
+	/* Hovered links went white, which here is invisible: black instead.
+	   (!important: the section's own rules are scoped, so more specific.) */
+	:global(.footer-link:hover),
+	:global(.footer-link:focus-visible),
+	:global(.lightbox-action:hover),
+	:global(.lightbox-action:focus-visible) {
+		color: #000 !important;
+		border-color: #000 !important;
+	}
+
+	/* The enlarged view's veil: a white frost over the grid, not a dark one. */
+	:global(.lightbox-veil) {
+		background: rgba(255, 255, 255, 0.82) !important;
+	}
+
 	:global(html[data-entry] .lab-tile:not([data-entered])) {
 		opacity: 0;
 	}
@@ -144,8 +172,8 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		animation: none;
 	}
 
-	/* Pinned top left, over the grid as it scrolls: a pill of frosted
-	   glass, the dark-side cousin of the chat's New chat button. */
+	/* Pinned top left, over the grid as it scrolls: the frosted glass of the
+	   chat's New chat button, stretched into a pill. */
 	.portfolio-back {
 		position: fixed;
 		z-index: 10;
@@ -159,18 +187,15 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		font-size: 16px;
 		font-weight: 500;
 		line-height: 1;
-		color: #fff;
+		color: #000;
 		text-decoration: none;
 		border-radius: 18px;
-		background: rgba(255, 255, 255, 0.12);
-		-webkit-backdrop-filter: blur(12px) saturate(180%);
-		backdrop-filter: blur(12px) saturate(180%);
-		/* Glossy: a bright rim along the top edge fading to a faint one
-		   below, plus a soft drop so it lifts off the photos. */
+		background: rgba(255, 255, 255, 0.3);
+		-webkit-backdrop-filter: blur(8px) saturate(300%);
+		backdrop-filter: blur(8px) saturate(300%);
 		box-shadow:
-			inset 0 1px 0.5px rgba(255, 255, 255, 0.35),
-			inset 0 0 0 0.5px rgba(255, 255, 255, 0.18),
-			0 4px 24px rgba(0, 0, 0, 0.35);
+			0 0 32px rgba(0, 0, 0, 0.12),
+			inset 0 0 3px 1px #fff;
 		-webkit-tap-highlight-color: transparent;
 		transition:
 			transform 200ms ease-out,
@@ -180,7 +205,7 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 	}
 
 	.portfolio-back:hover {
-		background-color: rgba(255, 255, 255, 0.18);
+		background-color: rgba(255, 255, 255, 0.5);
 	}
 
 	.portfolio-back:active {
@@ -188,7 +213,7 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 	}
 
 	.portfolio-back:focus-visible {
-		outline: 2px solid #fff;
+		outline: 2px solid #000;
 		outline-offset: 2px;
 	}
 
