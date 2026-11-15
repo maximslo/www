@@ -242,7 +242,10 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 
 		.portfolio-back {
 			top: calc(var(--name-mid) - 18px);
-			left: 64px;
+			/* Lined up on the arrow, not the pill's edge: the arrow's ink
+			   starts 16.5px into the pill, and the name's "M" 1px past its
+			   64px, so the pill sits 15.5px left of it. */
+			left: calc(64px - 15.5px);
 		}
 
 		:global(body .lab-section.lab-section) {
