@@ -5,20 +5,23 @@ import { INTRO_NAME } from "../config/intro";
 interface Props {
 	title: string;
 	description: string;
+	/** A page that's all dark surface (the portfolio): no white sheet above
+	    it and no scroll reveal, just the default slot on the dark colour. */
+	dark?: boolean;
 }
 
-const { title, description } = Astro.props;
+const { title, description, dark = false } = Astro.props;
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 const ogImageUrl = new URL("/og-image.png", Astro.site);
 ---
 
-<html lang="en">
+<html lang="en" data-site-surface={dark ? "reveal" : undefined}>
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-		<meta name="color-scheme" content="light" />
-		<meta name="theme-color" content="#ffffff" />
+		<meta name="color-scheme" content={dark ? "dark" : "light"} />
+		<meta name="theme-color" content={dark ? "#050505" : "#ffffff"} />
 		<meta name="description" content={description} />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="canonical" href={canonicalUrl} />
@@ -51,20 +54,32 @@ const ogImageUrl = new URL("/og-image.png", Astro.site);
 		</script>
 	</head>
 	<body>
-		{/* The white sheet and the dark surface it sits on. Pages that pass nothing
-		    to `reveal` (404) get the sheet alone — a single centred screen, exactly
-		    as before — and canvas-reveal.ts stands down when it finds no section. */}
-		<div class="site-page">
-			<div class="site-reveal">
-				<div class="site-canvas">
-					<slot />
-				</div>
-				<slot name="reveal" />
-			</div>
-		</div>
+		{
+			dark ? (
+				<slot />
+			) : (
+				<>
+					{/* The white sheet and the dark surface it sits on. Pages that pass nothing
+					    to `reveal` (404) get the sheet alone — a single centred screen, exactly
+					    as before — and canvas-reveal.ts stands down when it finds no section. */}
+					<div class="site-page">
+						<div class="site-reveal">
+							<div class="site-canvas">
+								<slot />
+							</div>
+							<slot name="reveal" />
+						</div>
+					</div>
+				</>
+			)
+		}
 
-		<script>
-			import "../scripts/canvas-reveal";
-		</script>
+		{
+			!dark && (
+				<script>
+					import "../scripts/canvas-reveal";
+				</script>
+			)
+		}
 	</body>
 </html>
