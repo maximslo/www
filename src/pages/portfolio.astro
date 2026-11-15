@@ -35,72 +35,81 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 	<script is:inline>
 		/* Project entry, after bruce-cao.com (inline, right after the grid: it
 		   runs the moment the tiles exist, with nothing to download first, so
-		   a slow connection can't hold it up): each tile rises from below at 40%
-		   size and fades in, row by row with a 75ms stagger, once it's in view.
-		   It never waits for its picture: a tile whose media hasn't loaded rises
-		   as its blurred preview (ExperimentsLab's cover), so the order holds.
-		   Values are the reference's own (its video cards): 0.5s (0.55s on
-		   phones), transform on cubic-bezier(0, .91, 0, 1), opacity linear;
-		   400px of travel for tiles on the first screen, their own height for
-		   ones scrolled to. Unlike the reference, which only animates its first
-		   few rows, every tile does: what's on screen first, then each one as
-		   it's scrolled into view. (In a block:
-		   an inline script's names are otherwise page-wide.) */
+		   a slow connection can't hold it up): each tile rises from below at
+		   40% size and fades in, those arriving together staggered 75ms apart
+		   in reading order. It never waits for its picture: a tile whose
+		   media hasn't loaded rises as its blurred preview (ExperimentsLab's
+		   cover). Timing is the reference's (its video cards): 0.5s (0.55s on
+		   phones), transform on cubic-bezier(0, .91, 0, 1), opacity linear.
+
+		   Unlike the reference, which only animates its first few rows and
+		   starts each as it nears the bottom of the screen, every tile waits
+		   until it's well on screen, its top a quarter of the way up: what's
+		   on screen first, then, scrolling, white until the next row is in
+		   view and rises. The first ones travel the reference's 400px; later
+		   ones come up from below the screen's edge. At the very bottom of the
+		   page, where the last row may never get that far up, whatever's
+		   still waiting comes in. (In a block: an inline script's names are
+		   otherwise page-wide.) */
 		if (document.documentElement.hasAttribute("data-entry")) {
 			const root = document.documentElement;
 			root.setAttribute("data-entry-running", "");
 			const phone = matchMedia("(max-width: 480px)").matches;
 			const duration = phone ? 550 : 500;
 			const STAGGER = 75;
-			const MARGIN = 40;
+			// How far up the screen a tile's top has to be before it comes in.
+			const LINE = 0.25;
 			const columns = [...document.querySelectorAll(".lab-column")];
-			const reveal = (tile) => tile.setAttribute("data-entered", "");
-
-			// Tiles that come into view together rise together, staggered in
-			// reading order (row by row, left to right) from that moment. A
-			// stagger counted from the top of the whole grid made a third-row
-			// tile scrolled to later sit out 300ms+ while the row under it,
-			// which doesn't animate, was already showing.
 			const order = new Map();
-			const offsets = new Map();
+			const waiting = new Set();
+			let first = true;
+
+			const enter = (tiles) => {
+				tiles.sort((a, b) => order.get(a) - order.get(b));
+				tiles.forEach((tile, i) => {
+					observer.unobserve(tile);
+					waiting.delete(tile);
+					const box = tile.getBoundingClientRect();
+					const offset = first ? 400 : Math.max(innerHeight + box.height - box.top, box.height);
+					const delay = i * STAGGER;
+					tile.setAttribute("data-entered", "");
+					// Two animations, as the reference's two transitions: the
+					// rise eased hard, the fade linear. Held at the start through
+					// the stagger, then nothing left behind on the tile (the
+					// lightbox measures and animates it).
+					tile.animate([{ transform: `translateY(${offset}px) scale(0.4)` }, { transform: "none" }], {
+						duration,
+						delay,
+						easing: "cubic-bezier(0, 0.91, 0, 1)",
+						fill: "backwards",
+					});
+					tile.animate([{ opacity: 0 }, { opacity: 1 }], { duration, delay, easing: "linear", fill: "backwards" });
+				});
+				if (tiles.length) first = false;
+			};
+
 			const observer = new IntersectionObserver(
 				(entries) => {
-					const arriving = entries
-						.filter((entry) => entry.isIntersecting || entry.boundingClientRect.top <= innerHeight + MARGIN)
-						.map((entry) => entry.target)
-						.sort((a, b) => order.get(a) - order.get(b));
-					arriving.forEach((tile, i) => {
-						observer.unobserve(tile);
-						const now = tile.getBoundingClientRect();
-						const offset = offsets.get(tile) ?? Math.max(innerHeight + now.height - now.top, now.height);
-						const delay = i * STAGGER;
-						reveal(tile);
-						// Two animations, as the reference's two transitions: the
-						// rise eased hard, the fade linear. Held at the start through
-						// the stagger, then nothing left behind on the tile (the
-						// lightbox measures and animates it).
-						tile.animate([{ transform: `translateY(${offset}px) scale(0.4)` }, { transform: "none" }], {
-							duration,
-							delay,
-							easing: "cubic-bezier(0, 0.91, 0, 1)",
-							fill: "backwards",
-						});
-						tile.animate([{ opacity: 0 }, { opacity: 1 }], { duration, delay, easing: "linear", fill: "backwards" });
-					});
+					// Over the line, or already scrolled past it (a fast fling).
+					enter(entries.filter((e) => e.isIntersecting || e.boundingClientRect.bottom < 0).map((e) => e.target));
 				},
-				{ rootMargin: `0px 0px ${MARGIN}px` },
+				{ rootMargin: `0px 0px -${LINE * 100}% 0px` },
 			);
 
 			columns.forEach((column, col) => {
-				[...column.querySelectorAll(":scope > .lab-tile")].forEach((tile, row) => {
-					const box = tile.getBoundingClientRect();
-					const firstScreen = box.top < innerHeight + MARGIN && box.bottom > 0;
+				column.querySelectorAll(":scope > .lab-tile").forEach((tile, row) => {
 					order.set(tile, row * columns.length + col);
-					// On the first screen: the reference's fixed 400px of travel.
-					if (firstScreen) offsets.set(tile, 400);
+					waiting.add(tile);
 					observer.observe(tile);
 				});
 			});
+
+			const atBottom = () => {
+				if (!waiting.size) return removeEventListener("scroll", atBottom);
+				if (innerHeight + scrollY < root.scrollHeight - 2) return;
+				enter([...waiting].filter((tile) => tile.getBoundingClientRect().top < innerHeight));
+			};
+			addEventListener("scroll", atBottom, { passive: true });
 		}
 	</script>
 	<SiteFooter />
