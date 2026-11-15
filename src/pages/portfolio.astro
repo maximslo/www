@@ -116,6 +116,19 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 </BaseLayout>
 
 <script>
+	// The pill fades out as a project grows and back as it shrinks home, on
+	// exactly the enlarge's timing: lab-lightbox.ts announces each fade of
+	// its veil (the page blurring or sharpening) as it starts.
+	const pill = document.querySelector<HTMLElement>("[data-portfolio-back]");
+	document.addEventListener("lab-lightbox:veil", (event) => {
+		const { opacity, duration, easing } = (event as CustomEvent<{ opacity: 0 | 1; duration: number; easing: string }>).detail;
+		if (!pill) return;
+		const from = getComputedStyle(pill).opacity;
+		pill.getAnimations().forEach((animation) => animation.id === "veil" && animation.cancel());
+		const fade = pill.animate([{ opacity: from }, { opacity: 1 - opacity }], { duration, easing, fill: "forwards" });
+		fade.id = "veil";
+	});
+
 	// Came from the chat on this site: go back instead of loading it fresh, so
 	// the conversation is still there (and the browser restores it whole).
 	document.querySelector<HTMLAnchorElement>("[data-portfolio-back]")?.addEventListener("click", (event) => {
@@ -203,19 +216,23 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		-webkit-tap-highlight-color: transparent;
 		transition:
 			transform 200ms ease-out,
-			background-color 200ms ease-out,
-			opacity 250ms ease;
+			background-color 200ms ease-out;
 		/* Its own layer, scaled whole on press, so the letters don't wobble. */
 		will-change: transform;
 	}
 
-	/* Out of the way while a project is open: gone as the project grows
-	   (at the veil's pace), back once it has shrunk into the grid again.
-	   lab-lightbox.ts holds .is-lightbox-open for that whole stretch. */
+	/* Out of the way while a project is open. The fade itself follows the
+	   enlarge's own (the script below); this keeps it unclickable meanwhile,
+	   and hidden with reduced motion, where nothing animates.
+	   lab-lightbox.ts holds .is-lightbox-open from open to fully closed. */
 	:global(html.is-lightbox-open) .portfolio-back {
-		opacity: 0;
 		pointer-events: none;
-		transition: opacity 340ms ease;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(html.is-lightbox-open) .portfolio-back {
+			opacity: 0;
+		}
 	}
 
 	.portfolio-back:hover {

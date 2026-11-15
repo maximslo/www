@@ -226,12 +226,14 @@ const tileStyle = (tile: LabTile) => {
 	   Painted as an overlay rather than by swapping the background, because a
 	   contain-fit tile sets its matte inline and inline wins over a class. Clipped
 	   to the tile's radius by the existing overflow: hidden. */
+	/* The section's own colour, so the empty spot reads as page behind the
+	   blur: near-black on the dark section, white on /portfolio. */
 	.lab-tile.is-lifted::after {
 		content: "";
 		position: absolute;
 		inset: 0;
 		z-index: 2;
-		background: #000;
+		background: var(--color-bg-reveal);
 	}
 
 	.lab-tile-media {
