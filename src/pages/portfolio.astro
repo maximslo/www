@@ -251,6 +251,25 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		padding-top: max(clamp(48px, 5.6vw, 112px), calc(env(safe-area-inset-top) + 76px));
 	}
 
+	/* Desktop: where my name sits on the home page (index.astro: 64px in,
+	   40px down, a 15px × 1.1 line at line-height 1.4), the pill centred on
+	   its line, so going back and forth it stays put. The grid starts as
+	   far under the pill as the pill sits from the top. */
+	@media (width > 768px) {
+		:global(:root) {
+			--name-mid: calc(40px + 15px * 1.4 * 1.1 / 2);
+		}
+
+		.portfolio-back {
+			top: calc(var(--name-mid) - 18px);
+			left: 64px;
+		}
+
+		:global(body .lab-section.lab-section) {
+			padding-top: max(clamp(48px, 5.6vw, 112px), calc((var(--name-mid) - 18px) * 2 + 36px));
+		}
+	}
+
 	@media (prefers-reduced-motion: no-preference) {
 		.portfolio-back {
 			animation: portfolio-back-in 500ms linear both;
