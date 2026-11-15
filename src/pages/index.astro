@@ -8,37 +8,7 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 {/* Just the chat, in a phone. No reveal slot, so BaseLayout renders the white
     sheet alone and canvas-reveal.ts stands down. */}
 <BaseLayout title={INTRO_NAME} description={META_DESCRIPTION}>
-	{/* The mark, top left beside the phone. Desktop only: at phone widths the
-	    chat fills the screen and there's nowhere for it. */}
-	<p class="site-mark" aria-hidden="true">M</p>
 	<PhoneFrame>
 		<AskMe layout="phone" />
 	</PhoneFrame>
 </BaseLayout>
-
-<style>
-	.site-mark {
-		display: none;
-	}
-
-	/* The messages' font (SF Pro Display), heavier. Placed and sized off the
-	   phone's proportions in the design: a ~60px capital, about 7.7% of the
-	   width in from the left, its top a little above the phone's. */
-	@media (width > 768px) {
-		.site-mark {
-			display: block;
-			position: absolute;
-			z-index: 2;
-			top: 86px;
-			left: clamp(32px, 7.7vw, 140px);
-			margin: 0;
-			font-size: 85px;
-			font-weight: 700;
-			line-height: 1;
-			letter-spacing: 0;
-			color: #000;
-			user-select: none;
-			pointer-events: none;
-		}
-	}
-</style>
