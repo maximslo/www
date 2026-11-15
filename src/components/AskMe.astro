@@ -2106,6 +2106,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		} catch {}
 	});
 
+	let restoredThread = false;
 	(() => {
 		let saved: SavedThread | null = null;
 		try {
@@ -2119,13 +2120,23 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		introLines.splice(0);
 		introRunning = false;
 		typedInARow = saved.typed;
+		restoredThread = true;
+		// Suggestions start tucked under the compose field, as on a first
+		// visit, and slide up once the page has loaded (below), rather than
+		// sitting there from the first frame. Unless they were put away for
+		// good (three typed in a row): then they stay down.
+		chipsShown = false;
+		chips.inert = true;
+		chips.style.transform = `translateY(${CHIPS_OFFSET}px)`;
 		if (saved.chipsOff) {
-			// Put away for good (typed three in a row): hidden from the start.
 			chipsDisabled = true;
-			chipsShown = false;
-			chips.inert = true;
-			chips.style.transform = `translateY(${CHIPS_OFFSET}px)`;
 			log.toggleAttribute("data-chips-off", true);
+		} else {
+			const ready = document.readyState === "complete" ? Promise.resolve() : new Promise((resolve) => addEventListener("load", resolve, { once: true }));
+			// The same beat the intro waits before it starts.
+			void ready.then(() => pause(INTRO_LEAD_MS)).then(() => {
+				if (!chipsDisabled && !busy) updateChips();
+			});
 		}
 		fitAll();
 		const place = () => {
@@ -2167,7 +2178,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			.then(() => pause(INTRO_LEAD_MS))
 			// Unless a new chat already took over the intro meanwhile.
 			.then(() => introObserver === observer && observer.observe(log.lastElementChild!));
-	} else if (!chipsDisabled) {
+	} else if (!restoredThread) {
 		chips.style.transform = "none";
 		chips.inert = false;
 	}
