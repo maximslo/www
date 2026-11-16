@@ -10,12 +10,20 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 ---
 
 <BaseLayout title={`Work — ${INTRO_NAME}`} description={META_DESCRIPTION} bare>
-	<a class="portfolio-back" href="/" data-portfolio-back aria-label="Back to chat">
+	{/* A popover, so it can sit in the top layer with the enlarged project
+	    (a modal <dialog>, which is drawn over everything else) and stay above
+	    it. Otherwise a project shrinking home under the pill covered it,
+	    and the pill popped back over it the moment it landed. */}
+	<a class="portfolio-back" href="/" data-portfolio-back aria-label="Back to chat" popover="manual">
 		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 			<path d="m15 18-6-6 6-6"></path>
 		</svg>
 		<span>Chat</span>
 	</a>
+	<script is:inline>
+		// Shown straight away (a popover starts hidden), before the page paints.
+		document.querySelector("[data-portfolio-back]")?.showPopover?.();
+	</script>
 	{/* Tiles start hidden for their entry (below), set before they render so
 	    none flashes in first. Never with reduced motion, and never for good:
 	    if the entry script hasn't taken over in a few seconds, they show. */}
@@ -123,6 +131,13 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 	document.addEventListener("lab-lightbox:veil", (event) => {
 		const { opacity, duration, easing } = (event as CustomEvent<{ opacity: 0 | 1; duration: number; easing: string }>).detail;
 		if (!pill) return;
+		// A project opening goes into the top layer over the pill: shown
+		// again, the pill moves back above it, and stays there through the
+		// open and the close.
+		if (opacity === 1 && pill.matches(":popover-open")) {
+			pill.hidePopover();
+			pill.showPopover();
+		}
 		const from = getComputedStyle(pill).opacity;
 		pill.getAnimations().forEach((animation) => animation.id === "veil" && animation.cancel());
 		const fade = pill.animate([{ opacity: from }, { opacity: 1 - opacity }], { duration, easing, fill: "forwards" });
@@ -188,6 +203,12 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 	/* Pinned top left, over the grid as it scrolls: the frosted glass of the
 	   chat's New chat button, stretched into a pill. */
 	.portfolio-back {
+		/* The browser's popover defaults, undone: no inset, margin, border
+		   or scrolling of its own; it's placed by top and left below. */
+		inset: auto;
+		margin: 0;
+		border: 0;
+		overflow: visible;
 		position: fixed;
 		z-index: 10;
 		top: calc(env(safe-area-inset-top) + 20px);
