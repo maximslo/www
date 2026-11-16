@@ -267,14 +267,21 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			border-radius: 2px;
 			background: rgba(0, 0, 0, 0.35);
 			opacity: 0;
-			transition: opacity 300ms ease;
+			transition: opacity 250ms ease-in-out;
 		}
 
-		/* Shown while the thread moves, faded out a beat after it stops. */
+		/* Shown the moment the thread moves, faded out a beat after it stops:
+		   the Mac's overlay scrollbar timing (see the desktop rules below). */
 		.ask-me[data-layout="phone"] .ask-scroll-track[data-active] .ask-scroll-thumb {
 			opacity: 1;
-			transition-duration: 100ms;
+			transition-duration: 0ms;
 		}
+	}
+
+	@property --scrollbar-alpha {
+		syntax: "<number>";
+		inherits: true;
+		initial-value: 0;
 	}
 
 	/* Chrome and Safari: a thin scrollbar whose track stops where the phone's
@@ -298,8 +305,29 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			margin-block: var(--corner, 0px);
 		}
 
+		/* Hidden until the thread scrolls, as macOS's overlay scrollbars are
+		   (and so alexsafayan.com/chat's, which is the browser's own). Chromium's
+		   Mac timings (ui/native_theme/scrollbar_animator_mac.h): the thumb
+		   appears at once on a scroll, starts fading 500ms after the last
+		   one, and fades over 250ms, ease-in-out; pointing at the scrollbar
+		   fades it in over 250ms and holds it. The script sets the
+		   attributes; a registered property lets the thumb's colour fade. */
+		.ask-me[data-layout="phone"] .ask-log {
+			--scrollbar-alpha: 0;
+			transition: --scrollbar-alpha 250ms ease-in-out;
+		}
+
+		.ask-me[data-layout="phone"] .ask-log[data-scrolling] {
+			--scrollbar-alpha: 1;
+			transition: none;
+		}
+
+		.ask-me[data-layout="phone"] .ask-log[data-scrollbar-hover] {
+			--scrollbar-alpha: 1;
+		}
+
 		.ask-me[data-layout="phone"] .ask-log::-webkit-scrollbar-thumb {
-			background: #c7c7cc;
+			background: rgb(199 199 204 / var(--scrollbar-alpha));
 			background-clip: padding-box;
 			border: 4px solid transparent;
 			border-radius: 7px;
@@ -1189,6 +1217,38 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	window.addEventListener("pointercancel", endDrag);
 	const updateLogEdges = trackEdges(log, "y");
 
+	/* ---------- Scrollbar fade (Mac overlay timing) ----------
+	   Shown at once while the thread scrolls and for 500ms after, then faded
+	   by the CSS; shown while the pointer is over the scrollbar's gutter, and
+	   for 500ms after it leaves. Chromium's macOS values. */
+	const SCROLLBAR_HOLD_MS = 500;
+	let scrollbarTimer = 0;
+	log.addEventListener(
+		"scroll",
+		() => {
+			log.toggleAttribute("data-scrolling", true);
+			clearTimeout(scrollbarTimer);
+			scrollbarTimer = window.setTimeout(() => log.removeAttribute("data-scrolling"), SCROLLBAR_HOLD_MS);
+		},
+		{ passive: true },
+	);
+	let gutterTimer = 0;
+	const setGutterHover = (on: boolean) => {
+		clearTimeout(gutterTimer);
+		if (on) log.toggleAttribute("data-scrollbar-hover", true);
+		else if (log.hasAttribute("data-scrollbar-hover")) {
+			gutterTimer = window.setTimeout(() => log.removeAttribute("data-scrollbar-hover"), SCROLLBAR_HOLD_MS);
+		}
+	};
+	log.addEventListener("pointermove", (event) => {
+		if (event.pointerType !== "mouse") return;
+		const gutter = log.offsetWidth - log.clientWidth;
+		if (!gutter || log.scrollHeight <= log.clientHeight) return setGutterHover(false);
+		// The gutter on screen, at the chat's scale.
+		setGutterHover(event.clientX >= log.getBoundingClientRect().right - gutter * chatZoom());
+	});
+	log.addEventListener("pointerleave", () => setGutterHover(false));
+
 	/* ---------- Drawn scroll indicator (touch, phone layout) ----------
 	   Sized and placed like a native one, inside the track's limits; shown
 	   while the thread scrolls and faded out shortly after. The CSS keeps
@@ -1219,7 +1279,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 				schedulePlace();
 				scrollTrack.toggleAttribute("data-active", true);
 				clearTimeout(hideTimer);
-				hideTimer = window.setTimeout(() => scrollTrack.removeAttribute("data-active"), 700);
+				hideTimer = window.setTimeout(() => scrollTrack.removeAttribute("data-active"), SCROLLBAR_HOLD_MS);
 			},
 			{ passive: true },
 		);
