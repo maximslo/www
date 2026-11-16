@@ -945,6 +945,10 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	// A beat after the page loads before the intro may start, so its first
 	// typing dots are seen rather than lost in the load.
 	const INTRO_LEAD_MS = 400;
+	// The same on a first visit, longer: the page has settled and been
+	// looked at before "hello!" starts being typed. (New chat types straight
+	// away; a reload mid-conversation has no intro.)
+	const FIRST_INTRO_LEAD_MS = 1200;
 	// After a message is sent, how long before the typing dots appear.
 	const TYPING_DELAY_MS = 700;
 	const HELLOS = ["hi", "sup", "yo"];
@@ -2175,7 +2179,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		// once played the first dots and "hello!" before anything was painted.
 		const ready = document.readyState === "complete" ? Promise.resolve() : new Promise((resolve) => addEventListener("load", resolve, { once: true }));
 		void ready
-			.then(() => pause(INTRO_LEAD_MS))
+			.then(() => pause(FIRST_INTRO_LEAD_MS))
 			// Unless a new chat already took over the intro meanwhile.
 			.then(() => introObserver === observer && observer.observe(log.lastElementChild!));
 	} else if (!restoredThread) {
