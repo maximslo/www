@@ -15,5 +15,5 @@ export const SESSION_LIMIT_MESSAGE = `im getting sleepy, gonna go nap\n\nchat la
 export const SERVER_ERROR_MESSAGE = `oops i fell asleep at the keyboard\n\nemail me at ${CONTACT_EMAIL}`;
 export const REFUSAL_MESSAGE = `im gonna sit that one out\n\nask me about my work or email me at ${CONTACT_EMAIL}`;
 
-export const NETWORK_ERROR_MESSAGE = "looks like the wifi is napping too\n\ncheck your connection and try again";
+export const NETWORK_ERROR_MESSAGE = "looks like the wifi is napping\n\ncheck your connection";
 export const GENERIC_ERROR_MESSAGE = "i zoned out for a sec\n\ntry again in a bit";
