@@ -412,6 +412,16 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		--chips-room: 0px;
 	}
 
+	/* Trackpads and mice: the scroll past either end is let out of the
+	   thread, as on alexsafayan.com/chat, so the browser can rubber-band it
+	   (PhoneFrame lets the page bounce for these too). Touch screens keep
+	   `contain`: iOS bounces the thread itself and the page stays put. */
+	@media (pointer: fine) {
+		.ask-log {
+			overscroll-behavior: auto;
+		}
+	}
+
 	.ask-log::after {
 		content: "";
 		flex: none;

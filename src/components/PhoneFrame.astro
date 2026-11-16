@@ -20,6 +20,16 @@
 		overscroll-behavior: none;
 	}
 
+	/* Trackpads and mice can't open a keyboard, so the page may bounce
+	   there, the Mac's rubber band carrying through from the chat thread
+	   as it does on alexsafayan.com/chat. */
+	@media (pointer: fine) {
+		:global(html:has(.phone-stage)),
+		:global(body:has(.phone-stage)) {
+			overscroll-behavior: auto;
+		}
+	}
+
 	/* The white sheet keeps its full height (it's what paints the page white)
 	   but drops its clip-path: a clip-path clips even fixed descendants, so
 	   the phone vanished wherever the sheet didn't reach. */
