@@ -124,6 +124,12 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 </BaseLayout>
 
 <script>
+	// No dragging the photos and videos out of the page (the CSS covers
+	// WebKit; this covers the rest).
+	document.addEventListener("dragstart", (event) => {
+		if ((event.target as Element | null)?.closest?.("img, video")) event.preventDefault();
+	});
+
 	// The pill fades out as a project grows and back as it shrinks home, on
 	// exactly the enlarge's timing: lab-lightbox.ts announces each fade of
 	// its veil (the page blurring or sharpening) as it starts.
@@ -215,6 +221,19 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		:global(.lightbox-detail.lightbox-detail) {
 			margin-left: 0;
 		}
+	}
+
+	/* Photos and videos can't be dragged off the page, selected, or long-
+	   pressed for iOS's preview and save menu, in the grid or enlarged.
+	   Taps still open them. (The script below covers dragging elsewhere.) */
+	:global(.lab-section img),
+	:global(.lab-section video),
+	:global(.lab-lightbox img),
+	:global(.lab-lightbox video) {
+		-webkit-user-drag: none;
+		user-select: none;
+		-webkit-user-select: none;
+		-webkit-touch-callout: none;
 	}
 
 	/* The enlarged view's veil: a white frost over the grid, not a dark one. */
