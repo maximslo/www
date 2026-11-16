@@ -52,7 +52,7 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 
 		   Unlike the reference, which only animates its first few rows and
 		   starts each as it nears the bottom of the screen, every tile waits
-		   until it's well on screen, its top a quarter of the way up: what's
+		   until it's properly on screen, its top 12% of the way up: what's
 		   on screen first, then, scrolling, white until the next row is in
 		   view and rises. The first ones travel the reference's 400px; later
 		   ones come up from below the screen's edge. At the very bottom of the
@@ -65,8 +65,11 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 			const phone = matchMedia("(max-width: 480px)").matches;
 			const duration = phone ? 550 : 500;
 			const STAGGER = 75;
-			// How far up the screen a tile's top has to be before it comes in.
-			const LINE = 0.25;
+			// How far up the screen a tile's top has to be before it comes in:
+			// 12% of the height (~90px on a laptop). A quarter left a tile
+			// whose top ~115px showed at the bottom of a laptop screen blank
+			// on load.
+			const LINE = 0.12;
 			const columns = [...document.querySelectorAll(".lab-column")];
 			const order = new Map();
 			const waiting = new Set();
