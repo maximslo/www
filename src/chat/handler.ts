@@ -19,7 +19,7 @@ import { getSystemPrompt } from "./system-prompt";
 // POST handler for /api/chat. Wired up by src/pages/api/chat.ts, which also
 // opts that route out of prerendering.
 
-const MODEL = "claude-haiku-5-5";
+const MODEL = "claude-sonnet-5-5";
 const MAX_MESSAGE_CHARS = 500;
 const MAX_TURNS_PER_SESSION = 20;
 const HISTORY_TURNS = 10;
@@ -162,7 +162,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 					model: MODEL,
 					max_tokens: 300,
 					// Thinking off: at a 300-token cap it would eat the reply budget.
-					thinking: { type: "disabled" },
+					thinking: { type: "between_tools" }, // Sonnet 5.5 rejects "disabled"; this is its off switch
 					output_config: { effort: "low" },
 					system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
 					messages,

@@ -54,6 +54,27 @@ Run `node scripts/chat-eval.mjs` (dev server running) after every profile or pro
 - im geeking off that geek pack
 - that fit is bussin no cap
 
+## General or advice (should try to help from general knowledge, never just the email line)
+- how do i get better at public speaking?
+- any tips for a first job interview?
+- how do you stay focused when working?
+- what should i cook tonight?
+- what's a good way to learn guitar?
+
+## Opinions and small talk (should riff and answer, no invented specifics)
+- pineapple on pizza?
+- cats or dogs?
+- morning person or night owl?
+- how's your day going?
+- tell me a joke
+
+## Personal but not in the profile (say it hasn't got that one, add something useful, no invented facts)
+- what's your favorite ramen place?
+- what's the last movie you watched?
+- do you have any pets?
+- what's your coffee order?
+- what was your first job?
+
 ## Stress testing (should joke that they're testing me, then carry on)
 - test test 123
 - asdfghjkl
