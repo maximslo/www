@@ -8,6 +8,8 @@
  * from the centre would lose the connection to the tile that was clicked.
  */
 
+import { PROJECT_OPEN_EVENT, PROJECT_VISIT_EVENT, trackEvent } from "../lib/analytics";
+
 const DURATION = 680;
 const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 
@@ -134,6 +136,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		if (!media) return;
 
 		origin = tile;
+		trackEvent(PROJECT_OPEN_EVENT, { project: tile.dataset.project ?? "" });
 		// The tile empties out the instant its content lifts, so the grid doesn't
 		// show the same media twice — once behind the blur and once enlarged.
 		tile.classList.add("is-lifted");
@@ -315,6 +318,10 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 
 	document.querySelectorAll<HTMLElement>("button.lab-tile-media").forEach((tile) => {
 		tile.addEventListener("click", () => open(tile));
+	});
+
+	actionEl.addEventListener("click", () => {
+		trackEvent(PROJECT_VISIT_EVENT, { project: origin?.dataset.project ?? "" });
 	});
 
 	// Anywhere outside the media dismisses. The figure is pointer-events: none

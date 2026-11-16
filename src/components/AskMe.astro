@@ -970,6 +970,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 <script>
 	import { GENERIC_ERROR_MESSAGE, NETWORK_ERROR_MESSAGE } from "../chat/messages";
+	import { CHAT_MESSAGE_EVENT, trackEvent } from "../lib/analytics";
 	import { createSpring, prefersReducedMotion, springEasing } from "../scripts/spring";
 
 	// Motion values from alexsafayan.com's chat (Framer Motion springs).
@@ -1950,7 +1951,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		if (!prefersReducedMotion()) animateSend(msg, source.rect, source.inset, source.spring);
 		setBusy(true);
 
-		(window as unknown as { plausible?: (event: string) => void }).plausible?.("chat_message");
+		trackEvent(CHAT_MESSAGE_EVENT);
 
 		// The whole reply is collected behind the typing dots, then shown at
 		// once. The request goes out straight away; only the dots wait.

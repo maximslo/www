@@ -78,6 +78,8 @@ const tileStyle = (tile: LabTile) => {
 						// lab-lightbox.ts rather than kept in a parallel JS copy of the
 						// grid that could drift from the markup.
 						const meta = {
+							// What analytics calls this project: not every tile has a title.
+							"data-project": tile.title ?? tile.href ?? tile.video ?? tile.image,
 							"data-title": tile.title,
 							"data-detail": tile.detail,
 							"data-href": tile.href,
