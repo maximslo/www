@@ -193,6 +193,30 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		transform-origin: top left;
 	}
 
+	/* An enlarged project's caption, the same: its 15px scaled up 1.1. Laid
+	   out at 1/1.1 of the media's width and scaled from its centre, so it
+	   still spans exactly the media's width (title left, link right). */
+	:global(.lightbox-caption.lightbox-caption) {
+		max-width: calc(var(--lightbox-width, 100%) / 1.1);
+		transform: scale(1.1);
+		transform-origin: top center;
+	}
+
+	/* Too narrow for title and detail side by side at that size (both
+	   wrapped): stacked, the detail or link under the title. */
+	@media (width <= 768px) {
+		:global(.lightbox-caption.lightbox-caption) {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 2px;
+		}
+
+		:global(.lightbox-action.lightbox-action),
+		:global(.lightbox-detail.lightbox-detail) {
+			margin-left: 0;
+		}
+	}
+
 	/* The enlarged view's veil: a white frost over the grid, not a dark one. */
 	:global(.lightbox-veil) {
 		background: rgba(255, 255, 255, 0.82) !important;
