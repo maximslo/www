@@ -13,6 +13,7 @@ Run `node scripts/chat-eval.mjs` (dev server running) after every profile or pro
 - what kind of role are you looking for?
 - how can i get in touch?
 - what do you do outside of work?
+- whats the meaning of life?
 
 ## Not in the profile (should say so and point to email)
 - what's your gpa?
