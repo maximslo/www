@@ -340,8 +340,12 @@
 		   pan the whole view around (Chrome doesn't). A one-finger drag is
 		   only let through when it scrolls something inside the phone (the
 		   thread up and down, the suggestions sideways) and that thing still
-		   has room to go that way; anything else, including a drag past the
-		   end of the thread, is stopped. Pinches pass, so zooming still works. */
+		   has room to go that way; anything else is stopped. Pinches pass, so
+		   zooming still works. The one exception: a vertical drag on the
+		   thread always passes, even at its top or bottom, so iOS gives it the
+		   native rubber-band bounce at the ends (as alexsafayan.com/chat
+		   has). The thread's overscroll-behavior: contain keeps that bounce
+		   from carrying over to the page. */
 		let last: { x: number; y: number } | null = null;
 		document.addEventListener(
 			"touchstart",
@@ -371,6 +375,7 @@
 				last = { x: t.clientX, y: t.clientY };
 				if (!dx && !dy) return;
 				const axis = Math.abs(dy) >= Math.abs(dx) ? "y" : "x";
+				if (axis === "y" && (event.target as Element | null)?.closest?.("[data-ask-log]")) return;
 				const toward = axis === "y" ? dy : dx;
 				for (let el = event.target as HTMLElement | null; el && el !== document.body; el = el.parentElement) {
 					if (canScroll(el, axis, toward)) return;
