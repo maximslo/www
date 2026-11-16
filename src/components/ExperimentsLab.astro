@@ -39,6 +39,7 @@ type LabTile = {
 	fit?: string;
 	bg?: string;
 	placeholder?: string;
+	preview?: string;
 	title?: string;
 	detail?: string;
 	href?: string;
@@ -51,6 +52,8 @@ const tileStyle = (tile: LabTile) => {
 	const parts = [`--lab-tile-aspect: ${tile.aspect}`];
 	if (tile.fit) parts.push(`--lab-tile-fit: ${tile.fit}`);
 	if (tile.placeholder) parts.push(`--lab-tile-placeholder: ${tile.placeholder}`);
+	// A data: URL (base64, so no quotes or parentheses to escape).
+	if (tile.preview) parts.push(`--lab-tile-preview: url("${tile.preview}")`);
 	// Inline rather than a custom property with a fallback: it has to beat
 	// .lab-tile's placeholder gradient, which would otherwise show through the
 	// matte on a `contain` tile.
@@ -75,6 +78,8 @@ const tileStyle = (tile: LabTile) => {
 						// lab-lightbox.ts rather than kept in a parallel JS copy of the
 						// grid that could drift from the markup.
 						const meta = {
+							// What analytics calls this project: not every tile has a title.
+							"data-project": tile.title ?? tile.href ?? tile.video ?? tile.image,
 							"data-title": tile.title,
 							"data-detail": tile.detail,
 							"data-href": tile.href,
@@ -223,12 +228,14 @@ const tileStyle = (tile: LabTile) => {
 	   Painted as an overlay rather than by swapping the background, because a
 	   contain-fit tile sets its matte inline and inline wins over a class. Clipped
 	   to the tile's radius by the existing overflow: hidden. */
+	/* The section's own colour, so the empty spot reads as page behind the
+	   blur: near-black on the dark section, white on /portfolio. */
 	.lab-tile.is-lifted::after {
 		content: "";
 		position: absolute;
 		inset: 0;
 		z-index: 2;
-		background: #000;
+		background: var(--color-bg-reveal);
 	}
 
 	.lab-tile-media {
@@ -272,6 +279,19 @@ const tileStyle = (tile: LabTile) => {
 		opacity: 1;
 		background: var(--lab-tile-placeholder, var(--color-bg-reveal));
 		pointer-events: none;
+	}
+
+	/* The asset itself, ~20px wide and blurred, over that colour: the tile
+	   loads as a soft version of itself, not a flat card. Sized the way the
+	   media is (cover, or contain on a matted tile), and scaled up a little
+	   so the blur's faded edge stays outside the tile. */
+	.lab-tile-cover::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background: var(--lab-tile-preview, none) center / var(--lab-tile-fit, cover) no-repeat;
+		filter: blur(18px);
+		transform: scale(1.12);
 	}
 
 	.lab-tile-cover.is-loaded {

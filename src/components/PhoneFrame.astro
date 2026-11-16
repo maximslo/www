@@ -1,0 +1,438 @@
+---
+// A phone-shaped rounded screen, centred in the visible viewport. No bezel or
+// status bar: just the #f5f5f5 screen with whatever is slotted filling it.
+---
+
+<div class="phone-stage" data-phone-stage>
+	<div class="phone">
+		<slot />
+	</div>
+</div>
+
+<style>
+	/* The page itself never scrolls: everything lives in the fixed stage. With
+	   nothing to scroll, iOS can't shove the page around when the keyboard
+	   opens, and the 100lvh sheet can't run under a bottom address bar. */
+	:global(html:has(.phone-stage)),
+	:global(body:has(.phone-stage)) {
+		height: 100%;
+		overflow: hidden;
+		overscroll-behavior: none;
+	}
+
+	/* Trackpads and mice can't open a keyboard, so the page may bounce
+	   there, the Mac's rubber band carrying through from the chat thread
+	   as it does on alexsafayan.com/chat. */
+	@media (pointer: fine) {
+		:global(html:has(.phone-stage)),
+		:global(body:has(.phone-stage)) {
+			overscroll-behavior: auto;
+		}
+	}
+
+	/* The white sheet keeps its full height (it's what paints the page white)
+	   but drops its clip-path: a clip-path clips even fixed descendants, so
+	   the phone vanished wherever the sheet didn't reach. */
+	:global(.site-canvas:has(.phone-stage)) {
+		clip-path: none;
+	}
+
+	/* Covers the *visible* part of the screen. Mobile browsers shrink only the
+	   visual viewport for the keyboard (Safari, and Chrome by default), so a
+	   plain `inset: 0` left the phone, and its input, under the keys. The
+	   script below feeds in the visual viewport's height and offset; without
+	   it (or before it runs) this is the dynamic viewport. */
+	.phone-stage {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: var(--vv-h, 100dvh);
+		/* Never past the bottom of the page's own viewport. Chrome on iOS
+		   shrinks that viewport for the keyboard in one step (and paints
+		   white below it); clamped here, the phone shrinks in that very
+		   frame, from CSS, before any script has heard about it. */
+		max-height: 100%;
+		transform: translateY(var(--vv-top, 0px));
+		container-type: size;
+		display: flex;
+		justify-content: center;
+		align-items: flex-start;
+		/* Only a small gap under the phone: that's all there is between it and
+		   an open keyboard. With no keyboard the phone is centred by its own
+		   top margin, which already keeps it clear of the bottom bars. */
+		padding: 0 16px 16px;
+	}
+
+	/* Sized like posh.vip's phone: 330×697 at most, with a 47px radius. Its
+	   width never gives way to a short window: only its height does, so on
+	   a short screen it's a shorter phone, not a narrower one (a narrow one
+	   squeezed every bubble into a column of single words). Only a window
+	   too narrow for it makes it narrower. The chat inside keeps its own
+	   type and bubble sizes either way.
+
+	   Everything but the height comes from `svh`, the screen's height with the
+	   browser's bars showing, which a keyboard never changes. So with the
+	   keyboard up the phone keeps its width, corners and top edge, and only
+	   its bottom edge moves up to sit above the keys. */
+	.phone {
+		/* Room under the phone with no keyboard: clears the home indicator and
+		   floating bottom bars (viewport-fit=cover is set in BaseLayout). */
+		--phone-gap-bottom: max(32px, env(safe-area-inset-bottom) + 16px);
+		/* The -lock values are measured by the script while no field is
+		   focused and held while one is. Chrome on iOS shrinks its whole web
+		   view for the keyboard, svh and vw included, so the units alone
+		   still narrowed the phone there. */
+		--phone-w: var(
+			--phone-w-lock,
+			min(330px, 100vw - 32px)
+		);
+		/* 697 tall at full width, or whatever the screen has room for. */
+		--phone-full-h: min(var(--phone-w) * 697 / 330, 100svh - 32px - var(--phone-gap-bottom));
+		/* Centred on the keyboard-less screen, at least 32px down. */
+		--phone-top: var(--phone-top-lock, max(32px, (100svh - var(--phone-full-h)) / 2));
+		width: var(--phone-w);
+		margin-top: var(--phone-top);
+		/* cqh: the visible area (above any keyboard) inside the stage's padding. */
+		height: min(var(--phone-full-h), 100cqh - var(--phone-top));
+		/* Read by the chat too, to keep its scrollbar off the curved corners. */
+		--phone-radius: calc(var(--phone-w) * 47 / 330);
+		border-radius: var(--phone-radius);
+		/* No padding: the chat runs edge to edge (so its scrollbar sits on the
+		   phone's edge) and insets its own content. */
+		background: #f5f5f5;
+		box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+		overflow: hidden;
+	}
+
+	/* Phones: no phone inside the phone. The chat is the page itself, edge
+	   to edge on white, for more breathing room; only the safe areas (notch,
+	   home indicator) are kept clear. The width/top locks the script
+	   measures are simply unused here. */
+	@media (width <= 768px) {
+		.phone-stage {
+			padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+				env(safe-area-inset-left);
+		}
+
+		.phone {
+			--phone-radius: 0px;
+			width: 100%;
+			margin-top: 0;
+			height: 100cqh;
+			border-radius: 0;
+			background: var(--color-bg-page);
+			box-shadow: none;
+		}
+
+		/* The thread's top fade blends into the page, not the old grey. */
+		.phone-stage .phone :global(.ask-me[data-layout="phone"]) {
+			--ask-bg: var(--color-bg-page);
+		}
+	}
+
+	/* Shrinking as the keyboard slides up, and growing back as it slides
+	   away, on roughly its curve. Browsers report the keyboard's height
+	   early in its slide (Chrome on iOS at ~110ms of ~450), so easing to it
+	   moves the field up alongside the keys instead of jumping there. */
+	.phone-stage[data-kb-opening] .phone {
+		transition: height 380ms cubic-bezier(0.32, 0.72, 0, 1);
+	}
+
+	.phone-stage[data-kb-closing] .phone {
+		transition: height 350ms cubic-bezier(0.32, 0.72, 0, 1);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.phone-stage[data-kb-opening] .phone,
+		.phone-stage[data-kb-closing] .phone {
+			transition: none;
+		}
+	}
+</style>
+
+<script>
+	// Keep the stage on the visual viewport: the part of the page actually on
+	// screen, above the keyboard and between the browser's bars.
+	const stage = document.querySelector<HTMLElement>("[data-phone-stage]");
+	const vv = window.visualViewport;
+
+	const fieldFocused = () => {
+		const el = document.activeElement;
+		return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable === true;
+	};
+
+	if (stage && vv) {
+		let frame = 0;
+		// The visible height with no keyboard up, to grow back to.
+		let fullHeight = vv.height;
+		// While the keyboard is going away (see below).
+		let closing = false;
+		let closingTimer = 0;
+		// Keyboard on its way up but not yet reported (see below).
+		let predicting = false;
+		let predictTimer = 0;
+		const KB_KEY = "phone-kb-h";
+		const CUT_KEY = "phone-kb-cut";
+		/* Chrome on iOS (and the other non-Safari iOS browsers) doesn't slide
+		   its keyboard over the page: ~0.1s after the tap it cuts the whole
+		   web view to the keyboard-up height and paints white below while the
+		   keys come up. Anything sliding in that white is unseen, so there
+		   the phone takes its new height at once, to be in place by the cut.
+		   Known by name, or learned from the first keyboard on this device. */
+		const cutsView = () => {
+			if (/CriOS|FxiOS|EdgiOS|OPiOS/.test(navigator.userAgent)) return true;
+			try {
+				return localStorage.getItem(CUT_KEY) === "1";
+			} catch {
+				return false;
+			}
+		};
+		const sync = () => {
+			frame = 0;
+			if (!fieldFocused() && !closing) fullHeight = vv.height;
+			if (predicting && vv.height < fullHeight - 1) {
+				// The real keyboard height is in: remember it for next time,
+				// and let the slide already under way retarget to it.
+				predicting = false;
+				clearTimeout(predictTimer);
+				try {
+					localStorage.setItem(KB_KEY, `${innerWidth}:${Math.round(fullHeight - vv.height)}`);
+					// The whole page shrank with it, not just the visible part:
+					// a browser that cuts the view at once (see below).
+					if (innerHeight < fullHeight - 1) localStorage.setItem(CUT_KEY, "1");
+				} catch {}
+			}
+			// Mid-close, Safari may still report the keyboard-up height; the
+			// phone is already growing back, so don't pull it in again. And
+			// while a keyboard is predicted, the full height reported before
+			// it arrives isn't news.
+			if ((!closing || vv.height >= fullHeight - 1) && !predicting) stage.style.setProperty("--vv-h", `${Math.min(vv.height, innerHeight)}px`);
+			/* Chrome on iOS cuts the whole page to the visible part, so the
+			   stage never has an offset to follow there. It does briefly
+			   scroll the page to "reveal" the field and reports that as an
+			   offset, which slid the phone down the screen mid-keyboard. */
+			stage.style.setProperty("--vv-top", `${cutsView() ? 0 : vv.offsetTop}px`);
+			// Keyboard closed again: undo any scroll iOS made to reveal the
+			// input, so the page is back where it started.
+			if (vv.height >= window.innerHeight - 1 && (window.scrollY || document.documentElement.scrollTop)) {
+				window.scrollTo(0, 0);
+			}
+		};
+		/* Straight away, not on the next frame. Chrome on iOS cuts the page
+		   (sometimes in two steps) and fires resize in the frame it does;
+		   left a frame too tall, the field sat below the cut and Chrome
+		   scrolled its whole view to reveal it, unseen by the page, and the
+		   phone was seen to shift down the screen. */
+		const syncNow = () => {
+			cancelAnimationFrame(frame);
+			sync();
+		};
+		vv.addEventListener("resize", syncNow);
+		window.addEventListener("resize", syncNow);
+		// Straight away, not on the next frame: any pan Safari still makes is
+		// matched in the same frame it shows, instead of one frame late.
+		vv.addEventListener("scroll", () => {
+			cancelAnimationFrame(frame);
+			sync();
+		});
+		sync();
+
+		/* Keyboard closing. iOS Safari only reports the new visible height once
+		   the keyboard has gone, so following it, the phone snapped back to
+		   full height after the fact. The field losing focus is the start of
+		   the close, and the height to return to is known, so the phone starts
+		   growing back right then, eased over about the keyboard's own slide.
+		   When Safari's report lands it matches, and nothing moves. */
+		document.addEventListener("focusout", () => {
+			// Moving between fields isn't a close.
+			setTimeout(() => {
+				if (fieldFocused()) return;
+				const current = parseFloat(stage.style.getPropertyValue("--vv-h")) || vv.height;
+				if (current >= fullHeight - 1) return;
+				closing = true;
+				stage.toggleAttribute("data-kb-closing", true);
+				stage.style.setProperty("--vv-h", `${fullHeight}px`);
+				clearTimeout(closingTimer);
+				closingTimer = window.setTimeout(() => {
+					closing = false;
+					stage.removeAttribute("data-kb-closing");
+					// Settle on whatever the browser now reports.
+					sync();
+				}, 600);
+			}, 0);
+		});
+		/* Keyboard opening: ease into whatever height the browser reports
+		   while it slides up. Only from a field focused at full height, so
+		   moving between fields or the bars changing while typing don't
+		   lag. */
+		let openingTimer = 0;
+		/* The slide starts on the tap, not when the browser gets round to
+		   reporting the keyboard (Safari late in its slide, Chrome ~110ms
+		   in), so the field rises with the keys from the first frame. It
+		   heads for the keyboard height last seen on this device at this
+		   width, or a typical iPhone one (~39% of the screen) the first time,
+		   and retargets mid-slide when the real one is reported. */
+		const expectedKeyboard = () => {
+			try {
+				const [w, h] = (localStorage.getItem(KB_KEY) || "").split(":").map(Number);
+				if (w === innerWidth && h > 0) return h;
+			} catch {}
+			return Math.round(screen.height * 0.39);
+		};
+		document.addEventListener("focusin", () => {
+			if (!matchMedia("(pointer: coarse)").matches || !fieldFocused() || vv.height < fullHeight - 1) return;
+			// Chrome on iOS: nothing to do; the clamp on the stage follows
+			// its cut exactly. A guess could only fall short and leave the
+			// phone running into the white below.
+			if (cutsView()) return;
+			stage.toggleAttribute("data-kb-opening", true);
+			clearTimeout(openingTimer);
+			openingTimer = window.setTimeout(() => stage.removeAttribute("data-kb-opening"), 1200);
+			predicting = true;
+			/* From the first frame actually drawn, not the tap: nothing is
+			   drawn before it anyway, and a head start would only be eaten
+			   unseen. */
+			const target = Math.max(200, fullHeight - expectedKeyboard());
+			requestAnimationFrame(() => {
+				if (predicting) stage.style.setProperty("--vv-h", `${target}px`);
+			});
+			// No keyboard after all (a hardware one, say): ease back.
+			clearTimeout(predictTimer);
+			predictTimer = window.setTimeout(() => {
+				predicting = false;
+				sync();
+			}, 900);
+		});
+		document.addEventListener("focusout", () => {
+			clearTimeout(openingTimer);
+			stage.removeAttribute("data-kb-opening");
+			if (!predicting) return;
+			predicting = false;
+			clearTimeout(predictTimer);
+		});
+		document.addEventListener("focusin", () => {
+			if (!closing) return;
+			// Straight back into a field mid-close: follow the browser again.
+			clearTimeout(closingTimer);
+			closing = false;
+			stage.removeAttribute("data-kb-closing");
+		});
+	}
+
+	/* Hold the page still when a text field is tapped. iOS Safari scrolls the
+	   page to "reveal" a focused field, even with scrolling locked, and the
+	   phone was seen to jump up and then slide back as the stage caught up.
+	   That reveal isn't needed here (the phone already shortens to keep the
+	   field above the keyboard), so on touch screens the tap is taken over
+	   and the field focused with preventScroll. The keyboard still opens:
+	   it's a focus from the tap's own touchend. */
+	if (stage && window.matchMedia("(pointer: coarse)").matches) {
+		let start: { x: number; y: number } | null = null;
+		stage.addEventListener(
+			"touchstart",
+			(event) => {
+				const t = event.touches[0];
+				start = t ? { x: t.clientX, y: t.clientY } : null;
+			},
+			{ passive: true },
+		);
+		stage.addEventListener("touchend", (event) => {
+			const field = (event.target as Element | null)?.closest<HTMLInputElement | HTMLTextAreaElement>("input, textarea");
+			if (!field || document.activeElement === field || !start) return;
+			// A drag that began on the field isn't a tap.
+			const t = event.changedTouches[0];
+			if (t && Math.hypot(t.clientX - start.x, t.clientY - start.y) > 10) return;
+			event.preventDefault();
+			field.focus({ preventScroll: true });
+		});
+		/* No wiggling the page. With the keyboard up, iOS Safari lets a drag
+		   pan the whole view around (Chrome doesn't). A one-finger drag is
+		   only let through when it scrolls something inside the phone (the
+		   thread up and down, the suggestions sideways) and that thing still
+		   has room to go that way; anything else is stopped. Pinches pass, so
+		   zooming still works. The one exception: a vertical drag on the
+		   thread always passes, even at its top or bottom, so iOS gives it the
+		   native rubber-band bounce at the ends (as alexsafayan.com/chat
+		   has). The thread's overscroll-behavior: contain keeps that bounce
+		   from carrying over to the page. */
+		let last: { x: number; y: number } | null = null;
+		document.addEventListener(
+			"touchstart",
+			(event) => {
+				const t = event.touches[0];
+				last = t ? { x: t.clientX, y: t.clientY } : null;
+			},
+			{ passive: true },
+		);
+		const canScroll = (el: HTMLElement, axis: "x" | "y", toward: number) => {
+			const cs = getComputedStyle(el);
+			const overflow = axis === "y" ? cs.overflowY : cs.overflowX;
+			if (overflow !== "auto" && overflow !== "scroll") return false;
+			const pos = axis === "y" ? el.scrollTop : el.scrollLeft;
+			const max = axis === "y" ? el.scrollHeight - el.clientHeight : el.scrollWidth - el.clientWidth;
+			if (max <= 0) return false;
+			// Finger moving down/right scrolls back toward the start.
+			return toward > 0 ? pos > 0 : pos < max - 1;
+		};
+		document.addEventListener(
+			"touchmove",
+			(event) => {
+				if (event.touches.length > 1 || !last) return;
+				const t = event.touches[0];
+				const dx = t.clientX - last.x;
+				const dy = t.clientY - last.y;
+				last = { x: t.clientX, y: t.clientY };
+				if (!dx && !dy) return;
+				const axis = Math.abs(dy) >= Math.abs(dx) ? "y" : "x";
+				if (axis === "y" && (event.target as Element | null)?.closest?.("[data-ask-log]")) return;
+				const toward = axis === "y" ? dy : dx;
+				for (let el = event.target as HTMLElement | null; el && el !== document.body; el = el.parentElement) {
+					if (canScroll(el, axis, toward)) return;
+				}
+				if (event.cancelable) event.preventDefault();
+			},
+			{ passive: false },
+		);
+
+		// Backstop: should the page still get scrolled while a field is
+		// focused, put it straight back.
+		window.addEventListener(
+			"scroll",
+			() => {
+				if (window.scrollY || document.documentElement.scrollTop) window.scrollTo(0, 0);
+			},
+			{ passive: true },
+		);
+	}
+
+	// Hold the phone's width and top edge steady while typing. They're
+	// measured from the CSS whenever no text field is focused (load, resize,
+	// rotation, the keyboard closing) and frozen while one is, since some
+	// browsers (Chrome on iOS) shrink the whole viewport for the keyboard.
+	const phone = stage?.querySelector<HTMLElement>(".phone");
+	if (phone) {
+		const typing = () => {
+			const el = document.activeElement;
+			return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable === true;
+		};
+		let lockFrame = 0;
+		const lock = () => {
+			lockFrame = 0;
+			if (typing()) return;
+			phone.style.removeProperty("--phone-w-lock");
+			phone.style.removeProperty("--phone-top-lock");
+			const cs = getComputedStyle(phone);
+			phone.style.setProperty("--phone-w-lock", cs.width);
+			phone.style.setProperty("--phone-top-lock", cs.marginTop);
+		};
+		const scheduleLock = () => {
+			if (!lockFrame) lockFrame = requestAnimationFrame(lock);
+		};
+		window.addEventListener("resize", scheduleLock);
+		window.visualViewport?.addEventListener("resize", scheduleLock);
+		// Keyboard closing: re-measure once it has had time to go.
+		document.addEventListener("focusout", () => setTimeout(scheduleLock, 400));
+		lock();
+	}
+</script>

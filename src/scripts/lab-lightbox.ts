@@ -8,6 +8,8 @@
  * from the centre would lose the connection to the tile that was clicked.
  */
 
+import { PROJECT_OPEN_EVENT, PROJECT_VISIT_EVENT, trackEvent } from "../lib/analytics";
+
 const DURATION = 680;
 const EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 
@@ -20,6 +22,14 @@ const VEIL_EASING = EASING;
 const CLOSE_SCALE = 0.7;
 
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+/**
+ * Announced as the page behind starts to blur (opacity 1) or sharpen again
+ * (0), with the veil's timing, so things outside the lightbox can fade in
+ * step with it (the portfolio page's Chat pill).
+ */
+const announceVeil = (opacity: 0 | 1, duration: number) =>
+	document.dispatchEvent(new CustomEvent("lab-lightbox:veil", { detail: { opacity, duration, easing: VEIL_EASING } }));
 
 // Phones and tablets. Counter-scaling the corner radius means repainting the
 // stage — a decoded video at full size — on every frame, which a mobile GPU
@@ -126,6 +136,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 		if (!media) return;
 
 		origin = tile;
+		trackEvent(PROJECT_OPEN_EVENT, { project: tile.dataset.project ?? "" });
 		// The tile empties out the instant its content lifts, so the grid doesn't
 		// show the same media twice — once behind the blur and once enlarged.
 		tile.classList.add("is-lifted");
@@ -200,6 +211,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 			easing: VEIL_EASING,
 			fill: "forwards",
 		});
+		announceVeil(1, VEIL_DURATION);
 
 		// A scaled corner radius renders scaled too: at sx ≈ 0.42 the stage's 12px
 		// would draw as 5px while the tile it's growing out of draws a full 12px.
@@ -276,6 +288,7 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 			easing: VEIL_EASING,
 			fill: "forwards",
 		});
+		announceVeil(0, duration);
 
 		// No opacity here: fading the stage out as it shrinks means it lands
 		// part-transparent and then jumps to full when the tile is refilled. Kept
@@ -305,6 +318,10 @@ if (dialog && veil && stage && caption && titleEl && actionEl && detailEl) {
 
 	document.querySelectorAll<HTMLElement>("button.lab-tile-media").forEach((tile) => {
 		tile.addEventListener("click", () => open(tile));
+	});
+
+	actionEl.addEventListener("click", () => {
+		trackEvent(PROJECT_VISIT_EVENT, { project: origin?.dataset.project ?? "" });
 	});
 
 	// Anywhere outside the media dismisses. The figure is pointer-events: none

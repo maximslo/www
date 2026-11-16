@@ -1,0 +1,390 @@
+---
+// maximslo.com/portfolio: the old home page's project section (the lab grid
+// and the footer) on its own, on the home page's white rather than the
+// near-black it sat on there. The chat
+// links here when someone asks to see my work.
+import BaseLayout from "../layouts/BaseLayout.astro";
+import ExperimentsLab from "../components/ExperimentsLab.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
+---
+
+<BaseLayout title={`Work — ${INTRO_NAME}`} description={META_DESCRIPTION} bare>
+	{/* A popover, so it can sit in the top layer with the enlarged project
+	    (a modal <dialog>, which is drawn over everything else) and stay above
+	    it. Otherwise a project shrinking home under the pill covered it,
+	    and the pill popped back over it the moment it landed. */}
+	<a class="portfolio-back" href="/" data-portfolio-back aria-label="Back to chat" popover="manual">
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="m15 18-6-6 6-6"></path>
+		</svg>
+		<span>Chat</span>
+	</a>
+	<script is:inline>
+		// Shown straight away (a popover starts hidden), before the page paints.
+		document.querySelector("[data-portfolio-back]")?.showPopover?.();
+	</script>
+	{/* Tiles start hidden for their entry (below), set before they render so
+	    none flashes in first. Never with reduced motion, and never for good:
+	    if the entry script hasn't taken over in a few seconds, they show. */}
+	<script is:inline>
+		// A reload starts at the top, with the entry, rather than wherever the
+		// browser last had it scrolled.
+		if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+		scrollTo(0, 0);
+		if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			document.documentElement.setAttribute("data-entry", "");
+			setTimeout(() => {
+				if (!document.documentElement.hasAttribute("data-entry-running")) document.documentElement.removeAttribute("data-entry");
+			}, 3000);
+		}
+	</script>
+	<ExperimentsLab />
+	<script is:inline>
+		/* Project entry, after bruce-cao.com (inline, right after the grid: it
+		   runs the moment the tiles exist, with nothing to download first, so
+		   a slow connection can't hold it up): each tile rises from below at
+		   40% size and fades in, those arriving together staggered 75ms apart
+		   in reading order. It never waits for its picture: a tile whose
+		   media hasn't loaded rises as its blurred preview (ExperimentsLab's
+		   cover). Timing is the reference's (its video cards): 0.5s (0.55s on
+		   phones), transform on cubic-bezier(0, .91, 0, 1), opacity linear.
+
+		   Unlike the reference, which only animates its first few rows and
+		   starts each as it nears the bottom of the screen, every tile waits
+		   until it's properly on screen, its top 12% of the way up: what's
+		   on screen first, then, scrolling, white until the next row is in
+		   view and rises. The first ones travel the reference's 400px; later
+		   ones come up from below the screen's edge. At the very bottom of the
+		   page, where the last row may never get that far up, whatever's
+		   still waiting comes in. (In a block: an inline script's names are
+		   otherwise page-wide.) */
+		if (document.documentElement.hasAttribute("data-entry")) {
+			const root = document.documentElement;
+			root.setAttribute("data-entry-running", "");
+			const phone = matchMedia("(max-width: 480px)").matches;
+			const duration = phone ? 550 : 500;
+			const STAGGER = 75;
+			// How far up the screen a tile's top has to be before it comes in:
+			// 12% of the height (~90px on a laptop). A quarter left a tile
+			// whose top ~115px showed at the bottom of a laptop screen blank
+			// on load.
+			const LINE = 0.12;
+			const columns = [...document.querySelectorAll(".lab-column")];
+			const order = new Map();
+			const waiting = new Set();
+			let first = true;
+
+			const enter = (tiles) => {
+				tiles.sort((a, b) => order.get(a) - order.get(b));
+				tiles.forEach((tile, i) => {
+					observer.unobserve(tile);
+					waiting.delete(tile);
+					const box = tile.getBoundingClientRect();
+					const offset = first ? 400 : Math.max(innerHeight + box.height - box.top, box.height);
+					const delay = i * STAGGER;
+					tile.setAttribute("data-entered", "");
+					// Two animations, as the reference's two transitions: the
+					// rise eased hard, the fade linear. Held at the start through
+					// the stagger, then nothing left behind on the tile (the
+					// lightbox measures and animates it).
+					tile.animate([{ transform: `translateY(${offset}px) scale(0.4)` }, { transform: "none" }], {
+						duration,
+						delay,
+						easing: "cubic-bezier(0, 0.91, 0, 1)",
+						fill: "backwards",
+					});
+					tile.animate([{ opacity: 0 }, { opacity: 1 }], { duration, delay, easing: "linear", fill: "backwards" });
+				});
+				if (tiles.length) first = false;
+			};
+
+			const observer = new IntersectionObserver(
+				(entries) => {
+					// Over the line, or already scrolled past it (a fast fling).
+					enter(entries.filter((e) => e.isIntersecting || e.boundingClientRect.bottom < 0).map((e) => e.target));
+				},
+				{ rootMargin: `0px 0px -${LINE * 100}% 0px` },
+			);
+
+			columns.forEach((column, col) => {
+				column.querySelectorAll(":scope > .lab-tile").forEach((tile, row) => {
+					order.set(tile, row * columns.length + col);
+					waiting.add(tile);
+					observer.observe(tile);
+				});
+			});
+
+			const atBottom = () => {
+				if (!waiting.size) return removeEventListener("scroll", atBottom);
+				if (innerHeight + scrollY < root.scrollHeight - 2) return;
+				enter([...waiting].filter((tile) => tile.getBoundingClientRect().top < innerHeight));
+			};
+			addEventListener("scroll", atBottom, { passive: true });
+		}
+	</script>
+	<SiteFooter />
+</BaseLayout>
+
+<script>
+	// No dragging the photos and videos out of the page (the CSS covers
+	// WebKit; this covers the rest).
+	document.addEventListener("dragstart", (event) => {
+		if ((event.target as Element | null)?.closest?.("img, video")) event.preventDefault();
+	});
+
+	// The pill fades out as a project grows and back as it shrinks home, on
+	// exactly the enlarge's timing: lab-lightbox.ts announces each fade of
+	// its veil (the page blurring or sharpening) as it starts.
+	const pill = document.querySelector<HTMLElement>("[data-portfolio-back]");
+	document.addEventListener("lab-lightbox:veil", (event) => {
+		const { opacity, duration, easing } = (event as CustomEvent<{ opacity: 0 | 1; duration: number; easing: string }>).detail;
+		if (!pill) return;
+		// A project opening goes into the top layer over the pill: shown
+		// again, the pill moves back above it, and stays there through the
+		// open and the close.
+		if (opacity === 1 && pill.matches(":popover-open")) {
+			pill.hidePopover();
+			pill.showPopover();
+		}
+		const from = getComputedStyle(pill).opacity;
+		pill.getAnimations().forEach((animation) => animation.id === "veil" && animation.cancel());
+		const fade = pill.animate([{ opacity: from }, { opacity: 1 - opacity }], { duration, easing, fill: "forwards" });
+		fade.id = "veil";
+	});
+
+	// Came from the chat on this site: go back instead of loading it fresh, so
+	// the conversation is still there (and the browser restores it whole).
+	document.querySelector<HTMLAnchorElement>("[data-portfolio-back]")?.addEventListener("click", (event) => {
+		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		let fromHere = false;
+		try {
+			fromHere = new URL(document.referrer).origin === location.origin;
+		} catch {}
+		if (fromHere && history.length > 1) {
+			event.preventDefault();
+			history.back();
+		}
+	});
+</script>
+
+
+
+<style>
+	/* The section was built for near-black; here it's on the home page's
+	   white. Its colours all come from these, so they're swapped for the
+	   page's own: the surface, then the text and dotted link rules of the
+	   white pages. */
+	/* (:root twice: global.css sets them on :root, which outranks html.) */
+	:global(:root:root) {
+		--color-bg-reveal: var(--color-bg-page);
+		--color-text-on-reveal: var(--color-text-primary);
+		--color-text-on-reveal-dim: var(--color-text-secondary);
+		--color-link-line-on-reveal: var(--color-link-line);
+	}
+
+	/* Hovered links went white, which here is invisible: black instead.
+	   (!important: the section's own rules are scoped, so more specific.) */
+	:global(.footer-link:hover),
+	:global(.footer-link:focus-visible),
+	:global(.lightbox-action:hover),
+	:global(.lightbox-action:focus-visible) {
+		color: #000 !important;
+		border-color: #000 !important;
+	}
+
+	/* The footer's two lines at the size of my name on the home page and
+	   this page's Chat pill: 15px scaled up 1.1, the chat's own scale, so
+	   SF Pro draws it at the same optical size as theirs. */
+	:global(.site-footer-content) {
+		font-size: 15px;
+		transform: scale(1.1);
+		transform-origin: top left;
+	}
+
+	/* An enlarged project's caption, the same: its 15px scaled up 1.1. Laid
+	   out at 1/1.1 of the media's width and scaled from its centre, so it
+	   still spans exactly the media's width (title left, link right). */
+	:global(.lightbox-caption.lightbox-caption) {
+		max-width: calc(var(--lightbox-width, 100%) / 1.1);
+		transform: scale(1.1);
+		transform-origin: top center;
+	}
+
+	/* Too narrow for title and detail side by side at that size (both
+	   wrapped): stacked, the detail or link under the title. */
+	@media (width <= 768px) {
+		:global(.lightbox-caption.lightbox-caption) {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 2px;
+		}
+
+		:global(.lightbox-action.lightbox-action),
+		:global(.lightbox-detail.lightbox-detail) {
+			margin-left: 0;
+		}
+	}
+
+	/* Photos and videos can't be dragged off the page, selected, or long-
+	   pressed for iOS's preview and save menu, in the grid or enlarged.
+	   Taps still open them. (The script below covers dragging elsewhere.) */
+	:global(.lab-section img),
+	:global(.lab-section video),
+	:global(.lab-lightbox img),
+	:global(.lab-lightbox video) {
+		-webkit-user-drag: none;
+		user-select: none;
+		-webkit-user-select: none;
+		-webkit-touch-callout: none;
+	}
+
+	/* The enlarged view's veil: a white frost over the grid, not a dark one. */
+	:global(.lightbox-veil) {
+		background: rgba(255, 255, 255, 0.82) !important;
+	}
+
+	:global(html[data-entry] .lab-tile:not([data-entered])) {
+		opacity: 0;
+	}
+
+	/* No slow whole-page fade here: the tiles' own entry is the intro, and
+	   the fade under it dimmed them as they rose. */
+	:global(html[data-entry] body) {
+		opacity: 1;
+		animation: none;
+	}
+
+	/* Pinned top left, over the grid as it scrolls: the frosted glass of the
+	   chat's New chat button, stretched into a pill. */
+	.portfolio-back {
+		/* The browser's popover defaults, undone: no inset, margin, border
+		   or scrolling of its own; it's placed by top and left below. */
+		inset: auto;
+		margin: 0;
+		border: 0;
+		overflow: visible;
+		position: fixed;
+		z-index: 10;
+		top: calc(env(safe-area-inset-top) + 20px);
+		/* At every width, where it is on desktop: its arrow on my name's
+		   left edge on the home page (64px; the arrow's ink starts 16.5px
+		   into the pill and the name's "M" 1px past 64px, so the pill sits
+		   15.5px left of that). Clear of a notch in landscape too. */
+		left: calc(env(safe-area-inset-left) + 64px - 15.5px);
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		height: 36px;
+		padding: 0 16px 0 10px;
+		font-size: 16px;
+		font-weight: 500;
+		line-height: 1;
+		color: #000;
+		text-decoration: none;
+		border-radius: 18px;
+		background: rgba(255, 255, 255, 0.3);
+		-webkit-backdrop-filter: blur(8px) saturate(300%);
+		backdrop-filter: blur(8px) saturate(300%);
+		box-shadow:
+			0 0 32px rgba(0, 0, 0, 0.12),
+			inset 0 0 3px 1px #fff;
+		-webkit-tap-highlight-color: transparent;
+		transition:
+			transform 200ms ease-out,
+			background-color 200ms ease-out;
+		/* Its own layer, scaled whole on press, so the letters don't wobble. */
+		will-change: transform;
+	}
+
+	/* Out of the way while a project is open. The fade itself follows the
+	   enlarge's own (the script below); this keeps it unclickable meanwhile,
+	   and hidden with reduced motion, where nothing animates.
+	   lab-lightbox.ts holds .is-lightbox-open from open to fully closed. */
+	:global(html.is-lightbox-open) .portfolio-back {
+		pointer-events: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(html.is-lightbox-open) .portfolio-back {
+			opacity: 0;
+		}
+	}
+
+	.portfolio-back:hover {
+		background-color: rgba(255, 255, 255, 0.5);
+	}
+
+	.portfolio-back:active {
+		transform: scale(0.94);
+	}
+
+	.portfolio-back:focus-visible {
+		outline: 2px solid #000;
+		outline-offset: 2px;
+	}
+
+	/* Centred on its letters, not its line box: the font's line box has more
+	   room above the capitals than below, which left "Chat" sitting high.
+	   Trimmed to cap height and baseline, flexbox centres what you see. */
+	/* Set exactly like my name on the home page, and the chat's messages:
+	   15px scaled up 1.1, so SF Pro draws it at the same optical size
+	   (16.5px set directly gets different letterforms and spacing). The
+	   scale doesn't change its layout width, so the 10% it adds to "Chat"
+	   (~2.1em wide) is made up on the right, keeping the pill's padding. */
+	.portfolio-back span {
+		display: inline-block;
+		font-size: 15px;
+		text-box: trim-both cap alphabetic;
+		/* Measured: scaled, the capitals landed ~0.6px below centre. */
+		transform: translateY(-0.5px) scale(1.1);
+		transform-origin: left center;
+		margin-right: 0.21em;
+	}
+
+	@supports not (text-box: trim-both cap alphabetic) {
+		.portfolio-back span {
+			transform: translateY(-0.5px) scale(1.1) translateY(0.05em);
+		}
+	}
+
+	.portfolio-back svg {
+		width: 20px;
+		height: 20px;
+	}
+
+	/* The grid starts below the pill: 20px above it, so 20px under it too. */
+	:global(body .lab-section.lab-section) {
+		padding-top: max(clamp(48px, 5.6vw, 112px), calc(env(safe-area-inset-top) + 76px));
+	}
+
+	/* Desktop: where my name sits on the home page (index.astro: 64px in,
+	   40px down, a 15px × 1.1 line at line-height 1.4), the pill centred on
+	   its line, so going back and forth it stays put. The grid starts as
+	   far under the pill as the pill sits from the top. */
+	@media (width > 768px) {
+		:global(:root) {
+			--name-mid: calc(40px + 15px * 1.4 * 1.1 / 2);
+		}
+
+		.portfolio-back {
+			top: calc(var(--name-mid) - 18px);
+		}
+
+		:global(body .lab-section.lab-section) {
+			padding-top: max(clamp(48px, 5.6vw, 112px), calc((var(--name-mid) - 18px) * 2 + 36px));
+		}
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.portfolio-back {
+			animation: portfolio-back-in 500ms linear both;
+		}
+	}
+
+	@keyframes portfolio-back-in {
+		from {
+			opacity: 0;
+		}
+	}
+</style>

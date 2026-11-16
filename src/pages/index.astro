@@ -1,21 +1,62 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import ExperimentsLab from "../components/ExperimentsLab.astro";
-import SiteFooter from "../components/SiteFooter.astro";
-import PageGrid from "../components/PageGrid.astro";
-import SiteIntro from "../components/SiteIntro.astro";
+import AskMe from "../components/AskMe.astro";
+import PhoneFrame from "../components/PhoneFrame.astro";
 import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
+
+// First name and the rest, so the name can stack on two lines.
+const [first, ...rest] = INTRO_NAME.split(" ");
 ---
 
+{/* Just the chat, in a phone. No reveal slot, so BaseLayout renders the white
+    sheet alone and canvas-reveal.ts stands down. */}
 <BaseLayout title={INTRO_NAME} description={META_DESCRIPTION}>
-	<PageGrid>
-		<SiteIntro />
-	</PageGrid>
-
-	{/* Both land on the dark surface below the white sheet; the footer closes the
-	    page out under the thumbnail rail. */}
-	<Fragment slot="reveal">
-		<ExperimentsLab />
-		<SiteFooter />
-	</Fragment>
+	{/* My name, top left beside the phone, set like the messages. Desktop
+	    only: at phone widths the chat fills the screen. */}
+	<p class="site-name">
+		<span class="site-name-line">{first}</span>{" "}<span class="site-name-line">{rest.join(" ")}</span>
+	</p>
+	<PhoneFrame>
+		<AskMe layout="phone" />
+	</PhoneFrame>
 </BaseLayout>
+
+<style>
+	.site-name {
+		display: none;
+	}
+
+	@media (width > 768px) {
+		.site-name {
+			display: block;
+			position: absolute;
+			z-index: 2;
+			top: 40px;
+			left: 64px;
+			margin: 0;
+			/* The messages' type exactly: AskMe's 15px at weight 500, scaled up
+			   1.1 like the chat (its --ask-zoom). Set at 16.5px instead, SF Pro
+			   picked its letterforms and spacing for that size (optical
+			   sizing), so it didn't match the bubbles' scaled-up 15px. */
+			font-size: 15px;
+			font-weight: 500;
+			transform: scale(1.1);
+			transform-origin: top left;
+		}
+	}
+
+	/* Too narrow for it on one line beside the phone: first name over last,
+	   set tight. The first line stays where it was: the padding makes up
+	   the half of the leading the tighter line height took off its top
+	   ((1.4 - 1.15) / 2 = 0.125em). */
+	@media (width > 768px) and (width <= 1070px) {
+		.site-name {
+			padding-top: 0.125em;
+			line-height: 1.15;
+		}
+
+		.site-name-line {
+			display: block;
+		}
+	}
+</style>

@@ -1,12 +1,21 @@
 ---
 import { GREETING } from "../chat/system-prompt";
 
+interface Props {
+	// "phone": fills its container (PhoneFrame) instead of a fixed 400px window.
+	layout?: "inline" | "phone";
+}
+
+const { layout = "inline" } = Astro.props;
+
 // Questions the profile can actually answer, so the first tap lands well.
 const SUGGESTIONS = [
-	"what did you do at the times?",
-	"why journalism?",
-	"what's the tech stack here?",
-	"tell me a fun fact",
+	"Got a portfolio?",
+	"Website tech stack?",
+	"Tell me about your favorite project.",
+	"Tell me a fun fact.",
+	"How did you get into journalism?",
+	"What's your favorite book?",
 ];
 
 // iMessage bubble tail, from beerwar.app's montage caption. Drawn for the
@@ -14,7 +23,7 @@ const SUGGESTIONS = [
 const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336 13.2978 25.924 16.6489Z";
 ---
 
-<section class="ask-me" aria-labelledby="ask-me-label">
+<section class="ask-me" data-layout={layout} aria-labelledby="ask-me-label">
 	<!-- Clicking the label focuses the input, so the hover nudge points somewhere real. -->
 	<label class="ask-label" id="ask-me-label" for="ask-input">
 		Chat
@@ -83,6 +92,20 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 				</svg>
 			</button>
 		</form>
+
+		<!-- Phone layout: start over, in the same frosted glass as the field. -->
+		<button type="button" class="ask-new" title="New chat" aria-label="Start new chat" data-ask-new>
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+				<path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
+			</svg>
+		</button>
+
+		<!-- Touch screens in the phone layout: a drawn scroll indicator, kept
+		     off the phone's curved corners like the desktop scrollbar. -->
+		<div class="ask-scroll-track" aria-hidden="true" data-ask-scroll-track>
+			<div class="ask-scroll-thumb" data-ask-scroll-thumb></div>
+		</div>
 	</div>
 
 	<template data-ask-template>
@@ -106,6 +129,209 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		margin-top: var(--section-gap);
 		--imsg-blue: #0092ff;
 		--imsg-gray: #e9e9eb;
+		/* No grey flash over the field, chips or send button on tap (iOS
+		   WebKit, Chrome included); the controls show their own states. */
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	/* Phone layout: the chat fills the PhoneFrame top to bottom and the thread
+	   takes all the height the label leaves, instead of a 400px window. */
+	.ask-me[data-layout="phone"] {
+		/* The chat's own scale inside the phone: type, bubbles, field and
+		   suggestions 10% up from their base sizes (they read best at what
+		   was 110% browser zoom), while the phone frame keeps its size. It's
+		   laid out at 1/1.1 of the frame and scaled up to fill it exactly.
+		   A transform, not `zoom`: iOS Safari's zoom also scaled the 100%
+		   height, so the thread ran 10% past the bottom of the phone and its
+		   newest message sat under the field, out of scroll reach. */
+		--ask-zoom: 1.1;
+		width: calc(100% / var(--ask-zoom));
+		height: calc(100% / var(--ask-zoom));
+		transform: scale(var(--ask-zoom));
+		transform-origin: 0 0;
+		/* The phone's corner radius comes from the frame, outside the scale:
+		   brought back to this scale so the scrollbar limits stay put. */
+		--corner: calc(var(--phone-radius, 0px) / var(--ask-zoom));
+		--ask-bg: #f5f5f5;
+		margin-top: 0;
+		display: flex;
+		flex-direction: column;
+	}
+
+	/* No "Chat" heading in the phone; it still names the section for screen
+	   readers through aria-labelledby. */
+	.ask-me[data-layout="phone"] .ask-label {
+		display: none;
+	}
+
+	.ask-me[data-layout="phone"] .ask-thread {
+		flex: 1;
+		min-height: 0;
+	}
+
+	/* The thread fills the phone edge to edge, so its scrollbar lands on the
+	   phone's right edge; the 20px screen margin moves inside it as padding. */
+	.ask-me[data-layout="phone"] .ask-thread {
+		--top-fade: 48px;
+		--screen-pad: 20px;
+		margin-top: 0;
+	}
+
+	.ask-me[data-layout="phone"] .ask-log {
+		height: 100%;
+		max-height: none;
+		/* The scrollbar's width comes out of the right margin, measured by the
+		   script: it's 0 until the thread overflows, and 0 always where
+		   scrollbars overlay the content. A fixed amount left sent bubbles
+		   6px from the edge whenever there was no bar. */
+		/* Bottom: room between the newest message and the compose field
+		   (--last-gap, past the 9.5px tail), then the field itself. It's
+		   made by the thread's ::after spacer (--log-end), not bottom
+		   padding: WebKit (Safari, and Chrome on iOS) leaves a flex scroll
+		   container's bottom padding out of its scroll range, so with the
+		   suggestions' room gone the newest message sat under the field and
+		   couldn't be scrolled to. */
+		--last-gap: 28px;
+		--log-end: calc(var(--last-gap) + var(--form-height) + var(--form-gap) + var(--screen-pad));
+		/* The phone is narrow: let a bubble take a bit more of it, so longer
+		   lines (and links) fit on one line. */
+		--bubble-max: 85%;
+		padding: var(--top-fade) calc(var(--screen-pad) - var(--scrollbar-width, 0px)) 0 var(--screen-pad);
+	}
+
+	/* Phones: a tighter gap. There the keyboard takes half the screen, and
+	   the desktop 28px (zoomed) left the newest message well clear of the
+	   field with little thread showing. */
+	@media (pointer: coarse) {
+		.ask-me[data-layout="phone"] .ask-log {
+			--last-gap: 12px;
+		}
+	}
+
+	/* Lined up with the suggestions and bubbles, and inset the same 20px from
+	   the sides as from the bottom, so its rounded ends sit concentric with
+	   the phone's corners like iOS's own compose field. */
+	.ask-me[data-layout="phone"] .ask-form {
+		left: var(--screen-pad);
+		right: var(--screen-pad);
+		bottom: var(--screen-pad);
+	}
+
+	/* Ends at the compose field's bottom, so chips sliding away are clipped
+	   under the glass rather than showing in the margin below it. */
+	.ask-me[data-layout="phone"] .ask-strip {
+		left: var(--screen-pad);
+		right: var(--screen-pad);
+		bottom: var(--screen-pad);
+	}
+
+	/* The drawn indicator: off everywhere except touch screens in the phone
+	   layout (below). */
+	.ask-scroll-track {
+		display: none;
+	}
+
+	/* Touch screens: mobile browsers draw their own overlay scroll indicator,
+	   run it the full height of the thread and ignore the track styling below,
+	   so it ran over the curved corners. It's hidden and replaced by a drawn
+	   one between the same limits as the desktop scrollbar: from where the
+	   top corners stop curving to where the bottom ones start. The thread
+	   fills the phone, so the track follows the phone as it shrinks. */
+	@media (pointer: coarse) {
+		/* .ask-thread in these selectors outranks the desktop scrollbar rules
+		   further down, which would otherwise switch the native bar back on. */
+		.ask-me[data-layout="phone"] .ask-thread .ask-log {
+			scrollbar-width: none;
+		}
+
+		.ask-me[data-layout="phone"] .ask-thread .ask-log::-webkit-scrollbar {
+			display: none;
+			width: 0;
+		}
+
+		.ask-me[data-layout="phone"] .ask-scroll-track {
+			display: block;
+			position: absolute;
+			z-index: 3;
+			top: var(--corner, 0px);
+			bottom: var(--corner, 0px);
+			right: 4px;
+			width: 3px;
+			pointer-events: none;
+		}
+
+		.ask-me[data-layout="phone"] .ask-scroll-thumb {
+			width: 100%;
+			height: var(--thumb-h, 0px);
+			transform: translateY(var(--thumb-y, 0px));
+			border-radius: 2px;
+			background: rgba(0, 0, 0, 0.35);
+			opacity: 0;
+			transition: opacity 250ms ease-in-out;
+		}
+
+		/* Shown the moment the thread moves, faded out a beat after it stops:
+		   the Mac's overlay scrollbar timing (see the desktop rules below). */
+		.ask-me[data-layout="phone"] .ask-scroll-track[data-active] .ask-scroll-thumb {
+			opacity: 1;
+			transition-duration: 0ms;
+		}
+	}
+
+	@property --scrollbar-alpha {
+		syntax: "<number>";
+		inherits: true;
+		initial-value: 0;
+	}
+
+	/* Chrome and Safari: a thin scrollbar whose track stops where the phone's
+	   corners start to curve. Chrome only honours ::-webkit-scrollbar when the
+	   standard scrollbar-width/-color are left at auto. Firefox can't inset the
+	   track and keeps its thin full-height bar. */
+	@supports selector(::-webkit-scrollbar) {
+		.ask-me[data-layout="phone"] .ask-log {
+			scrollbar-width: auto;
+			scrollbar-color: auto;
+		}
+
+		/* A 14px gutter with a 6px thumb in the middle: the transparent
+		   border insets the thumb 4px from the phone's edge. */
+		.ask-me[data-layout="phone"] .ask-log::-webkit-scrollbar {
+			width: 14px;
+		}
+
+		.ask-me[data-layout="phone"] .ask-log::-webkit-scrollbar-track {
+			background: transparent;
+			margin-block: var(--corner, 0px);
+		}
+
+		/* Hidden until the thread scrolls, as macOS's overlay scrollbars are
+		   (and so alexsafayan.com/chat's, which is the browser's own). Chromium's
+		   Mac timings (ui/native_theme/scrollbar_animator_mac.h): the thumb
+		   appears at once on a scroll, starts fading 500ms after the last
+		   one, and fades over 250ms, ease-in-out; pointing at the scrollbar
+		   fades it in over 250ms and holds it. The script sets the
+		   attributes; a registered property lets the thumb's colour fade. */
+		.ask-me[data-layout="phone"] .ask-log {
+			--scrollbar-alpha: 0;
+			transition: --scrollbar-alpha 250ms ease-in-out;
+		}
+
+		.ask-me[data-layout="phone"] .ask-log[data-scrolling] {
+			--scrollbar-alpha: 1;
+			transition: none;
+		}
+
+		.ask-me[data-layout="phone"] .ask-log[data-scrollbar-hover] {
+			--scrollbar-alpha: 1;
+		}
+
+		.ask-me[data-layout="phone"] .ask-log::-webkit-scrollbar-thumb {
+			background: rgb(199 199 204 / var(--scrollbar-alpha));
+			background-clip: padding-box;
+			border: 4px solid transparent;
+			border-radius: 7px;
+		}
 	}
 
 	.ask-label {
@@ -200,16 +426,34 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		flex-direction: column;
 	}
 
-	/* Room under the newest message for the suggestions floating over it.
-	   Dropped once they're gone for good. */
+	/* Room under the newest message: for the suggestions floating over it
+	   (--chips-room, dropped when they're gone for good or tucked away for a
+	   phone keyboard), plus, in the phone layout, the gap and the compose
+	   field (--log-end). A real element, so every engine counts it as
+	   scrollable room. */
+	.ask-log {
+		--chips-room: 46px;
+	}
+
+	.ask-log[data-chips-off],
+	.ask-log[data-chips-away] {
+		--chips-room: 0px;
+	}
+
+	/* Trackpads and mice: the scroll past either end is let out of the
+	   thread, as on alexsafayan.com/chat, so the browser can rubber-band it
+	   (PhoneFrame lets the page bounce for these too). Touch screens keep
+	   `contain`: iOS bounces the thread itself and the page stays put. */
+	@media (pointer: fine) {
+		.ask-log {
+			overscroll-behavior: auto;
+		}
+	}
+
 	.ask-log::after {
 		content: "";
 		flex: none;
-		height: 46px;
-	}
-
-	.ask-log[data-chips-off]::after {
-		display: none;
+		height: calc(var(--chips-room) + var(--log-end, 0px));
 	}
 
 	/* A fixed fade along the thread's top edge, there whether or not it's
@@ -232,7 +476,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		   overlay the content, like macOS by default). */
 		right: var(--scrollbar-width, 0px);
 		height: var(--top-fade);
-		background: linear-gradient(var(--color-bg-page), transparent);
+		background: linear-gradient(var(--ask-bg, var(--color-bg-page)), transparent);
 		pointer-events: none;
 	}
 
@@ -255,7 +499,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 
 	.ask-log :global(.ask-msg) {
 		width: fit-content;
-		max-width: 80%;
+		max-width: var(--bubble-max, 80%);
 		margin-top: 12px;
 	}
 
@@ -280,14 +524,69 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		--bubble-fg: #fff;
 	}
 
+	/* iMessage's shaded blue (after alexsafayan.com): sent bubbles are a
+	   deeper blue low in the thread and lighten as they scroll up. Each
+	   bubble tracks its own trip through the thread (a view timeline) and
+	   fades a lighter blue in over itself; the tail, drawn separately, shifts
+	   its fill on the same timeline so the two always match. Browsers without
+	   scroll-driven animations keep the flat blue. */
+	@supports (animation-timeline: view()) {
+		.ask-log :global(.ask-msg[data-role="user"]) {
+			--bubble-bg: rgb(0, 140, 255);
+		}
+
+		.ask-log :global(.ask-msg[data-role="user"] .ask-body) {
+			view-timeline-name: --ask-bubble;
+			view-timeline-axis: y;
+		}
+
+		.ask-log :global(.ask-msg[data-role="user"] .ask-bubble) {
+			position: relative;
+			isolation: isolate;
+		}
+
+		.ask-log :global(.ask-msg[data-role="user"] .ask-bubble::after) {
+			content: "";
+			position: absolute;
+			inset: 0;
+			z-index: -1;
+			border-radius: inherit;
+			background: rgb(0, 190, 255);
+			pointer-events: none;
+			animation: ask-bubble-lighten linear both;
+			animation-timeline: --ask-bubble;
+			animation-range: cover 30%;
+		}
+
+		.ask-log :global(.ask-msg[data-role="user"] .ask-tail) {
+			animation: ask-tail-lighten linear both;
+			animation-timeline: --ask-bubble;
+			animation-range: cover 30%;
+		}
+	}
+
+	@keyframes ask-bubble-lighten {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	@keyframes ask-tail-lighten {
+		from {
+			fill: rgb(0, 140, 255);
+		}
+		to {
+			fill: rgb(0, 190, 255);
+		}
+	}
+
 	.ask-log :global(.ask-msg:not([data-role="user"])) {
 		align-self: flex-start;
 		--bubble-bg: var(--imsg-gray);
 		--bubble-fg: #000;
-	}
-
-	.ask-log :global(.ask-msg[data-role="error"]) {
-		--bubble-fg: var(--color-accent);
 	}
 
 	.ask-log :global(.ask-bubble) {
@@ -301,12 +600,31 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		border-radius: 20px;
 		overflow: hidden;
 		overflow-wrap: break-word;
+		/* Plain greedy wrapping, not the page's inherited `pretty` (set on the
+		   bubble: line breaking belongs to the block, not the inline text). A
+		   bubble is fitted to its widest line; `pretty` then re-balances the
+		   lines and breaks earlier than that width needs, squeezing the text
+		   into more lines ("Hi / ther / e" in Safari 26, which supports it). */
+		text-wrap: wrap;
 	}
 
-	/* pre-wrap on the text only: on the bubble it would also render the markup's
-	   own indentation around the span as visible space. */
+	/* pre-line keeps a reply's line breaks (a list, like the tech stack) on
+	   the text only: on the bubble it would also render the markup's own
+	   indentation around the span. Not pre-wrap: Safari counts the space left
+	   at the end of a wrapped pre-wrap line, so a bubble fitted to its widest
+	   line wrapped once more ("this is" / "maxim (in" / "a way)"). */
 	.ask-log :global(.ask-text) {
-		white-space: pre-wrap;
+		white-space: pre-line;
+	}
+
+	/* Links in replies: the bubble's own colour, underlined, so they read as
+	   tappable without a new colour in the thread. */
+	/* Links in replies, iMessage style: blue and underlined, no hover change. */
+	.ask-log :global(.ask-link) {
+		color: var(--imsg-blue);
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 2px;
 	}
 
 	/* The tail hangs below the bubble, tucked 8px in from its edge. It sits
@@ -331,9 +649,11 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		transform: scaleX(-1);
 	}
 
-	/* Like iMessage, only the last bubble in a run from one side gets a tail. */
-	.ask-log :global(.ask-msg[data-role="user"]:has(+ .ask-msg[data-role="user"]) .ask-tail),
-	.ask-log :global(.ask-msg:not([data-role="user"]):has(+ .ask-msg:not([data-role="user"])) .ask-tail) {
+	/* Like iMessage, only the last bubble in a run from one side gets a tail.
+	   The script marks the others (data-run-continues); a `:has(+ …)` rule did
+	   this before, but Safari didn't always re-check it when a bubble was
+	   added, leaving a tail on every line of a run. */
+	.ask-log :global(.ask-msg[data-run-continues] .ask-tail) {
 		display: none;
 	}
 
@@ -440,6 +760,13 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		pointer-events: auto;
 	}
 
+	/* Mid-drag: a grabbing hand, and no text selection as the row slides. */
+	.ask-chips[data-dragging],
+	.ask-chips[data-dragging] .ask-chip {
+		cursor: grabbing;
+		user-select: none;
+	}
+
 	.ask-chips[inert] {
 		pointer-events: none;
 	}
@@ -474,16 +801,19 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		border: 2px dashed rgba(0, 146, 255, 0.55);
 		border-radius: 999px;
 		padding: 6px 14px;
-		cursor: pointer;
+		/* "Add this": an arrow with a green + on macOS, as on
+		   alexsafayan.com/chat. */
+		cursor: copy;
 	}
 
-	.ask-chip:hover {
+	/* Keyboard focus looks like hover: the blue wash, no ring. */
+	.ask-chip:hover,
+	.ask-chip:focus-visible {
 		background: rgba(0, 146, 255, 0.08);
 	}
 
 	.ask-chip:focus-visible {
-		outline: 2px solid var(--imsg-blue);
-		outline-offset: 2px;
+		outline: none;
 	}
 
 	/* Compose field as frosted glass, from alexsafayan.com: a faint white
@@ -568,6 +898,66 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		outline-offset: 2px;
 	}
 
+	/* New chat: a round button of the compose field's frosted glass, in the
+	   top right corner, inset like the field. Phone layout only. */
+	.ask-new {
+		display: none;
+	}
+
+	.ask-me[data-layout="phone"] .ask-new {
+		position: absolute;
+		z-index: 3;
+		top: var(--screen-pad);
+		right: var(--screen-pad);
+		display: grid;
+		place-items: center;
+		/* The send button's height: a snug ring of glass around the icon. */
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		color: #000;
+		border: 0;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.3);
+		-webkit-backdrop-filter: blur(8px) saturate(300%);
+		backdrop-filter: blur(8px) saturate(300%);
+		box-shadow:
+			0 0 32px rgba(0, 0, 0, 0.12),
+			inset 0 0 3px 1px #fff;
+		cursor: pointer;
+	}
+
+	/* Fades in with the rest of the page (the body's site-fade-in, same
+	   timing). The body's own fade didn't reach it: its backdrop-filter
+	   gives it a layer of its own, which showed at full strength from the
+	   first frame. */
+	@media (prefers-reduced-motion: no-preference) {
+		.ask-me[data-layout="phone"] .ask-new {
+			animation: ask-new-in var(--page-fade-duration) var(--page-fade-easing) both;
+		}
+	}
+
+	@keyframes ask-new-in {
+		from {
+			opacity: 0;
+		}
+	}
+
+	.ask-new svg {
+		width: 18px;
+		height: 18px;
+		transition: transform 200ms ease-out;
+	}
+
+	.ask-new:active svg {
+		transform: scale(0.9);
+	}
+
+	.ask-new:focus-visible {
+		outline: 2px solid var(--imsg-blue);
+		outline-offset: 2px;
+	}
+
 	.visually-hidden {
 		position: absolute;
 		width: 1px;
@@ -579,6 +969,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 </style>
 
 <script>
+	import { GENERIC_ERROR_MESSAGE, NETWORK_ERROR_MESSAGE } from "../chat/messages";
+	import { CHAT_MESSAGE_EVENT, trackEvent } from "../lib/analytics";
 	import { createSpring, prefersReducedMotion, springEasing } from "../scripts/spring";
 
 	// Motion values from alexsafayan.com's chat (Framer Motion springs).
@@ -593,7 +985,19 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	// A beat after the page loads before the intro may start, so its first
 	// typing dots are seen rather than lost in the load.
 	const INTRO_LEAD_MS = 400;
-	const HELLOS = ["hi", "sup", "yo"];
+	// The same on a first visit, longer: the page has settled and been
+	// looked at before "hello!" starts being typed. (New chat types straight
+	// away; a reload mid-conversation has no intro.)
+	const FIRST_INTRO_LEAD_MS = 1200;
+	// After a message is sent, how long before the typing dots appear.
+	const TYPING_DELAY_MS = 700;
+	const HELLOS = ["hi", "sup", "yo", "hello world", "howdy partner"];
+	// In a reply that hands over the portfolio link; never shown.
+	const PORTFOLIO_MARKER = /\s*\[\[portfolio\]\]\s*/gi;
+	// The portfolio's "link" in a reply (see setReplyText).
+	const PORTFOLIO_LINK = /^(https?:\/\/)?(www\.)?maximslo\.com\/portfolio\/?$/i;
+	// Phones and tablets, where focusing the field brings up a keyboard.
+	const touchScreen = window.matchMedia("(pointer: coarse)");
 
 	const SESSION_KEY = "ask-me-session";
 
@@ -611,6 +1015,12 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	const log = document.querySelector<HTMLOListElement>("[data-ask-log]")!;
+	/** The chat's own scale (the phone layout scales it up by --ask-zoom; 1 elsewhere). */
+	const chatZoom = () => {
+		const section = log.closest<HTMLElement>(".ask-me");
+		if (section?.dataset.layout !== "phone") return 1;
+		return parseFloat(getComputedStyle(section).getPropertyValue("--ask-zoom")) || 1;
+	};
 	const template = document.querySelector<HTMLTemplateElement>("[data-ask-template]")!;
 	const chips = document.querySelector<HTMLUListElement>("[data-ask-chips]")!;
 	const form = document.querySelector<HTMLFormElement>("[data-ask-form]")!;
@@ -628,8 +1038,25 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		msg.style.width = "";
 		const range = document.createRange();
 		range.selectNodeContents(text);
+		// A line can come back as several rects: one per text node or link on
+		// it, and one per piece of a link split at its break points. So each
+		// line is measured edge to edge (its rects grouped by vertical
+		// position), not by its widest single rect, which fitted a bubble to
+		// "github.com/" alone and wrapped "maximslo" onto a second line.
+		const lines = new Map<number, { left: number; right: number }>();
+		for (const rect of range.getClientRects()) {
+			if (!rect.width) continue;
+			const key = Math.round(rect.top + rect.height / 2);
+			const line = [...lines.entries()].find(([mid]) => Math.abs(mid - key) <= rect.height / 2)?.[1];
+			if (line) {
+				line.left = Math.min(line.left, rect.left);
+				line.right = Math.max(line.right, rect.right);
+			} else {
+				lines.set(key, { left: rect.left, right: rect.right });
+			}
+		}
 		let widest = 0;
-		for (const rect of range.getClientRects()) widest = Math.max(widest, rect.width);
+		for (const line of lines.values()) widest = Math.max(widest, line.right - line.left);
 		if (widest === 0) return;
 		// Measured on screen, so a bubble mid-animation (the typing bubble
 		// still scaling in when its line arrives) reads small. Undo that scale,
@@ -660,7 +1087,227 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	trackEdges(chips, "x");
+
+	/* Tabbing along the suggestions: the focused one glides fully into view,
+	   clear of the row's faded edges (24px at the start, 40px at the end).
+	   The browser's own focus scroll stops with it right under a fade, and
+	   jumps; it has already happened by focusin, so the row is put back
+	   where it was and eased over instead. */
+	let chipsLeft = chips.scrollLeft;
+	chips.addEventListener("scroll", () => (chipsLeft = chips.scrollLeft), { passive: true });
+	chips.addEventListener("focusin", (event) => {
+		const chip = (event.target as HTMLElement).closest<HTMLElement>("[data-ask-chip]");
+		if (!chip || !chip.matches(":focus-visible") || chips.hasAttribute("data-dragging")) return;
+		const row = chips.getBoundingClientRect();
+		const box = chip.getBoundingClientRect();
+		// Screen px to the row's own (the chat is scaled).
+		const k = row.width / chips.offsetWidth || 1;
+		const start = (box.left - row.left) / k + chips.scrollLeft;
+		const end = start + box.width / k;
+		const view = chips.clientWidth;
+		const max = chips.scrollWidth - view;
+		let target = chipsLeft;
+		if (start < chipsLeft + 24) target = start - 24;
+		else if (end > chipsLeft + view - 40) target = end - view + 40;
+		target = Math.min(max, Math.max(0, target));
+		stopGlide();
+		chips.scrollLeft = chipsLeft;
+		chips.scrollTo({ left: target, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+	});
+
+	/* ---------- Moving the suggestions with a mouse ----------
+	   Trackpads and touch already scroll the row sideways. A mouse wheel only
+	   scrolls up and down, so it's turned sideways here, and the row can be
+	   grabbed and dragged. A drag past a few px doesn't count as a tap on the
+	   chip it started on. */
+	chips.addEventListener(
+		"wheel",
+		(event) => {
+			if (chips.scrollWidth <= chips.clientWidth) return;
+			if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+			event.preventDefault();
+			stopGlide();
+			chips.scrollLeft += event.deltaY;
+		},
+		{ passive: false },
+	);
+
+	let drag: { x: number; left: number; moved: boolean } | null = null;
+	let suppressClick = false;
+
+	/* Momentum: recent pointer positions give the speed at release, then the
+	   row glides on and eases to a stop. Low friction, so it floats a while
+	   (about a second from a quick flick) rather than stopping short. */
+	const GLIDE_FRICTION = 0.955; // speed kept per 60fps frame
+	const GLIDE_MIN_SPEED = 0.02; // px/ms; below this it's stopped
+	let samples: { x: number; t: number }[] = [];
+	let glideFrame = 0;
+
+	function stopGlide() {
+		cancelAnimationFrame(glideFrame);
+		glideFrame = 0;
+	}
+
+	function glide(velocity: number) {
+		stopGlide();
+		let last = performance.now();
+		const tick = (now: number) => {
+			const dt = Math.min(now - last, 50);
+			last = now;
+			const before = chips.scrollLeft;
+			chips.scrollLeft -= (velocity * dt) / chatZoom();
+			velocity *= GLIDE_FRICTION ** (dt / (1000 / 60));
+			// Ran into an end, or slowed to nothing.
+			if (chips.scrollLeft === before || Math.abs(velocity) < GLIDE_MIN_SPEED) {
+				glideFrame = 0;
+				return;
+			}
+			glideFrame = requestAnimationFrame(tick);
+		};
+		glideFrame = requestAnimationFrame(tick);
+	}
+
+	/** Pointer speed over the last ~80ms of the drag, in px/ms. */
+	function releaseVelocity() {
+		const now = performance.now();
+		const recent = samples.filter((s) => now - s.t < 80);
+		if (recent.length < 2) return 0;
+		const first = recent[0];
+		const last = recent[recent.length - 1];
+		const dt = last.t - first.t;
+		return dt > 0 ? (last.x - first.x) / dt : 0;
+	}
+
+	chips.addEventListener("pointerdown", (event) => {
+		if (event.pointerType !== "mouse" || event.button !== 0) return;
+		// Grabbing the row mid-glide catches it.
+		stopGlide();
+		drag = { x: event.clientX, left: chips.scrollLeft, moved: false };
+		samples = [{ x: event.clientX, t: performance.now() }];
+	});
+
+	window.addEventListener("pointermove", (event) => {
+		if (!drag) return;
+		const dx = event.clientX - drag.x;
+		if (!drag.moved && Math.abs(dx) < 4) return;
+		if (!drag.moved) {
+			drag.moved = true;
+			chips.setPointerCapture(event.pointerId);
+			chips.dataset.dragging = "";
+		}
+		// Scroll positions count in the zoomed chat's pixels, the pointer in
+		// screen pixels: divided, the row stays under the cursor.
+		chips.scrollLeft = drag.left - dx / chatZoom();
+		samples.push({ x: event.clientX, t: performance.now() });
+		if (samples.length > 20) samples.shift();
+	});
+
+	const endDrag = () => {
+		if (!drag) return;
+		// The click a drag produces fires right after pointerup; clear the flag
+		// straight after, so a drag ending off the row can't eat the next tap.
+		if (drag.moved) {
+			suppressClick = true;
+			setTimeout(() => (suppressClick = false), 0);
+			const velocity = releaseVelocity();
+			if (!prefersReducedMotion() && Math.abs(velocity) > GLIDE_MIN_SPEED) glide(velocity);
+		}
+		drag = null;
+		delete chips.dataset.dragging;
+	};
+	window.addEventListener("pointerup", endDrag);
+	window.addEventListener("pointercancel", endDrag);
 	const updateLogEdges = trackEdges(log, "y");
+
+	/* ---------- Scrollbar fade (Mac overlay timing) ----------
+	   Shown at once while the thread scrolls and for 500ms after, then faded
+	   by the CSS; shown while the pointer is over the scrollbar's gutter, and
+	   for 500ms after it leaves. Chromium's macOS values. */
+	const SCROLLBAR_HOLD_MS = 500;
+	let scrollbarTimer = 0;
+	/* Only the visitor's own scrolling shows it: a wheel or trackpad, a
+	   touch, the keyboard, a drag on the bar, and the momentum that carries
+	   on after them. The thread's own glide to a new message doesn't. As the
+	   thread grows a message taller before the glide catches up, the thumb
+	   hopped up and slid back down with every send, typing bubble and
+	   reply; iMessage doesn't flash its scroller for those either. */
+	let userScrollAt = -Infinity;
+	const markUserScroll = () => (userScrollAt = performance.now());
+	for (const type of ["wheel", "touchstart", "touchmove", "keydown", "pointerdown"]) {
+		log.addEventListener(type, markUserScroll, { passive: true });
+	}
+	const scrollbarShowing = () => log.hasAttribute("data-scrolling");
+	// The visitor's scroll: just after their input, or still moving on from
+	// it (momentum) while the bar is up.
+	const visitorScrolling = () => performance.now() - userScrollAt < 300 || scrollbarShowing();
+	log.addEventListener(
+		"scroll",
+		() => {
+			if (!visitorScrolling()) return;
+			log.toggleAttribute("data-scrolling", true);
+			clearTimeout(scrollbarTimer);
+			scrollbarTimer = window.setTimeout(() => log.removeAttribute("data-scrolling"), SCROLLBAR_HOLD_MS);
+		},
+		{ passive: true },
+	);
+	let gutterTimer = 0;
+	const setGutterHover = (on: boolean) => {
+		clearTimeout(gutterTimer);
+		if (on) log.toggleAttribute("data-scrollbar-hover", true);
+		else if (log.hasAttribute("data-scrollbar-hover")) {
+			gutterTimer = window.setTimeout(() => log.removeAttribute("data-scrollbar-hover"), SCROLLBAR_HOLD_MS);
+		}
+	};
+	log.addEventListener("pointermove", (event) => {
+		if (event.pointerType !== "mouse") return;
+		const gutter = log.offsetWidth - log.clientWidth;
+		if (!gutter || log.scrollHeight <= log.clientHeight) return setGutterHover(false);
+		// The gutter on screen, at the chat's scale.
+		setGutterHover(event.clientX >= log.getBoundingClientRect().right - gutter * chatZoom());
+	});
+	log.addEventListener("pointerleave", () => setGutterHover(false));
+
+	/* ---------- Drawn scroll indicator (touch, phone layout) ----------
+	   Sized and placed like a native one, inside the track's limits; shown
+	   while the thread scrolls and faded out shortly after. The CSS keeps
+	   it hidden everywhere else, so this is harmless there. */
+	const scrollTrack = document.querySelector<HTMLElement>("[data-ask-scroll-track]");
+	if (scrollTrack) {
+		let hideTimer = 0;
+		let trackFrame = 0;
+		const place = () => {
+			trackFrame = 0;
+			const trackH = scrollTrack.clientHeight;
+			const span = log.scrollHeight - log.clientHeight;
+			if (!trackH || span <= 0) {
+				scrollTrack.style.setProperty("--thumb-h", "0px");
+				return;
+			}
+			const thumbH = Math.max(32, (trackH * log.clientHeight) / log.scrollHeight);
+			const progress = Math.min(1, Math.max(0, log.scrollTop / span));
+			scrollTrack.style.setProperty("--thumb-h", `${thumbH}px`);
+			scrollTrack.style.setProperty("--thumb-y", `${(trackH - thumbH) * progress}px`);
+		};
+		const schedulePlace = () => {
+			if (!trackFrame) trackFrame = requestAnimationFrame(place);
+		};
+		log.addEventListener(
+			"scroll",
+			() => {
+				schedulePlace();
+				if (!visitorScrolling()) return;
+				scrollTrack.toggleAttribute("data-active", true);
+				clearTimeout(hideTimer);
+				hideTimer = window.setTimeout(() => scrollTrack.removeAttribute("data-active"), SCROLLBAR_HOLD_MS);
+			},
+			{ passive: true },
+		);
+		// The phone shrinking (keyboard) and new messages change the sizes.
+		new ResizeObserver(schedulePlace).observe(log);
+		new ResizeObserver(schedulePlace).observe(scrollTrack);
+		new MutationObserver(schedulePlace).observe(log, { childList: true, subtree: true });
+		place();
+	}
 
 	// How wide the thread's scrollbar is, so the top fade can stop short of it.
 	new ResizeObserver(() => {
@@ -715,6 +1362,16 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	log.addEventListener("scroll", startSettle, { passive: true });
+
+	/* A scroll the page makes itself in one step (the keyboard snap, keeping
+	   the bottom anchored as the phone shrinks). Read as speed, a jump like
+	   that is thousands of px/s, so the bubbles lagged a few pixels behind
+	   and sprang back: a visible hitch after the thread had already landed.
+	   The settle is told the new position up front, so it sees no movement. */
+	function jumpTo(top: number) {
+		log.scrollTop = top;
+		lastScrollTop = log.scrollTop;
+	}
 
 	/* ---------- Following the conversation ----------
 	   New bubbles and replies glide the thread to the bottom on a soft spring
@@ -792,6 +1449,59 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		updateLogEdges();
 	}).observe(log, { childList: true, subtree: true, characterData: true });
 
+	/* Anchor the thread to its bottom when it gets shorter. On phones the
+	   keyboard shrinks the phone from the bottom; left alone, the scroll
+	   position holds from the top and the newest messages slide under the
+	   compose field. Scrolling by however much height was lost keeps the
+	   same gap above the field the whole way up, like iMessage. */
+	let lastLogHeight = log.clientHeight;
+	new ResizeObserver(() => {
+		const height = log.clientHeight;
+		const lost = lastLogHeight - height;
+		lastLogHeight = height;
+		// Keyboard opening: held on the newest message (see below).
+		if (performance.now() < stickUntil) {
+			stickToEnd();
+			return;
+		}
+		// A glide to the end is already headed there; nudging it would read
+		// as the visitor taking over and stop it.
+		if (lost > 0 && !following) jumpTo(log.scrollTop + lost);
+	}).observe(log);
+
+	/* Held on the newest message while a phone keyboard opens. Safari reports
+	   the new size once, at the end; Chrome in steps along the way; and the
+	   suggestions' room under the thread drops at the same moment. A glide
+	   started once could finish early or be knocked off by any of that, and
+	   the newest messages ended up under the keyboard. So for as long as the
+	   keyboard is still settling, every change of size or scroll room snaps
+	   the thread straight to its end. A touch or wheel on the thread lets go. */
+	let stickUntil = 0;
+	function stickToEnd() {
+		stopFollow();
+		jumpTo(log.scrollHeight - log.clientHeight);
+		pinnedToEnd = true;
+	}
+	function holdEndFor(ms: number) {
+		stickUntil = Math.max(stickUntil, performance.now() + ms);
+		stickToEnd();
+	}
+	for (const type of ["touchstart", "wheel"]) {
+		log.addEventListener(type, () => (stickUntil = 0), { passive: true });
+	}
+
+	/** Mark every bubble that's followed by another from the same side, so only the last in a run keeps its tail. */
+	const isUser = (msg: Element | null) => (msg as HTMLElement | null)?.dataset.role === "user";
+	function updateTails() {
+		for (const msg of log.querySelectorAll<HTMLElement>(".ask-msg")) {
+			const next = msg.nextElementSibling;
+			msg.toggleAttribute("data-run-continues", !!next && isUser(next) === isUser(msg));
+		}
+	}
+	// New bubbles, and a typing bubble turning into an error, change the runs.
+	new MutationObserver(updateTails).observe(log, { childList: true, subtree: true, attributeFilter: ["data-role"] });
+	updateTails();
+
 	/* ---------- Intro ----------
 	   Like alexsafayan.com: the thread starts with my first line and the
 	   visitor's canned "Hi there"; my lines after it are "typed" one by one
@@ -809,6 +1519,14 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	log.toggleAttribute("data-intro-ready", true);
 	let introRunning = introLines.length > 0;
 	let introCancel: (() => void) | null = null;
+	// Waiting for the chat to come on screen before the first intro starts.
+	let introObserver: IntersectionObserver | null = null;
+	// The untouched opening, kept for a new chat to start from again.
+	const openerHTML = log.innerHTML;
+	const greetingLines = [...introLines];
+	const chipsHTML = chips.innerHTML;
+	// Bumped by a new chat, so a reply still on its way to the old one stops.
+	let chatGen = 0;
 
 	const fitAll = () => log.querySelectorAll<HTMLElement>(".ask-msg").forEach(fitBubble);
 	fitAll();
@@ -818,6 +1536,42 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		resizeFrame = requestAnimationFrame(fitAll);
 	});
 
+	/* Bubbles are fitted to their text once, when they appear. If the text
+	   later renders wider than it measured (seen on phones: "Hi there"
+	   wrapping to three lines inside its fitted width), the bubble would keep
+	   the stale width. So every settled bubble is watched, and refitted when
+	   its size changes (fitBubble first clears the width, so wrapped text is
+	   measured unwrapped). A refit that lands on the same width changes
+	   nothing, so this settles at once. */
+	const refitOnResize = new ResizeObserver((entries) => {
+		for (const entry of entries) {
+			const msg = (entry.target as HTMLElement).closest<HTMLElement>(".ask-msg");
+			if (!msg || msg.dataset.pending !== undefined) continue;
+			// Mid-animation sizes aren't the real ones; revealReply fits on its own.
+			if ((entry.target as HTMLElement).getAnimations().length) continue;
+			fitBubble(msg);
+		}
+	});
+	const watchBubbles = () => log.querySelectorAll(".ask-bubble").forEach((bubble) => refitOnResize.observe(bubble));
+	watchBubbles();
+	new MutationObserver(watchBubbles).observe(log, { childList: true });
+	// The thread itself changing width means every bubble's room changed:
+	// refit them all. On a phone refresh the opening bubbles were fitted
+	// while the frame was still settling to its width (viewport and bar sizes
+	// land a beat after the script runs) and kept the cramped widths ("Hi /
+	// there"). A fitted bubble has a fixed width, so it doesn't resize on its
+	// own and the watcher above never saw it.
+	let lastLogWidth = log.clientWidth;
+	new ResizeObserver(() => {
+		const width = log.clientWidth;
+		if (width === lastLogWidth) return;
+		lastLogWidth = width;
+		fitAll();
+	}).observe(log);
+	// Fonts arriving or the page finishing its load can change text widths too.
+	document.fonts?.ready.then(fitAll);
+	addEventListener("load", fitAll, { once: true });
+
 	/* ---------- Suggestions ----------
 	   Shown only when there's nothing else going on: thread at the bottom,
 	   empty input, no reply on its way, and the assistant spoke last. */
@@ -825,6 +1579,8 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	let busy = false;
 	let chipsDisabled = false;
 	let typedInARow = 0;
+	// Touch screens only: the field was tapped and nothing's been sent since.
+	let fieldTapped = false;
 	let chipsShown = true;
 	let chipsAnimation: Animation | null = null;
 
@@ -837,13 +1593,16 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			!busy &&
 			!introRunning &&
 			input.value === "" &&
+			// On touch screens, tapping the field opens the keyboard: the
+			// suggestions step aside until something is sent.
+			!fieldTapped &&
 			isAtBottom() &&
 			last?.dataset.role !== "user" &&
 			remainingChips() > 0
 		);
 	}
 
-	function setChips(show: boolean, how: "slide" | "fade" = "slide") {
+	function setChips(show: boolean, how: "slide" | "fade" | "instant" = "slide") {
 		if (show === chipsShown) return;
 		chipsShown = show;
 		chips.inert = !show;
@@ -855,7 +1614,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		const hidden = `translateY(${CHIPS_OFFSET}px)`;
 		const end = show ? "none" : hidden;
 
-		if (prefersReducedMotion()) {
+		if (prefersReducedMotion() || how === "instant") {
 			chips.style.transform = end;
 			chips.style.opacity = "";
 			return;
@@ -894,14 +1653,151 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	}
 
 	input.addEventListener("input", updateChips);
+	// Touch screens: the suggestions hide when the field is tapped (the
+	// keyboard comes up), and come back once a reply has landed, keyboard
+	// still up or not, or once the keyboard has gone and the phone is back to
+	// full height. Safari and Chrome close the keyboard at different speeds,
+	// so that's watched for rather than timed: the thread's height when the
+	// field was tapped, reached again and holding still.
+	let heightBeforeKeyboard = 0;
+	let expandTimer = 0;
+	let expandGiveUp = 0;
+	let expandWatch: ResizeObserver | null = null;
+
+	function stopWaitingForExpand() {
+		expandWatch?.disconnect();
+		expandWatch = null;
+		clearTimeout(expandTimer);
+		clearTimeout(expandGiveUp);
+	}
+
+	function showChipsWhenExpanded() {
+		stopWaitingForExpand();
+		const settle = () => {
+			clearTimeout(expandTimer);
+			// Back to full height: wait a beat to be sure it's done moving.
+			if (log.clientHeight >= heightBeforeKeyboard - 1) {
+				expandTimer = window.setTimeout(done, 120);
+			}
+		};
+		const done = () => {
+			stopWaitingForExpand();
+			fieldTapped = false;
+			setChipsRoom(true);
+			updateChips();
+		};
+		expandWatch = new ResizeObserver(settle);
+		expandWatch.observe(log);
+		// If the height never quite comes back (a browser bar changed size
+		// meanwhile), don't keep them away for good.
+		expandGiveUp = window.setTimeout(done, 1500);
+		settle();
+	}
+
+	/* The room kept under the newest message for the suggestions row (the
+	   thread's ::after). On touch screens it's dropped while they're tucked
+	   away for the keyboard, so the newest message sits just above the
+	   field, and put back, with the thread following it down, before they
+	   slide in again so they don't land on top of the last message. */
+	function setChipsRoom(on: boolean) {
+		if (on === !log.hasAttribute("data-chips-away")) return;
+		log.toggleAttribute("data-chips-away", !on);
+		if (on && pinnedToEnd) followToEnd();
+	}
+
+	input.addEventListener("focus", () => {
+		stopWaitingForExpand();
+		fieldTapped = touchScreen.matches;
+		if (fieldTapped) heightBeforeKeyboard = log.clientHeight;
+		// They vanish at once rather than sliding down, so they're not seen
+		// riding along with the keyboard as it comes up. Coming back is still
+		// the usual slide.
+		if (fieldTapped) {
+			setChips(false, "instant");
+			setChipsRoom(false);
+		} else updateChips();
+	});
+	input.addEventListener("blur", () => {
+		if (fieldTapped) {
+			// The keyboard is on its way down: wait for the phone to be back.
+			showChipsWhenExpanded();
+			return;
+		}
+		updateChips();
+	});
+
+	// On phones the keyboard opens on focus and the chat shrinks to fit above
+	// it; once it has, bring the newest message back into view over the input,
+	// with the full gap under it. Like iMessage, tapping the field always
+	// jumps to the latest, even when scrolled back up through the thread.
+	input.addEventListener("focus", () => {
+		if (touchScreen.matches) {
+			// Held on the newest message through the keyboard's arrival; each
+			// resize along the way extends the hold a little.
+			holdEndFor(1000);
+			return;
+		}
+		// Desktop: no keyboard, just catch up if already following along.
+		if (pinnedToEnd) followToEnd();
+	});
+	window.visualViewport?.addEventListener("resize", () => {
+		if (!touchScreen.matches || document.activeElement !== input || !stickUntil) return;
+		if (performance.now() > stickUntil + 1500) return;
+		holdEndFor(500);
+	});
 
 	/* ---------- Messages ---------- */
+
+	/* Links in my replies. The bot writes them bare, the way you'd text them
+	   (github.com/maximslo, an email address), so they're found in the plain
+	   text: full URLs, www. addresses, bare domains on common endings, and
+	   emails. Trailing punctuation stays outside the link. Built as DOM
+	   nodes, never HTML, so a reply can't inject markup. */
+	const LINK_PATTERN =
+		/\b([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})\b|\b((?:https?:\/\/|www\.)[^\s<]+|(?:[a-z0-9-]+\.)+(?:com|org|net|io|co|dev|app|me|ai|xyz|so|gg|edu|us|uk|ca|tv|fm|sh|page|site|design|studio|news)(?![a-z0-9-])(?:\/[^\s<]*)?)/gi;
+
+	function setReplyText(textEl: HTMLElement, text: string) {
+		textEl.textContent = "";
+		let at = 0;
+		for (const match of text.matchAll(LINK_PATTERN)) {
+			let label = match[0];
+			const start = match.index ?? 0;
+			// "github.com/maximslo." → link "github.com/maximslo", then "."
+			const trailing = label.match(/[.,!?;:)\]'"]+$/)?.[0] ?? "";
+			if (trailing && !(trailing.startsWith(")") && label.includes("("))) label = label.slice(0, -trailing.length);
+			if (!label) continue;
+			if (start > at) textEl.append(text.slice(at, start));
+			const link = document.createElement("a");
+			link.className = "ask-link";
+			// A link too long for the bubble breaks after a slash
+			// ("linkedin.com/in/" / "maximslo"), not mid-word.
+			label.split(/(?<=\/)/).forEach((piece, i) => {
+				if (i) link.append(document.createElement("wbr"));
+				link.append(piece);
+			});
+			if (match[1]) {
+				link.href = `mailto:${label}`;
+			} else if (PORTFOLIO_LINK.test(label)) {
+				// My own portfolio page: opens in place, not a new tab, and its
+				// back button returns to this chat.
+				link.href = "/portfolio";
+			} else {
+				link.href = /^https?:\/\//i.test(label) ? label : `https://${label}`;
+				link.target = "_blank";
+				link.rel = "noopener noreferrer";
+			}
+			textEl.append(link);
+			at = start + label.length;
+		}
+		if (at < text.length) textEl.append(text.slice(at));
+	}
 
 	function addMessage(role: "user" | "assistant" | "error", text = "") {
 		const msg = template.content.firstElementChild!.cloneNode(true) as HTMLLIElement;
 		msg.dataset.role = role;
 		const textEl = msg.querySelector<HTMLElement>(".ask-text")!;
-		textEl.textContent = text;
+		if (role === "user") textEl.textContent = text;
+		else setReplyText(textEl, text);
 		log.append(msg);
 		if (text) fitBubble(msg);
 		return { msg, textEl };
@@ -929,15 +1825,21 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		const tail = part(msg, ".ask-tail");
 		const end = bubble.getBoundingClientRect();
 		const pad = parseFloat(getComputedStyle(bubble).paddingLeft);
+		// Rects are screen pixels; the transform and clip apply inside the
+		// chat's zoom (the phone layout's --ask-zoom), so they're converted
+		// back, or the bubble would fly in from 10% too far away.
+		const z = chatZoom();
 
 		// Line the bubble's text up with the source text, centred vertically.
-		const dx = from.left + textInset - (end.left + pad);
-		const dy = from.top + from.height / 2 - (end.top + end.height / 2);
-		const startWidth = Math.min(from.width, end.width);
-		const startHeight = Math.min(from.height, end.height);
-		const clipTop = (end.height - startHeight) / 2;
+		const dx = (from.left - end.left) / z + textInset - pad;
+		const dy = (from.top + from.height / 2 - (end.top + end.height / 2)) / z;
+		const endWidth = end.width / z;
+		const endHeight = end.height / z;
+		const startWidth = Math.min(from.width / z, endWidth);
+		const startHeight = Math.min(from.height / z, endHeight);
+		const clipTop = (endHeight - startHeight) / 2;
 		const startRadius = startHeight / 2;
-		const startClip = `inset(${clipTop}px ${end.width - startWidth}px ${clipTop}px 0px round ${startRadius}px)`;
+		const startClip = `inset(${clipTop}px ${endWidth - startWidth}px ${clipTop}px 0px round ${startRadius}px)`;
 
 		body.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "translate(0, 0)" }], {
 			duration: spring.duration,
@@ -995,7 +1897,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		msg.querySelectorAll(".ask-think").forEach((el) => el.remove());
 		delete msg.dataset.pending;
 		msg.dataset.role = role;
-		textEl.textContent = text;
+		setReplyText(textEl, text);
 		fitBubble(msg);
 		if (prefersReducedMotion()) return;
 
@@ -1032,68 +1934,100 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	async function ask(message: string, source: Source) {
 		const text = message.trim();
 		if (!text) return;
+		const gen = chatGen;
 		// Sending mid-intro: the rest of the greeting lands at once, first.
 		introCancel?.();
+		// Or before it has even started: same, and it won't start later.
+		if (introLines.length) {
+			introObserver?.disconnect();
+			introObserver = null;
+			for (const line of introLines.splice(0)) addMessage("assistant", line);
+			introRunning = false;
+		}
 
 		// Sending always brings the thread back to its newest message.
 		pinnedToEnd = true;
 		const { msg } = addMessage("user", text);
 		if (!prefersReducedMotion()) animateSend(msg, source.rect, source.inset, source.spring);
-		const { msg: reply, textEl } = addTyping();
 		setBusy(true);
 
-		(window as unknown as { plausible?: (event: string) => void }).plausible?.("chat_message");
+		trackEvent(CHAT_MESSAGE_EVENT);
 
-		// The whole reply is collected behind the typing dots, then shown at once.
-		let answer = "";
-		let role: "assistant" | "error" = "assistant";
-		try {
-			const res = await fetch("/api/chat", {
-				method: "POST",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ sessionId: getSessionId(), message: text }),
-			});
+		// The whole reply is collected behind the typing dots, then shown at
+		// once. The request goes out straight away; only the dots wait.
+		const replyPromise = (async (): Promise<{ answer: string; role: "assistant" | "error" }> => {
+			try {
+				const res = await fetch("/api/chat", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ sessionId: getSessionId(), message: text }),
+				});
 
-			if (!res.ok || !res.body) {
-				role = "error";
-				answer = (await res.text()) || "Something went wrong. Try again in a bit.";
-			} else {
+				if (!res.ok || !res.body) {
+					return { role: "error", answer: (await res.text()) || GENERIC_ERROR_MESSAGE };
+				}
 				const reader = res.body.getReader();
 				const decoder = new TextDecoder();
+				let answer = "";
 				for (;;) {
 					const { done, value } = await reader.read();
 					if (done) break;
 					answer += decoder.decode(value, { stream: true });
 				}
-				answer += decoder.decode();
+				return { role: "assistant", answer: answer + decoder.decode() };
+			} catch {
+				return { role: "error", answer: NETWORK_ERROR_MESSAGE };
 			}
-		} catch {
-			role = "error";
-			answer = "Couldn't reach the server. Check your connection and try again.";
+		})();
+
+		// A beat before the typing dots, like someone reading the text before
+		// they start typing back, rather than dots popping up the instant it's
+		// sent.
+		if (!prefersReducedMotion()) await pause(TYPING_DELAY_MS);
+		if (gen !== chatGen) return;
+		const { msg: reply, textEl } = addTyping();
+
+		let { answer, role } = await replyPromise;
+		if (gen !== chatGen) return;
+
+		// Asked to see my work: the reply is the "maximslo.com/portfolio" link
+		// plus a marker (see the system prompt). The marker is never shown, and
+		// nothing opens on its own: the visitor taps the link (see setReplyText). (search, not test: a /g regex's
+		// test() carries lastIndex between calls.)
+		if (role === "assistant" && answer.search(PORTFOLIO_MARKER) !== -1) {
+			// Swapped for a text break, so text either side never runs together.
+			answer = answer.replace(PORTFOLIO_MARKER, "\n\n").trim() || "maximslo.com/portfolio";
 		}
 
 		// Texts are separated by blank lines; a single line break stays inside
 		// one bubble (a list, like the tech stack). The first text opens out of
 		// the typing bubble, the rest follow one by one at the intro's pace.
-		const texts =
-			role === "error"
-				? [answer.trim()]
-				: answer
-						.split(/\n\s*\n/)
-						.map((t) => t.split("\n").map((line) => line.trim()).join("\n").trim())
-						.filter(Boolean);
+		// The server's own messages (like the end-of-chat one) split the same
+		// way, so they can arrive as several texts too.
+		const texts = answer
+			.split(/\n\s*\n/)
+			.map((t) => t.split("\n").map((line) => line.trim()).join("\n").trim())
+			.filter(Boolean);
 		if (!texts.length) {
 			role = "error";
-			texts.push("Something went wrong. Try again in a bit.");
+			texts.push(...GENERIC_ERROR_MESSAGE.split(/\n\s*\n/));
 		}
 		revealReply(reply, textEl, texts[0], role);
 		for (const text of texts.slice(1)) {
 			const next = addTyping();
 			await pause(lineDelay(text));
+			if (gen !== chatGen) return;
 			revealReply(next.msg, next.textEl, text, role);
 		}
 		setBusy(false);
-		input.focus();
+		// Back to the field for the next question. Not on touch screens: there
+		// a scripted focus doesn't open the keyboard, so it would only hide
+		// the suggestions with nothing to type on.
+		if (!touchScreen.matches) input.focus();
+		// Something was sent and answered: the suggestions may come back,
+		// even with the keyboard still up.
+		fieldTapped = false;
+		setChipsRoom(true);
 		updateChips();
 	}
 
@@ -1108,11 +2042,82 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		const rect = new DOMRect(box.left, box.top, textWidth(value.trim()) + 32, box.height);
 		input.value = "";
 		typedInARow += 1;
-		if (typedInARow >= 2) disableChips();
+		if (typedInARow >= 3) disableChips();
 		void ask(value, { rect, inset: 0, spring: QUICK });
 	});
 
+	/* New chat, in place, after alexsafayan.com/chat. The server keeps the
+	   thread by session id, so a fresh id is a fresh conversation. On the
+	   page, everything after the greeting goes at once (no fade), the thread
+	   jumps back to the top, and the greeting, which was scrolled up out of
+	   sight, glides back down into place: the reference gets that from
+	   Framer Motion's layout animation (0.45s, ease [0.4, 0, 0.1, 1]) on
+	   the thread's content when its scroll position resets. Then the rest
+	   of the greeting is typed again, as on a first visit, and every
+	   suggestion comes back once it's done. */
+	const RESET_GLIDE = { duration: 450, easing: "cubic-bezier(0.4, 0, 0.1, 1)" };
+	function newChat() {
+		chatGen += 1;
+		try {
+			sessionStorage.removeItem(SESSION_KEY);
+		} catch {}
+		delete (window as unknown as { __askSession?: string }).__askSession;
+
+		// A greeting still being typed stops (and is replayed below).
+		introCancel?.();
+		introObserver?.disconnect();
+		introObserver = null;
+		introLines.splice(0);
+		introRunning = false;
+		busy = false;
+		stickUntil = 0;
+
+		// Where the greeting sits now (above the top, if the thread grew).
+		const before = log.querySelector(".ask-msg")?.getBoundingClientRect().top ?? 0;
+
+		log.innerHTML = openerHTML;
+		fitAll();
+		log.scrollTop = 0;
+		pinnedToEnd = true;
+		// The greeting's typing dots come straight away, not after the glide:
+		// added first, they glide in with the rest.
+		introLines.push(...greetingLines);
+		introRunning = introLines.length > 0;
+		if (introRunning) void playIntro();
+
+		// From where it was to where it is now. Capped at a screenful, so a
+		// long chat glides back rather than whipping down from far above.
+		const after = log.querySelector(".ask-msg")?.getBoundingClientRect().top ?? 0;
+		const offset = Math.max(before - after, -log.clientHeight);
+		if (offset < -1 && !prefersReducedMotion()) {
+			for (const msg of log.querySelectorAll<HTMLElement>(".ask-msg")) {
+				// Added on top of the bubbles' own transforms, not in place of them.
+				msg.animate([{ transform: `translateY(${offset}px)` }, { transform: "translateY(0)" }], { ...RESET_GLIDE, composite: "add" });
+			}
+		}
+
+		input.value = "";
+		// Suggestions step aside while the greeting is typed, then return
+		// in full, as on load.
+		setChips(false);
+		chips.innerHTML = chipsHTML;
+		chips.scrollLeft = 0;
+		chipsDisabled = false;
+		typedInARow = 0;
+		log.removeAttribute("data-chips-off");
+		if (!introRunning) updateChips();
+		// Ready for the first question, as in the reference. Not on touch
+		// screens, where a scripted focus can't open the keyboard anyway.
+		if (!touchScreen.matches) input.focus();
+	}
+	document.querySelector<HTMLButtonElement>("[data-ask-new]")?.addEventListener("click", newChat);
+
 	chips.addEventListener("click", (event) => {
+		// The click that ends a drag isn't a tap on a suggestion.
+		if (suppressClick) {
+			suppressClick = false;
+			return;
+		}
 		const chip = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-ask-chip]");
 		if (!chip || busy) return;
 		const rect = chip.getBoundingClientRect();
@@ -1154,6 +2159,89 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 		updateChips();
 	}
 
+	/* ---------- Kept across page loads ----------
+	   The thread lives only on the page, so leaving for /portfolio (or any
+	   link in this tab) and coming back would show a fresh greeting while the
+	   server still has the conversation. So the thread is saved for the tab
+	   (sessionStorage, like the session id it belongs to) whenever the page
+	   is left, and put back as it was when the page loads again, with no
+	   intro replayed. A new chat drops it. */
+	const THREAD_KEY = "ask-me-thread";
+	type SavedThread = { session: string; log: string; chips: string; chipsOff: boolean; typed: number; scroll: number | null };
+	function saveThread() {
+		try {
+			const session = sessionStorage.getItem(SESSION_KEY);
+			// The session id is made by the first question: without one,
+			// nothing's been asked and there's no conversation to keep.
+			if (!session) {
+				sessionStorage.removeItem(THREAD_KEY);
+				return;
+			}
+			const copy = log.cloneNode(true) as HTMLElement;
+			// Typing dots still waiting on a reply don't come back as dots.
+			copy.querySelectorAll(".ask-msg[data-pending]").forEach((msg) => msg.remove());
+			const atEnd = log.scrollHeight - log.scrollTop - log.clientHeight < 4;
+			const saved: SavedThread = {
+				session,
+				log: copy.innerHTML,
+				chips: chips.innerHTML,
+				chipsOff: chipsDisabled,
+				typed: typedInARow,
+				scroll: atEnd ? null : log.scrollTop,
+			};
+			sessionStorage.setItem(THREAD_KEY, JSON.stringify(saved));
+		} catch {}
+	}
+	addEventListener("pagehide", saveThread);
+	document.querySelector<HTMLButtonElement>("[data-ask-new]")?.addEventListener("click", () => {
+		try {
+			sessionStorage.removeItem(THREAD_KEY);
+		} catch {}
+	});
+
+	let restoredThread = false;
+	(() => {
+		let saved: SavedThread | null = null;
+		try {
+			saved = JSON.parse(sessionStorage.getItem(THREAD_KEY) ?? "null");
+			// Only for the conversation the server is still keeping.
+			if (saved && saved.session !== sessionStorage.getItem(SESSION_KEY)) saved = null;
+		} catch {}
+		if (!saved) return;
+		log.innerHTML = saved.log;
+		chips.innerHTML = saved.chips;
+		introLines.splice(0);
+		introRunning = false;
+		typedInARow = saved.typed;
+		restoredThread = true;
+		// Suggestions start tucked under the compose field, as on a first
+		// visit, and slide up once the page has loaded (below), rather than
+		// sitting there from the first frame. Unless they were put away for
+		// good (three typed in a row): then they stay down.
+		chipsShown = false;
+		chips.inert = true;
+		chips.style.transform = `translateY(${CHIPS_OFFSET}px)`;
+		if (saved.chipsOff) {
+			chipsDisabled = true;
+			log.toggleAttribute("data-chips-off", true);
+		} else {
+			const ready = document.readyState === "complete" ? Promise.resolve() : new Promise((resolve) => addEventListener("load", resolve, { once: true }));
+			// The same beat the intro waits before it starts.
+			void ready.then(() => pause(INTRO_LEAD_MS)).then(() => {
+				if (!chipsDisabled && !busy) updateChips();
+			});
+		}
+		fitAll();
+		const place = () => {
+			pinnedToEnd = saved.scroll === null;
+			log.scrollTop = saved.scroll ?? log.scrollHeight;
+		};
+		place();
+		// Again once the layout has settled (fonts, the phone's final size).
+		requestAnimationFrame(place);
+		addEventListener("load", place, { once: true });
+	})();
+
 	if (introRunning) {
 		// Suggestions wait under the compose field until the greeting is done.
 		chipsShown = false;
@@ -1167,19 +2255,107 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			(entries) => {
 				if (!entries[0].isIntersecting) return;
 				observer.disconnect();
+				introObserver = null;
 				void playIntro();
 			},
-			{ threshold: 1, rootMargin: "0px 0px -80px 0px" },
+			// Not 1: the chat's 1.1 scale leaves a fully visible bubble measured at
+			// 0.9999999 at some widths, and the greeting never started.
+			{ threshold: 0.99, rootMargin: "0px 0px -80px 0px" },
 		);
+		introObserver = observer;
 		// Wait for the page to finish loading and be on screen first: reloading
 		// while scrolled to the chat restores that position, and starting at
 		// once played the first dots and "hello!" before anything was painted.
 		const ready = document.readyState === "complete" ? Promise.resolve() : new Promise((resolve) => addEventListener("load", resolve, { once: true }));
 		void ready
-			.then(() => pause(INTRO_LEAD_MS))
-			.then(() => observer.observe(log.lastElementChild!));
-	} else {
+			.then(() => pause(FIRST_INTRO_LEAD_MS))
+			// Unless a new chat already took over the intro meanwhile.
+			.then(() => introObserver === observer && observer.observe(log.lastElementChild!));
+	} else if (!restoredThread) {
 		chips.style.transform = "none";
 		chips.inert = false;
+	}
+
+	/* ---------- Debug readout (?debug) ----------
+	   Temporary: live layout numbers in a corner, to see what a real phone
+	   does with the keyboard up. Only with ?debug in the address. */
+	if (new URLSearchParams(location.search).has("debug")) {
+		const panel = document.createElement("pre");
+		panel.style.cssText =
+			"position:fixed;z-index:9999;top:4px;left:4px;margin:0;padding:6px 8px;font:10px/1.3 ui-monospace,monospace;background:rgba(0,0,0,.78);color:#0f0;border-radius:6px;pointer-events:none;white-space:pre";
+		document.body.append(panel);
+		const thread = log.parentElement!;
+		const phone = document.querySelector<HTMLElement>(".phone");
+		const stage = document.querySelector<HTMLElement>("[data-phone-stage]");
+		const r = (n: number) => Math.round(n);
+		const tick = () => {
+			const vv = window.visualViewport;
+			const ph = phone?.getBoundingClientRect();
+			const th = thread.getBoundingClientRect();
+			const lg = log.getBoundingClientRect();
+			const fm = form.getBoundingClientRect();
+			const last = log.lastElementChild?.getBoundingClientRect();
+			panel.textContent = trace.length ? trace.join("\n") : [
+				`inner ${innerWidth}x${innerHeight}  scrollY ${r(scrollY)}`,
+				`vv ${vv ? `${r(vv.width)}x${r(vv.height)} top ${r(vv.offsetTop)}` : "none"}`,
+				`stage --vv-h ${stage?.style.getPropertyValue("--vv-h") || "-"} --vv-top ${stage?.style.getPropertyValue("--vv-top") || "-"}`,
+				`phone top ${ph ? r(ph.top) : "-"} h ${ph ? r(ph.height) : "-"}`,
+				`thread h ${r(th.height)}  log rect h ${r(lg.height)} bottom ${r(lg.bottom)}`,
+				`log client ${log.clientHeight} scroll ${log.scrollHeight} top ${r(log.scrollTop)} max ${log.scrollHeight - log.clientHeight}`,
+				`form top ${r(fm.top)}  last msg bottom ${last ? r(last.bottom) : "-"}`,
+				`focused ${document.activeElement === input}  pinned ${pinnedToEnd}  hold ${r(Math.max(0, stickUntil - performance.now()))}ms`,
+				`chipsAway ${log.hasAttribute("data-chips-away")}  scale ${chatZoom()}`,
+			].join("\n");
+			requestAnimationFrame(tick);
+		};
+
+		/* Frame-by-frame trace from the moment the field is focused, for 2s:
+		   one row whenever something changes. Columns: ms since focus, event
+		   tags, vv height/top, phone top/height, log height, scrollTop/max,
+		   newest message's bottom and the field's top (both on screen), and
+		   F = glide running, H = keyboard hold on. */
+		let trace: string[] = [];
+		let traceStart = 0;
+		let tags: string[] = [];
+		let lastRow = "";
+		const tag = (t: string) => tags.push(t);
+		const record = () => {
+			const t = performance.now() - traceStart;
+			if (t > 2000) return;
+			const vv = window.visualViewport;
+			const ph = phone?.getBoundingClientRect();
+			const lastMsg = log.querySelector(".ask-msg:last-of-type")?.getBoundingClientRect();
+			const fm = form.getBoundingClientRect();
+			const row = [
+				`${innerHeight}/${r(scrollY)}`,
+				vv ? `${r(vv.height)}/${r(vv.offsetTop)}` : "-",
+				ph ? `${r(ph.top)}/${r(ph.height)}` : "-",
+				log.clientHeight,
+				`${r(log.scrollTop)}/${log.scrollHeight - log.clientHeight}`,
+				lastMsg ? r(lastMsg.bottom) : "-",
+				r(fm.top),
+				(following ? "F" : "") + (performance.now() < stickUntil ? "H" : ""),
+			].join(" ");
+			if (row !== lastRow || tags.length) {
+				trace.push(`${String(r(t)).padStart(4)} ${tags.join(",").padEnd(6)} ${row}`);
+				if (trace.length > 46) return;
+			}
+			lastRow = row;
+			tags = [];
+			requestAnimationFrame(record);
+		};
+		input.addEventListener("focus", () => {
+			traceStart = performance.now();
+			trace = ["   t tags   inH/sY vvH/top phTop/H logH st/max msgB formT"];
+			lastRow = "";
+			tags = ["focus"];
+			requestAnimationFrame(record);
+		});
+		window.visualViewport?.addEventListener("resize", () => tag("vvR"));
+		window.visualViewport?.addEventListener("scroll", () => tag("vvS"));
+		window.addEventListener("resize", () => tag("winR"));
+		window.addEventListener("scroll", () => tag("winS"));
+		log.addEventListener("scroll", () => tag("s"));
+		tick();
 	}
 </script>
