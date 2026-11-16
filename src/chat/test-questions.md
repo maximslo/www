@@ -49,6 +49,11 @@ Run `node scripts/chat-eval.mjs` (dev server running) after every profile or pro
 - idk
 - nothing really
 
+## Slang (should riff confidently: no asking what it means, no guessing out loud, no lecture)
+- that geek pack model
+- im geeking off that geek pack
+- that fit is bussin no cap
+
 ## Stress testing (should joke that they're testing me, then carry on)
 - test test 123
 - asdfghjkl
