@@ -1223,9 +1223,25 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	   for 500ms after it leaves. Chromium's macOS values. */
 	const SCROLLBAR_HOLD_MS = 500;
 	let scrollbarTimer = 0;
+	/* Only the visitor's own scrolling shows it: a wheel or trackpad, a
+	   touch, the keyboard, a drag on the bar, and the momentum that carries
+	   on after them. The thread's own glide to a new message doesn't. As the
+	   thread grows a message taller before the glide catches up, the thumb
+	   hopped up and slid back down with every send, typing bubble and
+	   reply; iMessage doesn't flash its scroller for those either. */
+	let userScrollAt = -Infinity;
+	const markUserScroll = () => (userScrollAt = performance.now());
+	for (const type of ["wheel", "touchstart", "touchmove", "keydown", "pointerdown"]) {
+		log.addEventListener(type, markUserScroll, { passive: true });
+	}
+	const scrollbarShowing = () => log.hasAttribute("data-scrolling");
+	// The visitor's scroll: just after their input, or still moving on from
+	// it (momentum) while the bar is up.
+	const visitorScrolling = () => performance.now() - userScrollAt < 300 || scrollbarShowing();
 	log.addEventListener(
 		"scroll",
 		() => {
+			if (!visitorScrolling()) return;
 			log.toggleAttribute("data-scrolling", true);
 			clearTimeout(scrollbarTimer);
 			scrollbarTimer = window.setTimeout(() => log.removeAttribute("data-scrolling"), SCROLLBAR_HOLD_MS);
@@ -1277,6 +1293,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			"scroll",
 			() => {
 				schedulePlace();
+				if (!visitorScrolling()) return;
 				scrollTrack.toggleAttribute("data-active", true);
 				clearTimeout(hideTimer);
 				hideTimer = window.setTimeout(() => scrollTrack.removeAttribute("data-active"), SCROLLBAR_HOLD_MS);
