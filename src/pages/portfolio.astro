@@ -358,6 +358,18 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		padding-top: max(clamp(48px, 5.6vw, 112px), calc(env(safe-area-inset-top) + 76px));
 	}
 
+	/* Phones: tighter than the shared grid's 42px sides and 12px corners, so
+	   the tiles take more of the screen. */
+	@media (width < 768px) {
+		:global(:root:root) {
+			--lab-tile-radius: 8px;
+		}
+
+		:global(body .lab-section.lab-section) {
+			padding-inline: 20px;
+		}
+	}
+
 	/* Desktop: where my name sits on the home page (index.astro: 64px in,
 	   40px down, a 15px × 1.1 line at line-height 1.4), the pill centred on
 	   its line, so going back and forth it stays put. The grid starts as
