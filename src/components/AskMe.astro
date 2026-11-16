@@ -969,6 +969,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 </style>
 
 <script>
+	import { GENERIC_ERROR_MESSAGE, NETWORK_ERROR_MESSAGE } from "../chat/messages";
 	import { createSpring, prefersReducedMotion, springEasing } from "../scripts/spring";
 
 	// Motion values from alexsafayan.com's chat (Framer Motion springs).
@@ -989,7 +990,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 	const FIRST_INTRO_LEAD_MS = 1200;
 	// After a message is sent, how long before the typing dots appear.
 	const TYPING_DELAY_MS = 700;
-	const HELLOS = ["hi", "sup", "yo"];
+	const HELLOS = ["hi", "sup", "yo", "hello world", "howdy partner"];
 	// In a reply that hands over the portfolio link; never shown.
 	const PORTFOLIO_MARKER = /\s*\[\[portfolio\]\]\s*/gi;
 	// The portfolio's "link" in a reply (see setReplyText).
@@ -1962,7 +1963,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 				});
 
 				if (!res.ok || !res.body) {
-					return { role: "error", answer: (await res.text()) || "Something went wrong. Try again in a bit." };
+					return { role: "error", answer: (await res.text()) || GENERIC_ERROR_MESSAGE };
 				}
 				const reader = res.body.getReader();
 				const decoder = new TextDecoder();
@@ -1974,7 +1975,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 				}
 				return { role: "assistant", answer: answer + decoder.decode() };
 			} catch {
-				return { role: "error", answer: "Couldn't reach the server. Check your connection and try again." };
+				return { role: "error", answer: NETWORK_ERROR_MESSAGE };
 			}
 		})();
 
@@ -2008,7 +2009,7 @@ const TAIL_PATH = "M25.924 16.6489C24.6144 20 3.5 7 0 0H25.924C16.5 10.5 27.2336
 			.filter(Boolean);
 		if (!texts.length) {
 			role = "error";
-			texts.push("Something went wrong. Try again in a bit.");
+			texts.push(...GENERIC_ERROR_MESSAGE.split(/\n\s*\n/));
 		}
 		revealReply(reply, textEl, texts[0], role);
 		for (const text of texts.slice(1)) {

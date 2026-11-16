@@ -4,7 +4,17 @@ import { createClient } from "@supabase/supabase-js";
 import { Ratelimit } from "@upstash/ratelimit";
 import { env } from "../lib/env";
 import { getRedis } from "../lib/redis";
-import { CONTACT_EMAIL, getSystemPrompt } from "./system-prompt";
+import {
+	BAD_REQUEST_MESSAGE,
+	EMPTY_MESSAGE,
+	NOT_CONFIGURED_MESSAGE,
+	RATE_LIMITED_MESSAGE,
+	REFUSAL_MESSAGE,
+	SERVER_ERROR_MESSAGE,
+	SESSION_LIMIT_MESSAGE,
+	tooLongMessage,
+} from "./messages";
+import { getSystemPrompt } from "./system-prompt";
 
 // POST handler for /api/chat. Wired up by src/pages/api/chat.ts, which also
 // opts that route out of prerendering.
@@ -13,6 +23,10 @@ const MODEL = "claude-haiku-5-5";
 const MAX_MESSAGE_CHARS = 500;
 const MAX_TURNS_PER_SESSION = 20;
 const HISTORY_TURNS = 10;
+
+// `astro dev` only; false in any build, so production is always rate limited.
+// Lets scripts/chat-eval.mjs run past the per-IP limit.
+const IS_DEV_SERVER = import.meta.env.DEV;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -75,17 +89,17 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 	try {
 		({ sessionId, message } = await request.json());
 	} catch {
-		return text("Bad request.", 400);
+		return text(BAD_REQUEST_MESSAGE, 400);
 	}
 	if (typeof sessionId !== "string" || !UUID_RE.test(sessionId)) {
-		return text("Bad request.", 400);
+		return text(BAD_REQUEST_MESSAGE, 400);
 	}
 	if (typeof message !== "string" || !message.trim()) {
-		return text("Say something first!", 400);
+		return text(EMPTY_MESSAGE, 400);
 	}
 	const userMessage = message.trim();
 	if (userMessage.length > MAX_MESSAGE_CHARS) {
-		return text(`Keep it under ${MAX_MESSAGE_CHARS} characters, please.`, 400);
+		return text(tooLongMessage(MAX_MESSAGE_CHARS), 400);
 	}
 
 	let services: ReturnType<typeof getClients>;
@@ -93,14 +107,16 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 		services = getClients();
 	} catch (error) {
 		console.error(error);
-		return text(`The chat isn't set up right now. Email me at ${CONTACT_EMAIL}.`, 503);
+		return text(NOT_CONFIGURED_MESSAGE, 503);
 	}
 	const { systemPrompt, anthropic, supabase, ratelimit } = services;
 
-	const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || clientAddress || "unknown";
-	const { success } = await ratelimit.limit(ip);
-	if (!success) {
-		return text("Whoa, that's a lot of messages. Give it a few minutes and try again.", 429);
+	if (!IS_DEV_SERVER) {
+		const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || clientAddress || "unknown";
+		const { success } = await ratelimit.limit(ip);
+		if (!success) {
+			return text(RATE_LIMITED_MESSAGE, 429);
+		}
 	}
 
 	const { count, error: countError } = await supabase
@@ -110,11 +126,11 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 		.eq("role", "user");
 	if (countError) {
 		console.error("supabase count failed", countError);
-		return text(`Something broke on my end. Email me at ${CONTACT_EMAIL}.`, 500);
+		return text(SERVER_ERROR_MESSAGE, 500);
 	}
 	if ((count ?? 0) >= MAX_TURNS_PER_SESSION) {
 		// Sent as three texts: the chat splits on blank lines.
-		return text(`im getting sleepy, gonna go nap\n\nchat later\n\n${CONTACT_EMAIL}`, 429);
+		return text(SESSION_LIMIT_MESSAGE, 429);
 	}
 
 	const { data: rows, error: historyError } = await supabase
@@ -126,7 +142,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 		.limit(HISTORY_TURNS * 2);
 	if (historyError) {
 		console.error("supabase history failed", historyError);
-		return text(`Something broke on my end. Email me at ${CONTACT_EMAIL}.`, 500);
+		return text(SERVER_ERROR_MESSAGE, 500);
 	}
 
 	const history: Anthropic.MessageParam[] = (rows ?? [])
@@ -158,7 +174,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 				const final = await stream.finalMessage();
 
 				if (final.stop_reason === "refusal") {
-					const deflection = `\nI can't help with that one. Ask me about my work, or email me at ${CONTACT_EMAIL}.`;
+					const deflection = `\n\n${REFUSAL_MESSAGE}`;
 					reply += deflection;
 					controller.enqueue(encoder.encode(deflection));
 				}
@@ -178,7 +194,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
 				if (insertError) console.error("supabase insert failed", insertError);
 			} catch (error) {
 				console.error("chat failed", error);
-				controller.enqueue(encoder.encode(`${reply ? "\n" : ""}Something broke on my end. Email me at ${CONTACT_EMAIL}.`));
+				controller.enqueue(encoder.encode(`${reply ? "\n\n" : ""}${SERVER_ERROR_MESSAGE}`));
 			} finally {
 				controller.close();
 			}

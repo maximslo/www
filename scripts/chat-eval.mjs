@@ -1,7 +1,7 @@
 // Runs every question in src/chat/test-questions.md against the chat API,
 // each in a fresh session, and prints the answers for manual review.
 //   node scripts/chat-eval.mjs [baseUrl]   (default http://localhost:4321)
-// Note: this counts against the per-IP rate limit (20 per 10 min).
+// The per-IP rate limit is skipped on the dev server, so this can run freely.
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 
