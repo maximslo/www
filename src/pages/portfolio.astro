@@ -184,6 +184,15 @@ import { INTRO_NAME, META_DESCRIPTION } from "../config/intro";
 		border-color: #000 !important;
 	}
 
+	/* The footer's two lines at the size of my name on the home page and
+	   this page's Chat pill: 15px scaled up 1.1, the chat's own scale, so
+	   SF Pro draws it at the same optical size as theirs. */
+	:global(.site-footer-content) {
+		font-size: 15px;
+		transform: scale(1.1);
+		transform-origin: top left;
+	}
+
 	/* The enlarged view's veil: a white frost over the grid, not a dark one. */
 	:global(.lightbox-veil) {
 		background: rgba(255, 255, 255, 0.82) !important;
